@@ -8,7 +8,8 @@
   "scripts": {
     "build": "tsup",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "pack": "tsup && npm pack"
+    "pack": "tsup && npm pack",
+    "lint": "tsc"
   },
   "repository": {
     "type": "git",
