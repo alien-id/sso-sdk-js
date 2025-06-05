@@ -5,5 +5,5 @@ export type AlienSSOConfig = {
     pollingEndpoint: string;
     tokenEndpoint: string;
     scopes: string[];
-    pollingInterval?: string; // Optional polling interval in milliseconds
+    pollingInterval?: number; // Optional polling interval in milliseconds
 };
