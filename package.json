@@ -1,0 +1,32 @@
+{
+  "name": "@alien/sso-sdk",
+  "version": "1.0.0",
+  "description": "SDK for Alien SSO",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alien-id/sso-sdk.git"
+  },
+  "keywords": [
+    "Alien",
+    "SSO",
+    "SDK"
+  ],
+  "author": "Alien Team",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/alien-id/sso-sdk/issues"
+  },
+  "homepage": "https://github.com/alien-id/sso-sdk#readme",
+  "devDependencies": {
+    "@changesets/cli": "^2.29.4",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3"
+  }
+}
