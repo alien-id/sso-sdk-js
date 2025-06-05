@@ -1,5 +1,3 @@
-function add(a: number, b: number): number {
-    return a + b;
-}
+export * from './main';
 
-export { add };
+export * from './types';
