@@ -1,13 +1,19 @@
 import { AlienSSOConfig } from "./types";
 import { sleep } from "./utils";
 
+const DEFAULT_BASEURL = 'https://sso.alien.com';
+
 export class AlienSSOClient {
-    private config: AlienSSOConfig;
-    private pollingInterval: number;
+    readonly config: AlienSSOConfig;
+    readonly pollingInterval: number;
+    readonly baseUrl: string;
 
     constructor(config: AlienSSOConfig) {
         this.config = config;
-        this.pollingInterval = config.pollingInterval || 5000;
+
+        this.baseUrl = this.config.baseUrl || DEFAULT_BASEURL;
+
+        this.pollingInterval = this.config.pollingInterval || 5000;
     }
 
     private generateCodeVerifier(): string {
@@ -35,36 +41,32 @@ export class AlienSSOClient {
         const codeVerifier = this.generateCodeVerifier();
         const codeChallenge = await this.generateCodeChallenge(codeVerifier);
 
-        localStorage.setItem('code_verifier', codeVerifier);
+        sessionStorage.setItem('code_verifier', codeVerifier);
 
-        const payload = {
-            // response_type: 'code',
-            // client_id: this.config.clientId,
-            // redirect_uri: this.config.redirectUri,
-            // scope: this.config.scopes.join(' '),
-            provider_address: this.config.clientId,
-            provider_signature: "?",
+        const authorizePayload = {
             code_challenge: codeChallenge,
-            code_challenge_method: 'S256'
+            code_challenge_method: 'S256',
+            provider_address: this.config.providerAddress,
+            provider_authorize_signature_hex: "?",
         };
 
-        const autorizationUrl = `${this.config.authorizationEndpoint}/authorize}`;
+        const autorizationUrl = `${this.config.baseUrl}/authorize}`;
 
         const response = await fetch(autorizationUrl, {
             method: 'POST',
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify(payload.toString())
+            body: JSON.stringify(authorizePayload)
         });
 
-        const { link, pollingCode } = await response.json();
+        const { link, callbackUrl, pollingCode } = await response.json();
 
-        return { link, pollingCode };
+        return { link, callbackUrl, pollingCode };
     }
 
     async pollForAuthorization(pollingCode: string): Promise<string | null> {
-        const pollingUrl = `${this.config.pollingEndpoint}/authorize}`;
+        const pollingUrl = `${this.config.baseUrl}/poll}`;
 
         const payload = {
             pollingCode,
@@ -76,7 +78,7 @@ export class AlienSSOClient {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(payload.toString())
+                body: JSON.stringify(payload)
             });
 
             const data = await response.json();
@@ -96,31 +98,30 @@ export class AlienSSOClient {
     async getToken(authorizationCode: string): Promise<string | null> {
         if (!authorizationCode) return null;
 
-        const codeVerifier = localStorage.getItem('code_verifier');
+        const codeVerifier = sessionStorage.getItem('code_verifier');
 
         if (!codeVerifier) throw new Error('Missing code verifier.');
 
-        const tokenUrl = `${this.config.tokenEndpoint}/token}`;
+        const tokenUrl = `${this.config.baseUrl}/token}`;
 
-        const body = new URLSearchParams({
-            grant_type: 'authorization_code',
+        const payload = {
             authorization_code: authorizationCode,
-            cod_verifier: codeVerifier
-            // redirect_uri: this.config.redirectUri,
-            // client_id: this.config.clientId,
-        });
+            code_verifier: codeVerifier
+        };
 
         const response = await fetch(tokenUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: body.toString()
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload)
         });
 
-        const tokenData = await response.json();
+        const data = await response.json();
 
-        if (tokenData.access_token) {
-            localStorage.setItem('access_token', tokenData.access_token);
-            return tokenData.access_token;
+        if (data.access_token) {
+            localStorage.setItem('access_token', data.access_token);
+            return data.access_token;
         }
 
         throw new Error('Token exchange failed');
@@ -130,8 +131,28 @@ export class AlienSSOClient {
         return localStorage.getItem('access_token');
     }
 
+    async isAuthorized(): Promise<boolean> {
+        const isAuthorizedUrl = `${this.config.baseUrl}/verify}`;
+
+        const payload = {
+            access_token: this.getAccessToken(),
+        }
+
+        const response = await fetch(isAuthorizedUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: JSON.stringify(payload),
+        });
+
+        if (response.status !== 403) {
+            return false;
+        }
+
+        return true;
+    }
+
     logout(): void {
         localStorage.removeItem('access_token');
-        localStorage.removeItem('code_verifier');
+        sessionStorage.removeItem('code_verifier');
     }
 }
