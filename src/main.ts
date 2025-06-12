@@ -1,7 +1,10 @@
-import { AlienSSOConfig } from "./types";
-import { sleep } from "./utils";
+import { AuthorizeRequest, Signature } from "./types";
+import { AlienSSOConfigSchema, AlienSSOConfig, AuthorizeResponseSchema, AuthorizeRequestSchema, AuthorizeResponse, PollRequest, PollResponse, PollResponseSchema, PollRequestSchema, ExchangeCodeRequest, ExchangeCodeRequestSchema, ExchangeCodeResponseSchema, ExchangeCodeResponse, VerifyTokenRequest, VerifyTokenRequestSchema, VerifyTokenResponse, VerifyTokenResponseSchema } from "./schema";
+import { makeSignature, sleep } from "./utils";
 
 const DEFAULT_BASEURL = 'https://sso.alien.com';
+
+const DEFAULT_POLLING_INTERVAL = 5000;
 
 export class AlienSSOClient {
     readonly config: AlienSSOConfig;
@@ -9,11 +12,13 @@ export class AlienSSOClient {
     readonly baseUrl: string;
 
     constructor(config: AlienSSOConfig) {
-        this.config = config;
+        const parsedConfig = AlienSSOConfigSchema.parse(config);
+
+        this.config = parsedConfig;
 
         this.baseUrl = this.config.baseUrl || DEFAULT_BASEURL;
 
-        this.pollingInterval = this.config.pollingInterval || 5000;
+        this.pollingInterval = this.config.pollingInterval || DEFAULT_POLLING_INTERVAL;
     }
 
     private generateCodeVerifier(): string {
@@ -43,14 +48,28 @@ export class AlienSSOClient {
 
         sessionStorage.setItem('code_verifier', codeVerifier);
 
-        const authorizePayload = {
+        const signaturePayload: Signature = {
             code_challenge: codeChallenge,
             code_challenge_method: 'S256',
             provider_address: this.config.providerAddress,
-            provider_authorize_signature_hex: "?",
+        }
+
+        const signaturePayloadString = JSON.stringify(signaturePayload);
+        const encoder = new TextEncoder();
+        const encodedSignaturePayload = encoder.encode(signaturePayloadString);
+
+        const signature = await makeSignature(encodedSignaturePayload, this.config.providerPrivateKey);
+
+        const authorizePayload: AuthorizeRequest = {
+            code_challenge: codeChallenge,
+            code_challenge_method: 'S256',
+            provider_address: this.config.providerAddress,
+            provider_signature: signature,
         };
 
-        const autorizationUrl = `${this.config.baseUrl}/authorize}`;
+        AuthorizeRequestSchema.parse(authorizePayload);
+
+        const autorizationUrl = `${this.config.baseUrl}/authorize`;
 
         const response = await fetch(autorizationUrl, {
             method: 'POST',
@@ -60,17 +79,25 @@ export class AlienSSOClient {
             body: JSON.stringify(authorizePayload)
         });
 
-        const { link, callbackUrl, pollingCode } = await response.json();
+        if (!response.ok) {
+            throw new Error(`Authorization failed: ${response.statusText}`);
+        }
 
-        return { link, callbackUrl, pollingCode };
+        const json = await response.json();
+
+        const authorizeResponse: AuthorizeResponse = AuthorizeResponseSchema.parse(json);
+
+        return authorizeResponse;
     }
 
     async pollForAuthorization(pollingCode: string): Promise<string | null> {
-        const pollingUrl = `${this.config.baseUrl}/poll}`;
-
-        const payload = {
-            pollingCode,
+        const pollPayload: PollRequest = {
+            polling_code: pollingCode,
         }
+
+        PollRequestSchema.parse(pollPayload);
+
+        const pollingUrl = `${this.config.baseUrl}/poll`;
 
         while (true) {
             const response = await fetch(pollingUrl, {
@@ -78,77 +105,108 @@ export class AlienSSOClient {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(pollPayload)
             });
 
-            const data = await response.json();
-
-            if (response.ok && data.authorizationCode) {
-                return data.authorizationCode;
+            if (!response.ok) {
+                throw new Error(`Poll failed: ${response.statusText}`);
             }
 
-            if (data.error === 'authorization_pending') {
+            const json = await response.json();
+
+            const pollResponse: PollResponse = PollResponseSchema.parse(json);
+
+            if (pollResponse.status === 'authorized' && pollResponse.authorization_code) {
+                return pollResponse.authorization_code;
+            }
+
+            if (pollResponse.status === 'pending') {
                 await sleep(this.pollingInterval);
             } else {
-                throw new Error(`Polling error: ${data.error}`);
+                throw new Error(`Poll failed`);
             }
         }
     }
 
-    async getToken(authorizationCode: string): Promise<string | null> {
-        if (!authorizationCode) return null;
-
+    async exchangeCode(authorizationCode: string): Promise<string | null> {
         const codeVerifier = sessionStorage.getItem('code_verifier');
 
         if (!codeVerifier) throw new Error('Missing code verifier.');
 
-        const tokenUrl = `${this.config.baseUrl}/token}`;
-
-        const payload = {
+        const exchangeCodePayload: ExchangeCodeRequest = {
             authorization_code: authorizationCode,
-            code_verifier: codeVerifier
+            code_verifier: codeVerifier,
         };
 
-        const response = await fetch(tokenUrl, {
+        ExchangeCodeRequestSchema.parse(exchangeCodePayload);
+
+        const exchangeUrl = `${this.config.baseUrl}/access_token/exchange`;
+
+        const response = await fetch(exchangeUrl, {
             method: 'POST',
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(exchangeCodePayload),
         });
 
-        const data = await response.json();
-
-        if (data.access_token) {
-            localStorage.setItem('access_token', data.access_token);
-            return data.access_token;
+        if (!response.ok) {
+            throw new Error(`ExchangeCode failed: ${response.statusText}`);
         }
 
-        throw new Error('Token exchange failed');
+        const json = await response.json();
+
+        const exchangeCodeResponse: ExchangeCodeResponse = ExchangeCodeResponseSchema.parse(json);
+
+        if (exchangeCodeResponse.access_token) {
+            localStorage.setItem('access_token', exchangeCodeResponse.access_token);
+
+            return exchangeCodeResponse.access_token;
+        } else {
+            throw new Error('Exchange failed');
+        }
     }
 
-    getAccessToken(): string | null {
-        return localStorage.getItem('access_token');
-    }
-
-    async isAuthorized(): Promise<boolean> {
-        const isAuthorizedUrl = `${this.config.baseUrl}/verify}`;
-
-        const payload = {
+    async verifyToken(): Promise<boolean> {
+        const verifyTokenPayload: VerifyTokenRequest = {
             access_token: this.getAccessToken(),
-        }
+        };
 
-        const response = await fetch(isAuthorizedUrl, {
+        VerifyTokenRequestSchema.parse(verifyTokenPayload);
+
+        const verifyTokenUrl = `${this.config.baseUrl}/access_token/verify`;
+
+        const response = await fetch(verifyTokenUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: JSON.stringify(payload),
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(verifyTokenPayload),
         });
 
-        if (response.status !== 403) {
-            return false;
+        if (!response.ok) {
+            throw new Error(`VerifyToken failed: ${response.statusText}`);
         }
 
-        return true;
+        const json = await response.json();
+
+        const verifyTokenResponse: VerifyTokenResponse = VerifyTokenResponseSchema.parse(json);
+
+        if (!verifyTokenResponse.is_valid) {
+            throw new Error('Access token is invalid.');
+        }
+
+        return verifyTokenResponse.is_valid;
+    }
+
+    getAccessToken(): string {
+        const accessToken = localStorage.getItem('access_token');
+
+        if (!accessToken) {
+            throw new Error('Access token not found. Please login first.');
+        }
+
+        return accessToken;
     }
 
     logout(): void {
