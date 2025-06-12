@@ -3,3 +3,7 @@ node_modules
 dist
 
 publish.yaml
+examples/default.ts
+
+
+coverage
