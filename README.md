@@ -226,3 +226,16 @@ All types are defined in [`src/schema.ts`](src/schema.ts):
   is_valid: boolean;
 }
 ```
+
+
+
+
+## How to test SDK package locally or run examples
+
+From the root:
+
+```sh
+pnpm install                      # installs all dependencies, links your SDK
+pnpm build                        # builds the SDK
+pnpm --filter react-app run dev   # or --filter nextjs-app
+```
