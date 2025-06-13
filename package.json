@@ -1,5 +1,5 @@
 {
-  "name": "@alien/sso-sdk",
+  "name": "@alien/sso-sdk-js",
   "version": "1.0.0",
   "description": "SDK for Alien SSO",
   "main": "dist/index.js",
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/alien-id/sso-sdk.git"
+    "url": "git+https://github.com/alien-id/sso-sdk-js.git"
   },
   "keywords": [
     "Alien",
@@ -23,9 +23,9 @@
   "author": "Alien Team",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/alien-id/sso-sdk/issues"
+    "url": "https://github.com/alien-id/sso-sdk-js/issues"
   },
-  "homepage": "https://github.com/alien-id/sso-sdk#readme",
+  "homepage": "https://github.com/alien-id/sso-sdk-js#readme",
   "devDependencies": {
     "@changesets/cli": "^2.29.4",
     "@types/jest": "^29.5.14",
