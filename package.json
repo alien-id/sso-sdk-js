@@ -1,7 +1,8 @@
 {
+  "name": "@alien/sso-sdk-js-monorepo",
   "private": true,
-  "workspaces": [
-    "packages/*",
-    "examples/*"
-  ]
+  "scripts": {
+    "build": "pnpm --filter ./sdk run build"
+  },
+  "devDependencies": {}
 }

@@ -1,10 +1,45 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 
+import { AlienSSOClient } from '@alien/sso-sdk-js'
+
 function App() {
-  const [count, setCount] = useState(0)
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const authFlow = async () => {
+      const client = new AlienSSOClient({
+        providerAddress: 'your-provider-address',
+        providerPrivateKey: 'your-private-key',
+        baseUrl: 'https://sso.alien.com',
+      });
+
+      // 1. Start authorization
+      const authResponse = await client.authorize();
+
+      // 2. Poll for user authorization
+      const authorizationCode = await client.pollForAuthorization(authResponse.polling_code);
+
+      // 3. Exchange code for access token
+      const accessToken = await client.exchangeCode(authorizationCode!);
+      console.log('accessToken', accessToken);
+
+      // 4. Verify token
+      const isValid = await client.verifyToken();
+      console.log('isValid', isValid);
+
+      // 5. Get access token directly
+      const token = client.getAccessToken();
+      console.log('token', token);
+
+      // 6. Logout
+      client.logout();
+    }
+
+    authFlow();
+  }, [])
 
   return (
     <>
