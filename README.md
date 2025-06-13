@@ -6,7 +6,9 @@ Use the "npm pack" command to create a TGZ file and you can use it in the packag
 
 The `AlienSSOClient` class provides a TypeScript/JavaScript SDK for integrating with the Alien SSO (Single Sign-On) service. It handles the full SSO flow, including authorization, polling, code exchange, token verification, and session management.
 
----
+
+
+
 
 ## Installation
 
@@ -16,7 +18,8 @@ pnpm add @alien/sso-sdk-js
 npm install @alien/sso-sdk-js
 ```
 
----
+
+
 
 ## Usage Example
 
@@ -48,7 +51,8 @@ const token = client.getAccessToken();
 client.logout();
 ```
 
----
+
+
 
 ## API Reference
 
@@ -60,7 +64,9 @@ new AlienSSOClient(config: AlienSSOConfig)
 
 - **config**: [`AlienSSOConfig`](#types)
 
----
+
+
+
 
 ### Methods
 
@@ -131,7 +137,9 @@ Clears the access token and code verifier from storage.
 
 **Returns:** `void`
 
----
+
+
+
 
 ## Types
 
@@ -218,8 +226,3 @@ All types are defined in [`src/schema.ts`](src/schema.ts):
   is_valid: boolean;
 }
 ```
-
-<!-- ## License
-
-MIT -->
-
