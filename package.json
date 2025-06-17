@@ -2,7 +2,8 @@
   "name": "@alien/sso-sdk-js-monorepo",
   "private": true,
   "scripts": {
-    "build": "pnpm --filter ./sdk run build"
+    "build-client": "pnpm --filter ./packages/client run build",
+    "build-server": "pnpm --filter ./packages/server run build"
   },
   "devDependencies": {}
 }

@@ -1,5 +1,4 @@
-import { AuthorizeRequest, Signature } from "./types";
-import { AlienSSOConfigSchema, AlienSSOConfig, AuthorizeResponseSchema, AuthorizeRequestSchema, AuthorizeResponse, PollRequest, PollResponse, PollResponseSchema, PollRequestSchema, ExchangeCodeRequest, ExchangeCodeRequestSchema, ExchangeCodeResponseSchema, ExchangeCodeResponse, VerifyTokenRequest, VerifyTokenRequestSchema, VerifyTokenResponse, VerifyTokenResponseSchema } from "./schema";
+import { AlienSSOConfigSchema, AlienSSOConfig, AuthorizeResponseSchema, AuthorizeRequestSchema, AuthorizeResponse, PollRequest, PollResponse, PollResponseSchema, PollRequestSchema, ExchangeCodeRequest, ExchangeCodeRequestSchema, ExchangeCodeResponseSchema, ExchangeCodeResponse, VerifyTokenRequest, VerifyTokenRequestSchema, VerifyTokenResponse, VerifyTokenResponseSchema, AuthorizeRequest } from "./schema";
 import { makeSignature, sleep } from "./utils";
 
 const DEFAULT_BASEURL = 'https://sso.alien.com';
@@ -48,7 +47,7 @@ export class AlienSSOClient {
 
         sessionStorage.setItem('code_verifier', codeVerifier);
 
-        const signaturePayload: Signature = {
+        const signaturePayload: Omit<AuthorizeRequest, 'provider_signature'> = {
             code_challenge: codeChallenge,
             code_challenge_method: 'S256',
             provider_address: this.config.providerAddress,

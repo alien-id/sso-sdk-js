@@ -1,5 +1,5 @@
 {
-  "name": "@alien/sso-sdk-js",
+  "name": "@alien/sso-sdk-client-js",
   "version": "1.0.0",
   "description": "SDK for Alien SSO",
   "main": "dist/index.js",
