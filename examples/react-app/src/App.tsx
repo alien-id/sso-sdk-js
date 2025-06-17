@@ -68,7 +68,7 @@ function App() {
           <span className="button-contents">Sign in with Alien</span>
           <span style={{ display: 'none' }}>Sign in with Alien</span>
         </div>
-      </button >
+      </button>
     </div >
   )
 }
