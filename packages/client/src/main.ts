@@ -1,41 +1,45 @@
-import { AlienSSOConfigSchema, AlienSSOConfig, AuthorizeResponseSchema, AuthorizeRequestSchema, AuthorizeResponse, PollRequest, PollResponse, PollResponseSchema, PollRequestSchema, ExchangeCodeRequest, ExchangeCodeRequestSchema, ExchangeCodeResponseSchema, ExchangeCodeResponse, VerifyTokenRequest, VerifyTokenRequestSchema, VerifyTokenResponse, VerifyTokenResponseSchema, AuthorizeRequest } from "./schema";
-import { makeSignature, sleep } from "./utils";
+import { AuthorizeResponseSchema, AuthorizeRequestSchema, AuthorizeResponse, PollRequest, PollResponse, PollResponseSchema, PollRequestSchema, ExchangeCodeRequest, ExchangeCodeRequestSchema, ExchangeCodeResponseSchema, ExchangeCodeResponse, VerifyTokenRequest, VerifyTokenRequestSchema, VerifyTokenResponse, VerifyTokenResponseSchema, AuthorizeRequest, AlienSsoSdkClientConfig, AlienSsoSdkClientSchema } from "./schema";
+import { sleep } from "./utils";
 
-const DEFAULT_BASEURL = 'https://sso.alien.com';
+const DEFAULT_SERVER_SDK_BASEURL = 'http://localhost:3000';
+
+const DEFAULT_SSO_BASE_URL = 'https://sso.alien.com';
 
 const DEFAULT_POLLING_INTERVAL = 5000;
 
-export class AlienSSOClient {
-    readonly config: AlienSSOConfig;
+export class AlienSsoSdkClient {
+    readonly config: AlienSsoSdkClientConfig;
     readonly pollingInterval: number;
-    readonly baseUrl: string;
+    readonly serverSdkBaseUrl: string;
+    readonly ssoBaseUrl: string;
 
-    constructor(config: AlienSSOConfig) {
-        const parsedConfig = AlienSSOConfigSchema.parse(config);
+    constructor(config: AlienSsoSdkClientConfig) {
+        const parsedConfig = AlienSsoSdkClientSchema.parse(config);
 
         this.config = parsedConfig;
 
-        this.baseUrl = this.config.baseUrl || DEFAULT_BASEURL;
+        this.ssoBaseUrl = this.config.ssoBaseUrl || DEFAULT_SSO_BASE_URL;
+
+        this.serverSdkBaseUrl = this.config.serverSdkBaseUrl || DEFAULT_SERVER_SDK_BASEURL;
 
         this.pollingInterval = this.config.pollingInterval || DEFAULT_POLLING_INTERVAL;
     }
 
-    private generateCodeVerifier(): string {
-        const array = new Uint32Array(56 / 2);
-
+    private generateCodeVerifier(length: number = 128) {
+        const array = new Uint8Array(length);
         window.crypto.getRandomValues(array);
-
-        return Array.from(array, dec => ('0' + dec.toString(16)).slice(-2)).join('');
+        return this.base64urlEncode(array);
     }
 
-    private async generateCodeChallenge(codeVerifier: string): Promise<string> {
+    private async generateCodeChallenge(codeVerifier: string) {
         const encoder = new TextEncoder();
-
         const data = encoder.encode(codeVerifier);
+        const digest = await crypto.subtle.digest('SHA-256', data);
+        return this.base64urlEncode(new Uint8Array(digest));
+    }
 
-        const digest = await window.crypto.subtle.digest('SHA-256', data);
-
-        return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    private base64urlEncode(buffer: Uint8Array) {
+        return btoa(String.fromCharCode(...buffer))
             .replace(/\+/g, '-')
             .replace(/\//g, '_')
             .replace(/=+$/, '');
@@ -47,30 +51,13 @@ export class AlienSSOClient {
 
         sessionStorage.setItem('code_verifier', codeVerifier);
 
-        const signaturePayload: Omit<AuthorizeRequest, 'provider_signature'> = {
+        const authorizeUrl = `${this.config.serverSdkBaseUrl}/api/authorize`;
+
+        const authorizePayload = {
             code_challenge: codeChallenge,
-            code_challenge_method: 'S256',
-            provider_address: this.config.providerAddress,
-        }
-
-        const signaturePayloadString = JSON.stringify(signaturePayload);
-        const encoder = new TextEncoder();
-        const encodedSignaturePayload = encoder.encode(signaturePayloadString);
-
-        const signature = await makeSignature(encodedSignaturePayload, this.config.providerPrivateKey);
-
-        const authorizePayload: AuthorizeRequest = {
-            code_challenge: codeChallenge,
-            code_challenge_method: 'S256',
-            provider_address: this.config.providerAddress,
-            provider_signature: signature,
         };
 
-        AuthorizeRequestSchema.parse(authorizePayload);
-
-        const autorizationUrl = `${this.config.baseUrl}/authorize`;
-
-        const response = await fetch(autorizationUrl, {
+        const result = await fetch(authorizeUrl, {
             method: 'POST',
             headers: {
                 "Content-Type": "application/json",
@@ -78,15 +65,9 @@ export class AlienSSOClient {
             body: JSON.stringify(authorizePayload)
         });
 
-        if (!response.ok) {
-            throw new Error(`Authorization failed: ${response.statusText}`);
-        }
+        console.log(result);
 
-        const json = await response.json();
-
-        const authorizeResponse: AuthorizeResponse = AuthorizeResponseSchema.parse(json);
-
-        return authorizeResponse;
+        return result;
     }
 
     async pollForAuthorization(pollingCode: string): Promise<string | null> {
@@ -96,7 +77,7 @@ export class AlienSSOClient {
 
         PollRequestSchema.parse(pollPayload);
 
-        const pollingUrl = `${this.config.baseUrl}/poll`;
+        const pollingUrl = `${this.config.ssoBaseUrl}/poll`;
 
         while (true) {
             const response = await fetch(pollingUrl, {
@@ -139,7 +120,7 @@ export class AlienSSOClient {
 
         ExchangeCodeRequestSchema.parse(exchangeCodePayload);
 
-        const exchangeUrl = `${this.config.baseUrl}/access_token/exchange`;
+        const exchangeUrl = `${this.config.ssoBaseUrl}/access_token/exchange`;
 
         const response = await fetch(exchangeUrl, {
             method: 'POST',
@@ -173,7 +154,7 @@ export class AlienSSOClient {
 
         VerifyTokenRequestSchema.parse(verifyTokenPayload);
 
-        const verifyTokenUrl = `${this.config.baseUrl}/access_token/verify`;
+        const verifyTokenUrl = `${this.config.ssoBaseUrl}/access_token/verify`;
 
         const response = await fetch(verifyTokenUrl, {
             method: 'POST',

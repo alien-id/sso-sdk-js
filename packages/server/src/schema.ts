@@ -1,20 +1,20 @@
 import { z } from "zod/v4-mini";
 
-export const AlienSSOConfigSchema = z.object({
+export const AlienSsoSdkServerConfigSchema = z.object({
     providerAddress: z.string(),
     providerPrivateKey: z.string(),
-    baseUrl: z.url({ protocol: /^https$/ }),
+    ssoBaseUrl: z.url({ protocol: /^http$/ }),
     pollingInterval: z.optional(z.number()),
 });
 
-export type AlienSSOConfig = z.infer<typeof AlienSSOConfigSchema>;
+export type AlienSsoSdkServerConfig = z.infer<typeof AlienSsoSdkServerConfigSchema>;
 
 /**
  * Authorize request/response schema
  */
 export const AuthorizeRequestSchema = z.object({
     code_challenge: z.string(),
-    code_challenge_method: 'S256',
+    code_challenge_method: z.string(),
     provider_address: z.string(),
     provider_signature: z.string(),
 });

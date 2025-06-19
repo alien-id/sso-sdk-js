@@ -40,10 +40,7 @@
 }
 
 .button .button-icon {
-  height: 20px;
-  margin-right: 12px;
-  min-width: 20px;
-  width: 20px;
+  filter: invert(1);
 }
 
 .button .button-content-wrapper {
@@ -58,6 +55,7 @@
   justify-content: space-between;
   position: relative;
   width: 100%;
+  gap: 0.5rem;
 }
 
 .button .button-contents {
@@ -68,17 +66,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: top;
-}
-
-.button .button-state {
-  -webkit-transition: opacity .218s;
-  transition: opacity .218s;
-  bottom: 0;
-  left: 0;
-  opacity: 0;
-  position: absolute;
-  right: 0;
-  top: 0;
 }
 
 .button:disabled {
@@ -95,18 +82,7 @@
   opacity: 38%;
 }
 
-.button:not(:disabled):active .button-state,
-.button:not(:disabled):focus .button-state {
-  background-color: #303030;
-  opacity: 12%;
-}
-
 .button:not(:disabled):hover {
   -webkit-box-shadow: 0 1px 2px 0 rgba(60, 64, 67, .30), 0 1px 3px 1px rgba(60, 64, 67, .15);
   box-shadow: 0 1px 2px 0 rgba(60, 64, 67, .30), 0 1px 3px 1px rgba(60, 64, 67, .15);
-}
-
-.button:not(:disabled):hover .button-state {
-  background-color: #303030;
-  opacity: 8%;
 }
