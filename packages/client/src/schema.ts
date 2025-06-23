@@ -4,7 +4,7 @@ export const AlienSsoSdkClientSchema = z.object({
     providerAddress: z.string(),
     providerPrivateKey: z.string(),
     serverSdkBaseUrl: z.url(),
-    ssoBaseUrl: z.url({ protocol: /^http$/ }),
+    ssoBaseUrl: z.url(),
     pollingInterval: z.optional(z.number()),
 });
 

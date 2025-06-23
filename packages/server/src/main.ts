@@ -1,6 +1,6 @@
 import { AlienSsoSdkServerConfigSchema, AlienSsoSdkServerConfig, AuthorizeResponseSchema, AuthorizeRequestSchema, AuthorizeResponse, PollRequest, PollResponse, PollResponseSchema, PollRequestSchema, ExchangeCodeRequest, ExchangeCodeRequestSchema, ExchangeCodeResponseSchema, ExchangeCodeResponse, VerifyTokenRequest, VerifyTokenRequestSchema, VerifyTokenResponse, VerifyTokenResponseSchema, AuthorizeRequest } from "./schema";
-import { Ed25519Signer, sleep } from "./utils";
-import { createHash, randomBytes } from 'crypto';
+import { Ed25519Signer } from "./utils";
+// import { createHash, randomBytes } from 'crypto';
 
 const DEFAULT_SSO_BASE_URL = 'https://sso.alien.com';
 
@@ -24,21 +24,21 @@ export class AlienSsoSdkServer {
         this.pollingInterval = parsedConfig.pollingInterval || DEFAULT_POLLING_INTERVAL;
     }
 
-    private base64urlEncode(buffer: Buffer): string {
-        return buffer.toString('base64')
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=+$/, '');
-    }
+    // private base64urlEncode(buffer: Buffer): string {
+    //     return buffer.toString('base64')
+    //         .replace(/\+/g, '-')
+    //         .replace(/\//g, '_')
+    //         .replace(/=+$/, '');
+    // }
 
-    private generateCodeVerifier(length: number = 128): string {
-        return this.base64urlEncode(randomBytes(length)).slice(0, length);
-    }
+    // private generateCodeVerifier(length: number = 128): string {
+    //     return this.base64urlEncode(randomBytes(length)).slice(0, length);
+    // }
 
 
-    private generateCodeChallenge(codeVerifier: string): string {
-        return this.base64urlEncode(createHash('sha256').update(codeVerifier).digest());
-    }
+    // private generateCodeChallenge(codeVerifier: string): string {
+    //     return this.base64urlEncode(createHash('sha256').update(codeVerifier).digest());
+    // }
 
     async authorize(codeChallenge: string): Promise<AuthorizeResponse | null> {
         try {
@@ -56,7 +56,6 @@ export class AlienSsoSdkServer {
                 ...signaturePayload,
                 provider_signature: signature,
             };
-
 
             AuthorizeRequestSchema.parse(authorizePayload);
 

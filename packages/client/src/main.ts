@@ -34,7 +34,7 @@ export class AlienSsoSdkClient {
     private async generateCodeChallenge(codeVerifier: string) {
         const encoder = new TextEncoder();
         const data = encoder.encode(codeVerifier);
-        const digest = await crypto.subtle.digest('SHA-256', data);
+        const digest = await window.crypto.subtle.digest('SHA-256', data);
         return this.base64urlEncode(new Uint8Array(digest));
     }
 
@@ -45,19 +45,19 @@ export class AlienSsoSdkClient {
             .replace(/=+$/, '');
     }
 
-    async authorize(): Promise<any> {
+    async authorize(): Promise<AuthorizeResponse> {
         const codeVerifier = this.generateCodeVerifier();
         const codeChallenge = await this.generateCodeChallenge(codeVerifier);
 
         sessionStorage.setItem('code_verifier', codeVerifier);
 
-        const authorizeUrl = `${this.config.serverSdkBaseUrl}/api/authorize`;
+        const authorizeUrl = `${this.config.serverSdkBaseUrl}/authorize`;
 
         const authorizePayload = {
             code_challenge: codeChallenge,
         };
 
-        const result = await fetch(authorizeUrl, {
+        const response = await fetch(authorizeUrl, {
             method: 'POST',
             headers: {
                 "Content-Type": "application/json",
@@ -65,9 +65,9 @@ export class AlienSsoSdkClient {
             body: JSON.stringify(authorizePayload)
         });
 
-        console.log(result);
+        const json: AuthorizeResponse = await response.json();
 
-        return result;
+        return json;
     }
 
     async pollForAuthorization(pollingCode: string): Promise<string | null> {
@@ -148,8 +148,14 @@ export class AlienSsoSdkClient {
     }
 
     async verifyToken(): Promise<boolean> {
+        const access_token = this.getAccessToken();
+
+        if (!access_token) {
+            throw new Error('Access token is invalid.');
+        }
+
         const verifyTokenPayload: VerifyTokenRequest = {
-            access_token: this.getAccessToken(),
+            access_token,
         };
 
         VerifyTokenRequestSchema.parse(verifyTokenPayload);
@@ -179,12 +185,8 @@ export class AlienSsoSdkClient {
         return verifyTokenResponse.is_valid;
     }
 
-    getAccessToken(): string {
+    getAccessToken(): string | null {
         const accessToken = localStorage.getItem('access_token');
-
-        if (!accessToken) {
-            throw new Error('Access token not found. Please login first.');
-        }
 
         return accessToken;
     }
