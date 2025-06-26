@@ -4,7 +4,8 @@
   "scripts": {
     "build": "pnpm build-client & pnpm build-server",
     "build-client": "pnpm --filter ./packages/client run build",
-    "build-server": "pnpm --filter ./packages/server run build"
+    "build-server": "pnpm --filter ./packages/server run build",
+    "next-app": "pnpm --filter next-app run dev"
   },
   "devDependencies": {}
 }

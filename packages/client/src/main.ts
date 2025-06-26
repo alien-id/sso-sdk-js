@@ -34,8 +34,11 @@ export class AlienSsoSdkClient {
     private async generateCodeChallenge(codeVerifier: string) {
         const encoder = new TextEncoder();
         const data = encoder.encode(codeVerifier);
-        const digest = await window.crypto.subtle.digest('SHA-256', data);
-        return this.base64urlEncode(new Uint8Array(digest));
+
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = new Uint8Array(hashBuffer);
+
+        return this.base64urlEncode(hashArray);
     }
 
     private base64urlEncode(buffer: Uint8Array) {
@@ -46,7 +49,7 @@ export class AlienSsoSdkClient {
     }
 
     async authorize(): Promise<AuthorizeResponse> {
-        const codeVerifier = this.generateCodeVerifier();
+        const codeVerifier = 'test_code_verifier_string_which_is_long_enough'; // this.generateCodeVerifier();
         const codeChallenge = await this.generateCodeChallenge(codeVerifier);
 
         sessionStorage.setItem('code_verifier', codeVerifier);

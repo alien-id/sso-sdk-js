@@ -1,19 +1,9 @@
 import { AlienSsoSdkServer } from '@alien/sso-sdk-server-js'
-// import { generateKeyPairSync } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server'
 
-// const { privateKey } = generateKeyPairSync('ed25519');
-
-// const derKey = privateKey.export({
-//     format: 'der',
-//     type: 'pkcs8',
-// })
-
-// const base64DER = derKey.toString('base64');
-
 const alienSsoSdkServer = new AlienSsoSdkServer({
-    providerAddress: '00000001000000000000000300000000',
-    providerPrivateKey: 'a15a08dcbe8bc51b6dbc31cde958a2c8c01571bdb66775b702431b2515a6e939eca3b7188b52a4affd87d8ee8b0714402efcf5755848f91f801b302dca2acf85',
+    providerAddress: '00000001000000000000000700000000',
+    providerPrivateKey: '7fcf26c0d12ad6053a57400706d6fdd4876c468aeb9740e33244d44852007d4419a062d9bf12bba2e558043b86fad7436280da93dc6b653f7dde12abfa793e20',
     ssoBaseUrl: 'http://localhost:3005',
 });
 
@@ -26,13 +16,6 @@ export async function POST(request: NextRequest) {
         } = requestBody;
 
         console.log('code_challenge', code_challenge);
-
-
-        // const authResponse = {
-        //     deep_link: "http://192.168.134.200:3000/api/mock/qr?query=kek",
-        //     polling_code: '123',
-        //     expired_at: 123,
-        // }
 
         const authResponse = await alienSsoSdkServer.authorize(code_challenge);
 

@@ -10,10 +10,11 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 
 const alienSsoSdkClient = new AlienSsoSdkClient({
-  providerAddress: 'your-provider-address',
-  providerPrivateKey: 'your-private-key',
-  ssoBaseUrl: 'http://localhost:3000/api/mock',
-  serverSdkBaseUrl: 'http://localhost:3000/api/mock',
+  providerAddress: '00000001000000000000000700000000',
+  providerPrivateKey: '7fcf26c0d12ad6053a57400706d6fdd4876c468aeb9740e33244d44852007d4419a062d9bf12bba2e558043b86fad7436280da93dc6b653f7dde12abfa793e20',
+  // ssoBaseUrl: 'http://localhost:3000/api/mock',
+  ssoBaseUrl: 'http://localhost:3005',
+  serverSdkBaseUrl: 'http://localhost:3000/api',
 });
 
 export default function Home() {
@@ -24,7 +25,6 @@ export default function Home() {
 
   useEffect(() => {
     const accessToken = alienSsoSdkClient.getAccessToken();
-    console.log();
 
     setIsAuthorized(!!accessToken);
   }, [router]);
@@ -47,11 +47,10 @@ export default function Home() {
 
       if (!accessToken) return;
 
-
       const isValid = await alienSsoSdkClient.verifyToken();
       console.log({ isValid });
 
-      setIsAuthorized(isValid)
+      setIsAuthorized(isValid);
     } catch (error) {
       console.log('handleLogin', error);
     }
@@ -91,7 +90,7 @@ export default function Home() {
         />
       </div>
 
-      <Link target='_blank' href={deepLink}>
+      <Link target='_blank' href={deepLink} style={{ wordBreak: 'break-all' }}>
         {deepLink}
       </Link>
     </>
