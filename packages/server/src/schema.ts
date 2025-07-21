@@ -3,7 +3,7 @@ import { z } from "zod/v4-mini";
 export const AlienSsoSdkServerConfigSchema = z.object({
     providerAddress: z.string(),
     providerPrivateKey: z.string(),
-    ssoBaseUrl: z.url({ protocol: /^http$/ }),
+    ssoBaseUrl: z.url(),
     pollingInterval: z.optional(z.number()),
 });
 

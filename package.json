@@ -5,7 +5,10 @@
     "build": "pnpm build-client & pnpm build-server",
     "build-client": "pnpm --filter ./packages/client run build",
     "build-server": "pnpm --filter ./packages/server run build",
-    "next-app": "pnpm --filter next-app run dev"
+    "next-app": "pnpm --filter next-app run dev",
+    "pack": "pnpm pack-client & pnpm pack-server",
+    "pack-client": "pnpm --filter ./packages/client exec npm pack",
+    "pack-server": "pnpm --filter ./packages/server exec npm pack"
   },
   "devDependencies": {}
 }

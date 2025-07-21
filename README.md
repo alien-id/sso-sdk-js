@@ -239,3 +239,15 @@ pnpm install                      # installs all dependencies, links your SDK
 pnpm build                        # builds the SDK
 pnpm --filter react-app run dev   # or --filter nextjs-app
 ```
+
+## Recommended Flow for SDK Auth
+
+- Frontend exchanges auth_code → receives access_token
+
+- Frontend SDK stores access_token in memory
+
+- All API requests use Authorization: Bearer ... header
+
+- Backend verifies token signature and scopes
+
+- Optionally, refresh tokens using a secure flow when expired

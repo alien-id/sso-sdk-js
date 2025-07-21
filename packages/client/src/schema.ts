@@ -1,9 +1,7 @@
 import { z } from "zod/v4-mini";
 
 export const AlienSsoSdkClientSchema = z.object({
-    providerAddress: z.string(),
-    providerPrivateKey: z.string(),
-    serverSdkBaseUrl: z.url(),
+    serverSdkBaseUrl: z.string(),
     ssoBaseUrl: z.url(),
     pollingInterval: z.optional(z.number()),
 });

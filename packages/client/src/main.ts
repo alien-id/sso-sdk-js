@@ -1,11 +1,24 @@
 import { AuthorizeResponseSchema, AuthorizeRequestSchema, AuthorizeResponse, PollRequest, PollResponse, PollResponseSchema, PollRequestSchema, ExchangeCodeRequest, ExchangeCodeRequestSchema, ExchangeCodeResponseSchema, ExchangeCodeResponse, VerifyTokenRequest, VerifyTokenRequestSchema, VerifyTokenResponse, VerifyTokenResponseSchema, AuthorizeRequest, AlienSsoSdkClientConfig, AlienSsoSdkClientSchema } from "./schema";
-import { sleep } from "./utils";
+import { base64UrlDecode, sleep } from "./utils";
 
 const DEFAULT_SERVER_SDK_BASEURL = 'http://localhost:3000';
 
 const DEFAULT_SSO_BASE_URL = 'https://sso.alien.com';
 
 const DEFAULT_POLLING_INTERVAL = 5000;
+
+export interface JWTHeader {
+    alg: string;
+    typ: string;
+}
+
+export interface AccessTokenPayload {
+    app_callback_payload: unknown; // or a specific type if known
+    app_callback_session_signature: string;
+    app_callback_session_address: string;
+    expired_at: number; // Unix timestamp
+    issued_at: number;  // Unix timestamp
+}
 
 export class AlienSsoSdkClient {
     readonly config: AlienSsoSdkClientConfig;
@@ -36,9 +49,11 @@ export class AlienSsoSdkClient {
         const data = encoder.encode(codeVerifier);
 
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = new Uint8Array(hashBuffer);
 
-        return this.base64urlEncode(hashArray);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const codeChallenge = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+        return codeChallenge;
     }
 
     private base64urlEncode(buffer: Uint8Array) {
@@ -49,7 +64,7 @@ export class AlienSsoSdkClient {
     }
 
     async authorize(): Promise<AuthorizeResponse> {
-        const codeVerifier = 'test_code_verifier_string_which_is_long_enough'; // this.generateCodeVerifier();
+        const codeVerifier = this.generateCodeVerifier();
         const codeChallenge = await this.generateCodeChallenge(codeVerifier);
 
         sessionStorage.setItem('code_verifier', codeVerifier);
@@ -192,6 +207,55 @@ export class AlienSsoSdkClient {
         const accessToken = localStorage.getItem('access_token');
 
         return accessToken;
+    }
+
+    getUser(): any {
+        const token = this.getAccessToken();
+
+        if (!token) return null;
+
+        const tokenParts = token.split(".");
+        if (tokenParts.length !== 3) {
+            throw new Error("Invalid token format");
+        }
+
+        const headerPart = tokenParts[0];
+
+        if (!headerPart) return null;
+
+        let header: JWTHeader;
+        try {
+            const headerJson = base64UrlDecode(headerPart);
+            header = JSON.parse(headerJson);
+        } catch {
+            throw new Error("Invalid token header format");
+        }
+
+        if (header.alg !== "HS256" || header.typ !== "JWT") {
+            throw new Error("Unsupported token algorithm or type");
+        }
+
+        const payloadPart = tokenParts[1];
+
+        if (!payloadPart) return null;
+
+        let payload: AccessTokenPayload;
+        try {
+            const payloadJson = base64UrlDecode(payloadPart);
+            payload = JSON.parse(payloadJson);
+        } catch {
+            throw new Error("Invalid token payload format");
+        }
+
+        if (typeof payload.app_callback_payload === "string") {
+            try {
+                payload.app_callback_payload = JSON.parse(payload.app_callback_payload);
+            } catch {
+                throw new Error("Invalid app_callback_payload JSON format");
+            }
+        }
+
+        return payload;
     }
 
     logout(): void {

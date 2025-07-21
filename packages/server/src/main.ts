@@ -4,7 +4,7 @@ import { AlienSsoSdkServerConfigSchema, AlienSsoSdkServerConfig, AuthorizeRespon
 import { sign, verify, createPrivateKey, createPublicKey } from 'crypto';
 import { wrapEd25519PrivateKey } from "./utils";
 
-const DEFAULT_SSO_BASE_URL = 'https://sso.alien.com';
+const DEFAULT_SSO_BASE_URL = 'https://sso.alien-api.com';
 
 const DEFAULT_POLLING_INTERVAL = 5000;
 
