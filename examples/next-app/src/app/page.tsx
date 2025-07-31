@@ -10,11 +10,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 
 const alienSsoSdkClient = new AlienSsoSdkClient({
-  providerAddress: '00000001000000000000001400000000',
-  providerPrivateKey: 'f65a779912afa285668ac6ad553f354db7cdb781364dd04238c70b8583f090303fa6921c3d79e40833d372f5ffcfceaf29844930da55b8d5b00ea1428ce0d268',
-  // ssoBaseUrl: 'http://localhost:3000/api/mock',
-  ssoBaseUrl: 'https://sso.alien-api.com', // https://sso.alien-api.com
-  serverSdkBaseUrl: 'http://localhost:3001/api',
+  ssoBaseUrl: 'https://sso.alien-api.com',
+  serverSdkBaseUrl: '/api',
 });
 
 export default function Home() {
@@ -47,7 +44,7 @@ export default function Home() {
 
       if (!accessToken) return;
 
-      const isValid = await alienSsoSdkClient.verifyToken('');
+      const isValid = await alienSsoSdkClient.verifyToken();
       console.log({ isValid });
 
       setIsAuthorized(isValid);

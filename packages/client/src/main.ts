@@ -1,4 +1,4 @@
-import { AuthorizeResponseSchema, AuthorizeRequestSchema, AuthorizeResponse, PollRequest, PollResponse, PollResponseSchema, PollRequestSchema, ExchangeCodeRequest, ExchangeCodeRequestSchema, ExchangeCodeResponseSchema, ExchangeCodeResponse, VerifyTokenRequest, VerifyTokenRequestSchema, VerifyTokenResponse, VerifyTokenResponseSchema, AuthorizeRequest, AlienSsoSdkClientConfig, AlienSsoSdkClientSchema } from "./schema";
+import { AuthorizeResponse, PollRequest, PollResponse, PollResponseSchema, PollRequestSchema, ExchangeCodeRequest, ExchangeCodeRequestSchema, ExchangeCodeResponseSchema, ExchangeCodeResponse, VerifyTokenRequest, VerifyTokenRequestSchema, VerifyTokenResponse, VerifyTokenResponseSchema, AlienSsoSdkClientConfig, AlienSsoSdkClientSchema } from "./schema";
 import { base64UrlDecode, sleep } from "./utils";
 
 const DEFAULT_SERVER_SDK_BASEURL = 'http://localhost:3000';
@@ -31,6 +31,9 @@ export class AlienSsoSdkClient {
 
         this.config = parsedConfig;
 
+        // Note: it's possible to remove this fields from config
+        // and get it from server client
+        // but for now, we keep it for simplicity
         this.ssoBaseUrl = this.config.ssoBaseUrl || DEFAULT_SSO_BASE_URL;
 
         this.serverSdkBaseUrl = this.config.serverSdkBaseUrl || DEFAULT_SERVER_SDK_BASEURL;
@@ -157,6 +160,8 @@ export class AlienSsoSdkClient {
         const exchangeCodeResponse: ExchangeCodeResponse = ExchangeCodeResponseSchema.parse(json);
 
         if (exchangeCodeResponse.access_token) {
+            // Note: need to rework it to httpOnly cookie
+            // For now, we store it in localStorage for simplicity
             localStorage.setItem('access_token', exchangeCodeResponse.access_token);
 
             return exchangeCodeResponse.access_token;
