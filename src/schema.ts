@@ -15,7 +15,7 @@ export type InternalAuthorizeRequest = z.infer<
  */
 export const AuthorizeRequestSchema = z.object({
   code_challenge: z.string(),
-  code_challenge_method: 'S256',
+  code_challenge_method: z.literal('S256'),
   provider_address: z.string(),
   provider_signature: z.string(),
 });

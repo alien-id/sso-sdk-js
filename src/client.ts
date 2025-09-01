@@ -108,8 +108,6 @@ export class AlienSsoSdkClient {
 
     const json = await response.json();
 
-    console.log(json);
-
     return AuthorizeResponseSchema.parse(json);
   }
 

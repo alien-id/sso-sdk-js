@@ -72,13 +72,7 @@ describe('SSO Integration', () => {
             },
           });
         } else {
-          console.error(err);
-          return res.status(500).json({
-            error: {
-              name: 'InternalServerError',
-              message: err,
-            },
-          });
+          return res.status(500);
         }
       }
     });

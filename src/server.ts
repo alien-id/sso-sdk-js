@@ -54,7 +54,6 @@ export class AlienSsoSdkServer {
       provider_signature: Buffer.from(signature).toString('hex'),
     };
 
-    console.log(authorizePayload);
     AuthorizeRequestSchema.parse(authorizePayload);
 
     const authorizationUrl = `${this.config.ssoBaseUrl}/authorize`;
