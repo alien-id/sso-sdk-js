@@ -64,7 +64,6 @@ describe('SSO Integration', () => {
             },
           });
         } else if (err instanceof Error) {
-          console.error(err);
           return res.status(500).json({
             error: {
               name: err.name,
@@ -91,12 +90,38 @@ describe('SSO Integration', () => {
   });
 
   it('successful SSO flow', async () => {
-    const authorizeResponse = await clientSdk.authorize();
-
+    const authorizeResponse = await clientSdk.getAuthDeeplink();
     expect(authorizeResponse).toEqual({
       deep_link: expect.any(String),
       polling_code: expect.any(String),
       expired_at: expect.any(Number),
     });
+
+    const authCode = await clientSdk.pollAuth(authorizeResponse.polling_code);
+    expect(authCode).toEqual(expect.any(String));
+
+    const accessToken = await clientSdk.exchangeToken(authCode);
+    expect(accessToken).toEqual(expect.any(String));
+
+    const isValid = await clientSdk.verifyAuth();
+    expect(isValid).toEqual(true);
+
+    const userInfo = clientSdk.getUserInfo();
+    expect(userInfo).toEqual({
+      app_callback_payload: expect.any(String),
+      app_callback_session_signature: expect.any(String),
+      app_callback_session_address: expect.any(String),
+      expired_at: expect.any(Number),
+      issued_at: expect.any(Number),
+      user: expect.any(Object),
+    });
+    expect(userInfo.user).toEqual({
+      session_address: expect.any(String),
+    });
+  });
+
+  it('successful logout', async () => {
+    clientSdk.logout();
+    await expect(clientSdk.verifyAuth()).rejects.toThrow();
   });
 });

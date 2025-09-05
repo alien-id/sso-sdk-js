@@ -24,9 +24,11 @@ import { z } from 'zod/v4-mini';
 import base64url from 'base64url';
 import CryptoJS from 'crypto-js';
 
-const DEFAULT_SERVER_SDK_BASEURL = 'http://localhost:3000';
-const DEFAULT_SSO_BASE_URL = 'https://sso.alien.com';
-const DEFAULT_POLLING_INTERVAL = 5000;
+const SERVER_SDK_BASEURL = 'http://localhost:3000';
+const SSO_BASE_URL = 'https://sso.alien.com';
+const POLLING_INTERVAL = 5000;
+
+const STORAGE_KEY = 'alien-sso_';
 
 export interface JWTHeader {
   alg: string;
@@ -50,11 +52,9 @@ export class AlienSsoSdkClient {
   constructor(config: AlienSsoSdkClientConfig) {
     this.config = AlienSsoSdkClientSchema.parse(config);
 
-    this.ssoBaseUrl = this.config.ssoBaseUrl || DEFAULT_SSO_BASE_URL;
-    this.serverSdkBaseUrl =
-      this.config.serverSdkBaseUrl || DEFAULT_SERVER_SDK_BASEURL;
-    this.pollingInterval =
-      this.config.pollingInterval || DEFAULT_POLLING_INTERVAL;
+    this.ssoBaseUrl = this.config.ssoBaseUrl || SSO_BASE_URL;
+    this.serverSdkBaseUrl = this.config.serverSdkBaseUrl || SERVER_SDK_BASEURL;
+    this.pollingInterval = this.config.pollingInterval || POLLING_INTERVAL;
   }
 
   private generateCodeVerifier(length: number = 128) {
@@ -84,11 +84,11 @@ export class AlienSsoSdkClient {
     return CryptoJS.SHA256(codeVerifier).toString(CryptoJS.enc.Hex);
   }
 
-  async authorize(): Promise<AuthorizeResponse> {
+  async getAuthDeeplink(): Promise<AuthorizeResponse> {
     const codeVerifier = this.generateCodeVerifier();
     const codeChallenge = await this.generateCodeChallenge(codeVerifier);
 
-    sessionStorage.setItem('code_verifier', codeVerifier);
+    sessionStorage.setItem(STORAGE_KEY + 'code_verifier', codeVerifier);
 
     const authorizeUrl = `${this.config.serverSdkBaseUrl}/authorize`;
 
@@ -111,7 +111,7 @@ export class AlienSsoSdkClient {
     return AuthorizeResponseSchema.parse(json);
   }
 
-  async pollForAuthorization(pollingCode: string): Promise<string | null> {
+  async pollAuth(pollingCode: string): Promise<string | null> {
     const pollPayload: PollRequest = {
       polling_code: pollingCode,
     };
@@ -154,8 +154,8 @@ export class AlienSsoSdkClient {
     }
   }
 
-  async exchangeCode(authorizationCode: string): Promise<string | null> {
-    const codeVerifier = sessionStorage.getItem('code_verifier');
+  async exchangeToken(authorizationCode: string): Promise<string | null> {
+    const codeVerifier = sessionStorage.getItem(STORAGE_KEY + 'code_verifier');
 
     if (!codeVerifier) throw new Error('Missing code verifier.');
 
@@ -186,9 +186,10 @@ export class AlienSsoSdkClient {
       ExchangeCodeResponseSchema.parse(json);
 
     if (exchangeCodeResponse.access_token) {
-      // Note: need to rework it to httpOnly cookie
-      // For now, we store it in localStorage for simplicity
-      localStorage.setItem('access_token', exchangeCodeResponse.access_token);
+      localStorage.setItem(
+        STORAGE_KEY + 'access_token',
+        exchangeCodeResponse.access_token,
+      );
 
       return exchangeCodeResponse.access_token;
     } else {
@@ -196,7 +197,7 @@ export class AlienSsoSdkClient {
     }
   }
 
-  async verifyToken(): Promise<boolean> {
+  async verifyAuth(): Promise<boolean> {
     const access_token = this.getAccessToken();
 
     if (!access_token) {
@@ -236,10 +237,10 @@ export class AlienSsoSdkClient {
   }
 
   getAccessToken(): string | null {
-    return localStorage.getItem('access_token');
+    return localStorage.getItem(STORAGE_KEY + 'access_token');
   }
 
-  getTokenData(): TokenInfo & { user: UserInfo } {
+  getUserInfo(): TokenInfo & { user: UserInfo } {
     const token = this.getAccessToken();
 
     if (!token) return null;
@@ -291,7 +292,7 @@ export class AlienSsoSdkClient {
   }
 
   logout(): void {
-    localStorage.removeItem('access_token');
-    sessionStorage.removeItem('code_verifier');
+    localStorage.removeItem(STORAGE_KEY + 'access_token');
+    sessionStorage.removeItem(STORAGE_KEY + 'code_verifier');
   }
 }
