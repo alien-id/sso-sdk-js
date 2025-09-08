@@ -79,19 +79,9 @@ export const VerifyTokenResponseSchema = z.object({
 export type VerifyTokenResponse = z.infer<typeof VerifyTokenResponseSchema>;
 
 /**
- * User info schema
- */
-export const UserInfoSchema = z.object({
-  session_address: z.string(),
-});
-export type UserInfo = z.infer<typeof UserInfoSchema>;
-
-/**
  * Token info schema
  */
 export const TokenInfoSchema = z.object({
-  app_callback_payload: z.string(),
-  app_callback_session_signature: z.string(),
   app_callback_session_address: z.string(),
   expired_at: z.number(),
   issued_at: z.number(),

@@ -13,8 +13,6 @@ import {
   PollResponseSchema,
   TokenInfo,
   TokenInfoSchema,
-  UserInfo,
-  UserInfoSchema,
   VerifyTokenRequest,
   VerifyTokenRequestSchema,
   VerifyTokenResponse,
@@ -241,7 +239,7 @@ export class AlienSsoSdkClient {
     return localStorage.getItem(STORAGE_KEY + 'access_token');
   }
 
-  getUserInfo(): (TokenInfo & { user: UserInfo }) | null {
+  getAuthData(): TokenInfo | null {
     const token = this.getAccessToken();
 
     if (!token) return null;
@@ -279,15 +277,7 @@ export class AlienSsoSdkClient {
       throw new Error('Invalid token payload format');
     }
 
-    let user: UserInfo;
-    try {
-      const userJson = JSON.parse(payload.app_callback_payload);
-      user = UserInfoSchema.parse(userJson);
-    } catch {
-      throw new Error('Invalid app_callback_payload JSON format');
-    }
-
-    return Object.assign({}, payload, { user });
+    return payload;
   }
 
   logout(): void {

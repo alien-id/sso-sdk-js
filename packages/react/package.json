@@ -1,24 +1,35 @@
 {
   "name": "@alien_org/sso-sdk-react",
-  "version": "1.0.0",
+  "version": "1.0.4",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alien-id/sso-sdk-js.git"
+  },
   "main": "dist/index.umd.js",
   "module": "dist/index.es.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
-    "build": "vite build",
-    "dev": "vite"
+    "build": "vite build && dts-bundle-generator -o dist/index.d.ts src/index.ts",
+    "dev": "vite",
+    "release": "npm publish --access public",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.2",
+    "dts-bundle-generator": "^9.5.1",
     "eslint": "^9.35.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.2",
     "vite": "^7.1.4"
+  },
+  "dependencies": {
+    "@alien_org/sso-sdk-core": "*"
   },
   "peerDependencies": {
     "react": "^19.1.1",
