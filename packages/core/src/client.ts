@@ -23,6 +23,7 @@ import {
 import { z } from 'zod/v4-mini';
 import base64url from 'base64url';
 import CryptoJS from 'crypto-js';
+import { joinUrl } from './utils';
 
 const SERVER_SDK_BASEURL = 'http://localhost:3000';
 const SSO_BASE_URL = 'https://sso.alien.com';
@@ -118,10 +119,8 @@ export class AlienSsoSdkClient {
 
     PollRequestSchema.parse(pollPayload);
 
-    const pollingUrl = `${this.config.ssoBaseUrl}/poll`;
-
     while (true) {
-      const response = await fetch(pollingUrl, {
+      const response = await fetch(joinUrl(this.config.ssoBaseUrl, '/poll'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -166,15 +165,16 @@ export class AlienSsoSdkClient {
 
     ExchangeCodeRequestSchema.parse(exchangeCodePayload);
 
-    const exchangeUrl = `${this.config.ssoBaseUrl}/access_token/exchange`;
-
-    const response = await fetch(exchangeUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await fetch(
+      joinUrl(this.config.ssoBaseUrl, '/access_token/exchange'),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(exchangeCodePayload),
       },
-      body: JSON.stringify(exchangeCodePayload),
-    });
+    );
 
     if (!response.ok) {
       throw new Error(`ExchangeCode failed: ${response.statusText}`);
@@ -210,15 +210,16 @@ export class AlienSsoSdkClient {
 
     VerifyTokenRequestSchema.parse(verifyTokenPayload);
 
-    const verifyTokenUrl = `${this.config.ssoBaseUrl}/access_token/verify`;
-
-    const response = await fetch(verifyTokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await fetch(
+      joinUrl(this.config.ssoBaseUrl, '/access_token/verify'),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(verifyTokenPayload),
       },
-      body: JSON.stringify(verifyTokenPayload),
-    });
+    );
 
     if (!response.ok) {
       throw new Error(`VerifyToken failed: ${response.statusText}`);

@@ -1,9 +1,19 @@
 {
   "name": "@alien_org/sso-sdk-core",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/alien-id/sso-sdk-js.git"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./*": "./dist/*.js"
+  },
+  "types": "./dist/types/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "*": ["dist/types/*.d.ts"]
+    }
   },
   "files": ["dist", "README.md"],
   "scripts": {

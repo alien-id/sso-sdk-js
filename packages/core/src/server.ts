@@ -7,6 +7,7 @@ import {
 import { z } from 'zod/v4-mini';
 import { signAsync } from '@noble/ed25519';
 import { AuthenticationError, ValidationError } from './errors';
+import { joinUrl } from './utils';
 
 const DEFAULT_SSO_BASE_URL = 'https://sso.alien-api.com';
 
@@ -56,20 +57,21 @@ export class AlienSsoSdkServer {
 
     AuthorizeRequestSchema.parse(authorizePayload);
 
-    const authorizationUrl = `${this.config.ssoBaseUrl}/authorize`;
-
-    const response = await fetch(authorizationUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await fetch(
+      joinUrl(this.config.ssoBaseUrl, '/authorize'),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(authorizePayload),
       },
-      body: JSON.stringify(authorizePayload),
-    });
+    );
 
     if (!response.ok) {
-      const text = await response.text();
-
-      throw new AuthenticationError(`SSO Router Authorization failed: ${text}`);
+      throw new AuthenticationError(
+        `SSO Router Authorization failed: ${response.status} ${response.statusText} ${await response.text()}`,
+      );
     }
 
     const json = await response.json();
