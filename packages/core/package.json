@@ -1,16 +1,6 @@
 {
   "name": "@alien_org/sso-sdk-core",
   "version": "1.0.0",
-  "exports": {
-    "./client": {
-      "import": "./dist/client/index.js",
-      "types": "./dist/types/client.d.ts"
-    },
-    "./server": {
-      "require": "./dist/server/index.js",
-      "types": "./dist/types/server.d.ts"
-    }
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/alien-id/sso-sdk-js.git"
