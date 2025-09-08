@@ -1,4 +1,4 @@
-import { AlienSsoSdkClient } from './../../src/client';
+import { AlienSsoSdkClient } from '../../src/client';
 
 describe('AlienSsoSdkClient', () => {
   let client: AlienSsoSdkClient;

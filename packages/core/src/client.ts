@@ -240,7 +240,7 @@ export class AlienSsoSdkClient {
     return localStorage.getItem(STORAGE_KEY + 'access_token');
   }
 
-  getUserInfo(): TokenInfo & { user: UserInfo } {
+  getUserInfo(): (TokenInfo & { user: UserInfo }) | null {
     const token = this.getAccessToken();
 
     if (!token) return null;
@@ -279,13 +279,11 @@ export class AlienSsoSdkClient {
     }
 
     let user: UserInfo;
-    if (typeof payload.app_callback_payload === 'string') {
-      try {
-        const userJson = JSON.parse(payload.app_callback_payload);
-        user = UserInfoSchema.parse(userJson);
-      } catch {
-        throw new Error('Invalid app_callback_payload JSON format');
-      }
+    try {
+      const userJson = JSON.parse(payload.app_callback_payload);
+      user = UserInfoSchema.parse(userJson);
+    } catch {
+      throw new Error('Invalid app_callback_payload JSON format');
     }
 
     return Object.assign({}, payload, { user });

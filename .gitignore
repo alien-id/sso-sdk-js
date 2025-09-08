@@ -4,3 +4,4 @@ coverage
 .idea
 .vscode
 .DS_STORE
+.turbo
