@@ -5,7 +5,6 @@ import React, {
   useMemo,
   useState,
   useCallback,
-  useEffect,
 } from "react";
 import type { ReactNode } from "react";
 import {
@@ -19,7 +18,6 @@ type AuthState = {
   tokenInfo?: ReturnType<AlienSsoSdkClient["getAuthData"]> | null;
   loading: boolean;
   error?: string | null;
-  bootstrapped: boolean;
 };
 
 type SsoContextValue = {
@@ -36,6 +34,28 @@ type SsoContextValue = {
 
 const SsoContext = createContext<SsoContextValue | null>(null);
 
+function getInitialAuth(client: AlienSsoSdkClient): AuthState {
+  try {
+    const token = client.getAccessToken();
+    const tokenInfo = client.getAuthData();
+    return {
+      isAuthenticated: Boolean(token && tokenInfo),
+      token,
+      tokenInfo,
+      loading: false,
+      error: null,
+    };
+  } catch (e: any) {
+    return {
+      isAuthenticated: false,
+      token: null,
+      tokenInfo: null,
+      loading: false,
+      error: e?.message ?? "Init error",
+    };
+  }
+}
+
 export function AlienSsoProvider({
   config,
   children,
@@ -44,36 +64,7 @@ export function AlienSsoProvider({
   children: ReactNode;
 }) {
   const client = useMemo(() => new AlienSsoSdkClient(config), [config]);
-
-  const [auth, setAuth] = useState<AuthState>({
-    isAuthenticated: false,
-    token: null,
-    tokenInfo: null,
-    loading: false,
-    error: null,
-    bootstrapped: false,
-  });
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const token = client.getAccessToken();
-      const tokenInfo = client.getAuthData();
-      setAuth((s) => ({
-        ...s,
-        token,
-        tokenInfo,
-        isAuthenticated: Boolean(token && tokenInfo),
-        bootstrapped: true,
-      }));
-    } catch (e: any) {
-      setAuth((s) => ({
-        ...s,
-        error: e?.message ?? "Init error",
-        bootstrapped: true,
-      }));
-    }
-  }, [client]);
+  const [auth, setAuth] = useState<AuthState>(() => getInitialAuth(client));
 
   const getAuthDeeplink = useCallback(async () => {
     setAuth((s) => ({ ...s, loading: true, error: null }));
@@ -123,7 +114,6 @@ export function AlienSsoProvider({
           tokenInfo,
           loading: false,
           error: null,
-          bootstrapped: true,
         });
         return token;
       } catch (e: any) {
@@ -174,7 +164,6 @@ export function AlienSsoProvider({
       tokenInfo: null,
       loading: false,
       error: null,
-      bootstrapped: true,
     });
   }, [client]);
 
