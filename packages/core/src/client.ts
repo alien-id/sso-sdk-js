@@ -228,10 +228,6 @@ export class AlienSsoSdkClient {
     const verifyTokenResponse: VerifyTokenResponse =
       VerifyTokenResponseSchema.parse(json);
 
-    if (!verifyTokenResponse.is_valid) {
-      throw new Error('Access token is invalid.');
-    }
-
     return verifyTokenResponse.is_valid;
   }
 
@@ -246,35 +242,27 @@ export class AlienSsoSdkClient {
 
     const tokenParts = token.split('.');
     if (tokenParts.length !== 3) {
-      throw new Error('Invalid token format');
+      return null;
     }
-
-    const headerPart = tokenParts[0];
-
-    if (!headerPart) return null;
 
     let header: JWTHeader;
     try {
-      const headerJson = base64url.decode(headerPart);
+      const headerJson = base64url.decode(tokenParts[0]);
       header = JSON.parse(headerJson);
     } catch {
-      throw new Error('Invalid token header format');
+      return null;
     }
 
     if (header.alg !== 'HS256' || header.typ !== 'JWT') {
-      throw new Error('Unsupported token algorithm or type');
+      return null;
     }
-
-    const payloadPart = tokenParts[1];
-
-    if (!payloadPart) return null;
 
     let payload: TokenInfo;
     try {
-      const payloadJson = JSON.parse(base64url.decode(payloadPart));
+      const payloadJson = JSON.parse(base64url.decode(tokenParts[1]));
       payload = TokenInfoSchema.parse(payloadJson);
     } catch {
-      throw new Error('Invalid token payload format');
+      return null;
     }
 
     return payload;
