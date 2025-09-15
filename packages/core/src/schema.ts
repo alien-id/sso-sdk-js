@@ -69,6 +69,7 @@ export type ExchangeCodeResponse = z.infer<typeof ExchangeCodeResponseSchema>;
  */
 export const VerifyTokenRequestSchema = z.object({
   access_token: z.string(),
+  provider_address: z.string(),
 });
 export type VerifyTokenRequest = z.infer<typeof VerifyTokenRequestSchema>;
 

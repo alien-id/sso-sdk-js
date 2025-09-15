@@ -26,9 +26,9 @@ type SsoContextValue = {
   getAuthDeeplink: () => Promise<
     import("@alien_org/sso-sdk-core").AuthorizeResponse
   >;
-  pollAuth: (pollingCode: string) => Promise<string | null>;
-  exchangeToken: (authCode: string) => Promise<string | null>;
-  verifyAuth: () => Promise<boolean>;
+  pollAuth: (pollingCode: string) => Promise<string>;
+  exchangeToken: (authCode: string) => Promise<string>;
+  verifyAuth: (providerAddress: string) => Promise<boolean>;
   logout: () => void;
 };
 
@@ -128,33 +128,36 @@ export function AlienSsoProvider({
     [client],
   );
 
-  const verifyAuth = useCallback(async () => {
-    setAuth((s) => ({ ...s, loading: true, error: null }));
-    try {
-      const valid = await client.verifyAuth();
-      const token = client.getAccessToken();
-      const tokenInfo = client.getAuthData();
-      setAuth((s) => ({
-        ...s,
-        isAuthenticated: valid,
-        token,
-        tokenInfo,
-        loading: false,
-        error: null,
-      }));
-      return valid;
-    } catch (e: any) {
-      setAuth((s) => ({
-        ...s,
-        isAuthenticated: false,
-        token: null,
-        tokenInfo: null,
-        loading: false,
-        error: e?.message ?? "Verify error",
-      }));
-      return false;
-    }
-  }, [client]);
+  const verifyAuth = useCallback(
+    async (providerAddress: string) => {
+      setAuth((s) => ({ ...s, loading: true, error: null }));
+      try {
+        const valid = await client.verifyAuth(providerAddress);
+        const token = client.getAccessToken();
+        const tokenInfo = client.getAuthData();
+        setAuth((s) => ({
+          ...s,
+          isAuthenticated: valid,
+          token,
+          tokenInfo,
+          loading: false,
+          error: null,
+        }));
+        return valid;
+      } catch (e: any) {
+        setAuth((s) => ({
+          ...s,
+          isAuthenticated: false,
+          token: null,
+          tokenInfo: null,
+          loading: false,
+          error: e?.message ?? "Verify error",
+        }));
+        return false;
+      }
+    },
+    [client],
+  );
 
   const logout = useCallback(() => {
     client.logout();

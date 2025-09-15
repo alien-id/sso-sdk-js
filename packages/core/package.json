@@ -1,6 +1,6 @@
 {
   "name": "@alien_org/sso-sdk-core",
-  "version": "1.0.6",
+  "version": "1.0.9",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/alien-id/sso-sdk-js.git"

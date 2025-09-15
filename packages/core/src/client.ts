@@ -110,7 +110,7 @@ export class AlienSsoSdkClient {
     return AuthorizeResponseSchema.parse(json);
   }
 
-  async pollAuth(pollingCode: string): Promise<string | null> {
+  async pollAuth(pollingCode: string): Promise<string> {
     const pollPayload: PollRequest = {
       polling_code: pollingCode,
     };
@@ -151,7 +151,7 @@ export class AlienSsoSdkClient {
     }
   }
 
-  async exchangeToken(authorizationCode: string): Promise<string | null> {
+  async exchangeToken(authorizationCode: string): Promise<string> {
     const codeVerifier = sessionStorage.getItem(STORAGE_KEY + 'code_verifier');
 
     if (!codeVerifier) throw new Error('Missing code verifier.');
@@ -195,7 +195,7 @@ export class AlienSsoSdkClient {
     }
   }
 
-  async verifyAuth(): Promise<boolean> {
+  async verifyAuth(providerAddress: string): Promise<boolean> {
     const access_token = this.getAccessToken();
 
     if (!access_token) {
@@ -204,6 +204,7 @@ export class AlienSsoSdkClient {
 
     const verifyTokenPayload: VerifyTokenRequest = {
       access_token,
+      provider_address: providerAddress,
     };
 
     VerifyTokenRequestSchema.parse(verifyTokenPayload);
