@@ -1,6 +1,5 @@
-import { AlienSsoSdkClient } from '../../src/client';
+import { AlienSsoClient } from '../../src/client';
 import fetch from 'cross-fetch';
-import * as http from 'node:http';
 import { initializeLocalStorageMock, initializeSsoMock } from '../mock';
 
 global.fetch = fetch;
@@ -14,11 +13,10 @@ const config = {
 const SSO_BASE_URL = 'http://localhost:3001';
 
 describe('SSO Integration', () => {
-  let clientSdk: AlienSsoSdkClient;
-  let server: http.Server;
+  let client: AlienSsoClient;
 
   beforeAll(() => {
-    clientSdk = new AlienSsoSdkClient({
+    client = new AlienSsoClient({
       ssoBaseUrl: SSO_BASE_URL,
       providerAddress: config.providerAddress,
     });
@@ -27,33 +25,29 @@ describe('SSO Integration', () => {
     initializeSsoMock(SSO_BASE_URL);
   });
 
-  afterAll(() => {
-    server.close();
-  });
-
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
   });
 
   it('successful SSO flow', async () => {
-    const authorizeResponse = await clientSdk.getAuthDeeplink();
+    const authorizeResponse = await client.getAuthDeeplink();
     expect(authorizeResponse).toEqual({
       deep_link: expect.any(String),
       polling_code: expect.any(String),
       expired_at: expect.any(Number),
     });
 
-    const authCode = await clientSdk.pollAuth(authorizeResponse.polling_code);
+    const authCode = await client.pollAuth(authorizeResponse.polling_code);
     expect(authCode).toEqual(expect.any(String));
 
-    const accessToken = await clientSdk.exchangeToken(authCode);
+    const accessToken = await client.exchangeToken(authCode);
     expect(accessToken).toEqual(expect.any(String));
 
-    const isValid = await clientSdk.verifyAuth();
+    const isValid = await client.verifyAuth();
     expect(isValid).toEqual(true);
 
-    const userInfo = clientSdk.getAuthData();
+    const userInfo = client.getAuthData();
     expect(userInfo).toEqual({
       app_callback_session_address: expect.any(String),
       expired_at: expect.any(Number),
@@ -62,7 +56,7 @@ describe('SSO Integration', () => {
   });
 
   it('successful logout', async () => {
-    clientSdk.logout();
-    await expect(clientSdk.verifyAuth()).rejects.toThrow();
+    client.logout();
+    await expect(client.verifyAuth()).rejects.toThrow();
   });
 });

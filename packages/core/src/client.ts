@@ -21,34 +21,37 @@ import {
 import { z } from 'zod/v4-mini';
 import base64url from 'base64url';
 import CryptoJS from 'crypto-js';
-import { joinUrl } from './utils';
 
 const SSO_BASE_URL = 'https://sso.alien.com';
 const POLLING_INTERVAL = 5000;
 
 const STORAGE_KEY = 'alien-sso_';
 
+const joinUrl = (base: string, path: string): string => {
+  return new URL(path, base).toString();
+};
+
 export interface JWTHeader {
   alg: string;
   typ: string;
 }
 
-export const AlienSsoSdkClientSchema = z.object({
+export const AlienSsoClientSchema = z.object({
   ssoBaseUrl: z.url(),
   providerAddress: z.string(),
   pollingInterval: z.optional(z.number()),
 });
 
-export type AlienSsoSdkClientConfig = z.infer<typeof AlienSsoSdkClientSchema>;
+export type AlienSsoClientConfig = z.infer<typeof AlienSsoClientSchema>;
 
-export class AlienSsoSdkClient {
-  readonly config: AlienSsoSdkClientConfig;
+export class AlienSsoClient {
+  readonly config: AlienSsoClientConfig;
   readonly pollingInterval: number;
   readonly ssoBaseUrl: string;
   readonly providerAddress: string;
 
-  constructor(config: AlienSsoSdkClientConfig) {
-    this.config = AlienSsoSdkClientSchema.parse(config);
+  constructor(config: AlienSsoClientConfig) {
+    this.config = AlienSsoClientSchema.parse(config);
 
     this.ssoBaseUrl = this.config.ssoBaseUrl || SSO_BASE_URL;
     this.providerAddress = this.config.providerAddress;

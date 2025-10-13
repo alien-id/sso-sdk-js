@@ -1,10 +1,10 @@
-import { AlienSsoSdkClient } from '../../src/client';
+import { AlienSsoClient } from '../../src/client';
 
 describe('AlienSsoSdkClient', () => {
-  let client: AlienSsoSdkClient;
+  let client: AlienSsoClient;
 
   beforeEach(() => {
-    client = new AlienSsoSdkClient({
+    client = new AlienSsoClient({
       ssoBaseUrl: 'https://sso.alien.com',
       providerAddress: '0xProviderAddress',
     });

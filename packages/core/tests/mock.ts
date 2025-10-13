@@ -2,15 +2,15 @@ import nock from 'nock';
 import base64url from 'base64url';
 
 export const initializeSsoMock = (baseUrl) => {
-  nock(baseUrl).get('/health').reply(200);
+  nock(baseUrl).get('/sso/health').reply(200);
   nock(baseUrl)
-    .post('/authorize')
+    .post('/sso/authorize')
     .reply(200, {
       deep_link: 'alienapp://authorize_session',
       polling_code: 'polling-code-test-1234-5678',
       expired_at: Math.floor(Date.now() / 1000) + 300,
     });
-  nock(baseUrl).post('/poll').reply(200, {
+  nock(baseUrl).post('/sso/poll').reply(200, {
     status: 'authorized',
     authorization_code: 'auth-code-test-1234-5678',
   });
@@ -25,7 +25,7 @@ export const initializeSsoMock = (baseUrl) => {
     issued_at: Math.floor(Date.now() / 1000),
   });
   nock(baseUrl)
-    .post('/access_token/exchange')
+    .post('/sso/access_token/exchange')
     .reply(200, {
       access_token: [
         base64url.encode(tokenHeader),
@@ -34,7 +34,7 @@ export const initializeSsoMock = (baseUrl) => {
       ].join('.'),
     });
 
-  nock(baseUrl).post('/access_token/verify').reply(200, {
+  nock(baseUrl).post('/sso/access_token/verify').reply(200, {
     is_valid: true,
   });
 };
