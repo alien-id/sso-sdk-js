@@ -1,12 +1,12 @@
 import {
+  AuthorizeRequest,
   AuthorizeResponse,
   AuthorizeResponseSchema,
   ExchangeCodeRequest,
   ExchangeCodeRequestSchema,
   ExchangeCodeResponse,
   ExchangeCodeResponseSchema,
-  InternalAuthorizeRequest,
-  InternalAuthorizeRequestSchema,
+  AuthorizeRequestSchema,
   PollRequest,
   PollRequestSchema,
   PollResponse,
@@ -23,7 +23,6 @@ import base64url from 'base64url';
 import CryptoJS from 'crypto-js';
 import { joinUrl } from './utils';
 
-const SERVER_SDK_BASEURL = 'http://localhost:3000';
 const SSO_BASE_URL = 'https://sso.alien.com';
 const POLLING_INTERVAL = 5000;
 
@@ -35,8 +34,8 @@ export interface JWTHeader {
 }
 
 export const AlienSsoSdkClientSchema = z.object({
-  serverSdkBaseUrl: z.string(),
   ssoBaseUrl: z.url(),
+  providerAddress: z.string(),
   pollingInterval: z.optional(z.number()),
 });
 
@@ -45,14 +44,14 @@ export type AlienSsoSdkClientConfig = z.infer<typeof AlienSsoSdkClientSchema>;
 export class AlienSsoSdkClient {
   readonly config: AlienSsoSdkClientConfig;
   readonly pollingInterval: number;
-  readonly serverSdkBaseUrl: string;
   readonly ssoBaseUrl: string;
+  readonly providerAddress: string;
 
   constructor(config: AlienSsoSdkClientConfig) {
     this.config = AlienSsoSdkClientSchema.parse(config);
 
     this.ssoBaseUrl = this.config.ssoBaseUrl || SSO_BASE_URL;
-    this.serverSdkBaseUrl = this.config.serverSdkBaseUrl || SERVER_SDK_BASEURL;
+    this.providerAddress = this.config.providerAddress;
     this.pollingInterval = this.config.pollingInterval || POLLING_INTERVAL;
   }
 
@@ -89,18 +88,20 @@ export class AlienSsoSdkClient {
 
     sessionStorage.setItem(STORAGE_KEY + 'code_verifier', codeVerifier);
 
-    const authorizeUrl = `${this.config.serverSdkBaseUrl}/authorize`;
+    const authorizeUrl = `${this.config.ssoBaseUrl}/sso/authorize`;
 
-    const authorizePayload: InternalAuthorizeRequest = {
+    const authorizePayload: AuthorizeRequest = {
       code_challenge: codeChallenge,
+      code_challenge_method: 'S256'
     };
 
-    InternalAuthorizeRequestSchema.parse(authorizePayload);
+    AuthorizeRequestSchema.parse(authorizePayload);
 
     const response = await fetch(authorizeUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-PROVIDER-ADDRESS': this.providerAddress,
       },
       body: JSON.stringify(authorizePayload),
     });
@@ -118,10 +119,11 @@ export class AlienSsoSdkClient {
     PollRequestSchema.parse(pollPayload);
 
     while (true) {
-      const response = await fetch(joinUrl(this.config.ssoBaseUrl, '/poll'), {
+      const response = await fetch(joinUrl(this.config.ssoBaseUrl, '/sso/poll'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-PROVIDER-ADDRESS': this.providerAddress,
         },
         body: JSON.stringify(pollPayload),
       });
@@ -164,11 +166,12 @@ export class AlienSsoSdkClient {
     ExchangeCodeRequestSchema.parse(exchangeCodePayload);
 
     const response = await fetch(
-      joinUrl(this.config.ssoBaseUrl, '/access_token/exchange'),
+      joinUrl(this.config.ssoBaseUrl, '/sso/access_token/exchange'),
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-PROVIDER-ADDRESS': this.providerAddress,
         },
         body: JSON.stringify(exchangeCodePayload),
       },
@@ -195,7 +198,7 @@ export class AlienSsoSdkClient {
     }
   }
 
-  async verifyAuth(providerAddress: string): Promise<boolean> {
+  async verifyAuth(): Promise<boolean> {
     const access_token = this.getAccessToken();
 
     if (!access_token) {
@@ -204,17 +207,17 @@ export class AlienSsoSdkClient {
 
     const verifyTokenPayload: VerifyTokenRequest = {
       access_token,
-      provider_address: providerAddress,
     };
 
     VerifyTokenRequestSchema.parse(verifyTokenPayload);
 
     const response = await fetch(
-      joinUrl(this.config.ssoBaseUrl, '/access_token/verify'),
+      joinUrl(this.config.ssoBaseUrl, '/sso/access_token/verify'),
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-PROVIDER-ADDRESS': this.providerAddress,
         },
         body: JSON.stringify(verifyTokenPayload),
       },

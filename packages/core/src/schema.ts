@@ -1,23 +1,11 @@
 import { z } from 'zod/v4-mini';
 
 /**
- * Internal Authorize request/response schema to server SDK
- */
-export const InternalAuthorizeRequestSchema = z.object({
-  code_challenge: z.string(),
-});
-export type InternalAuthorizeRequest = z.infer<
-  typeof InternalAuthorizeRequestSchema
->;
-
-/**
  * Authorize request/response schema
  */
 export const AuthorizeRequestSchema = z.object({
   code_challenge: z.string(),
   code_challenge_method: z.literal('S256'),
-  provider_address: z.string(),
-  provider_signature: z.string(),
 });
 export type AuthorizeRequest = z.infer<typeof AuthorizeRequestSchema>;
 
@@ -69,7 +57,6 @@ export type ExchangeCodeResponse = z.infer<typeof ExchangeCodeResponseSchema>;
  */
 export const VerifyTokenRequestSchema = z.object({
   access_token: z.string(),
-  provider_address: z.string(),
 });
 export type VerifyTokenRequest = z.infer<typeof VerifyTokenRequestSchema>;
 

@@ -5,8 +5,8 @@ describe('AlienSsoSdkClient', () => {
 
   beforeEach(() => {
     client = new AlienSsoSdkClient({
-      serverSdkBaseUrl: 'http://localhost:3000',
       ssoBaseUrl: 'https://sso.alien.com',
+      providerAddress: '0xProviderAddress',
     });
   });
 

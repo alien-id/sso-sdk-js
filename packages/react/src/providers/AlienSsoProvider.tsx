@@ -28,7 +28,7 @@ type SsoContextValue = {
   >;
   pollAuth: (pollingCode: string) => Promise<string>;
   exchangeToken: (authCode: string) => Promise<string>;
-  verifyAuth: (providerAddress: string) => Promise<boolean>;
+  verifyAuth: () => Promise<boolean>;
   logout: () => void;
 };
 
@@ -129,10 +129,10 @@ export function AlienSsoProvider({
   );
 
   const verifyAuth = useCallback(
-    async (providerAddress: string) => {
+    async () => {
       setAuth((s) => ({ ...s, loading: true, error: null }));
       try {
-        const valid = await client.verifyAuth(providerAddress);
+        const valid = await client.verifyAuth();
         const token = client.getAccessToken();
         const tokenInfo = client.getAuthData();
         setAuth((s) => ({

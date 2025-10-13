@@ -20,10 +20,6 @@ export const initializeSsoMock = (baseUrl) => {
     typ: 'JWT',
   });
   const tokenPayload = JSON.stringify({
-    app_callback_payload: JSON.stringify({
-      session_address: 'session-address-test',
-    }),
-    app_callback_session_signature: 'test-session-signature',
     app_callback_session_address: 'session-address-test',
     expired_at: Math.floor(Date.now() / 1000) + 3600,
     issued_at: Math.floor(Date.now() / 1000),
