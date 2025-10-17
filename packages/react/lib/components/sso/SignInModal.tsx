@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import styles from './SignInModal.module.css';
 import { useAuth } from "../../providers";
 import { ModalBase } from '../base/ModalBase';
@@ -15,16 +16,44 @@ import { qrOptions } from "../consts/qrConfig";
 
 type FlowState = 'loading' | 'ready' | 'polling' | 'success' | 'error';
 
+const qrInstance = new QRCodeStyling(qrOptions)
+
 export const SignInModal = () => {
-  const { isModalOpen: isOpen, closeModal: onClose, getAuthDeeplink, startPollingLoop, exchangeToken } = useAuth();
+  const { isModalOpen: isOpen, closeModal: onClose, getAuthDeeplink, pollAuth, exchangeToken, client } = useAuth();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
 
   const [flowState, setFlowState] = useState<FlowState>('ready');
+  const [pollingCode, setPollingCode] = useState<string>('');
   const [deeplink, setDeeplink] = useState<string>('');
 
-  const qrInstanceRef = useRef<QRCodeStyling>(new QRCodeStyling(qrOptions));
+  const qrInstanceRef = useRef<QRCodeStyling>(qrInstance);
   const qrElementRef = useRef<HTMLDivElement>(null);
-  const stopPollingRef = useRef<(() => void) | null>(null);
+
+  // Initialize auth and get deeplink
+  const { data: authData, isLoading: isLoadingAuth, error: authError } = useQuery({
+    queryKey: ['auth-deeplink'],
+    queryFn: async () => {
+      const response = await getAuthDeeplink();
+      setDeeplink(response.deep_link);
+      setPollingCode(response.polling_code);
+      qrInstanceRef.current.update({ data: response.deep_link });
+      return response;
+    },
+    enabled: isOpen && !deeplink,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
+  // Polling query
+  const { data: pollData } = useQuery({
+    queryKey: ['auth-poll', pollingCode],
+    queryFn: () => pollAuth(pollingCode),
+    enabled: isOpen && !!pollingCode && flowState !== 'success' && flowState !== 'error',
+    refetchInterval: client.pollingInterval,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
     if (qrElementRef.current) {
@@ -33,58 +62,56 @@ export const SignInModal = () => {
   }, [qrElementRef.current]);
 
   useEffect(() => {
-    if (isOpen && !deeplink) {
-      initAuth();
-    }
-
-    return () => {
-      stopPollingRef.current?.();
-    };
-  }, [isOpen]);
-
-  useEffect(() => {
     qrInstanceRef.current.update({
       data: deeplink,
     });
   }, [deeplink]);
 
-  const initAuth = async () => {
-    try {
-      setFlowState('loading');
-      const response = await getAuthDeeplink();
-      setDeeplink(response.deep_link);
-      qrInstanceRef.current.update({ data: response.deep_link });
-      setFlowState('ready');
-
-      stopPollingRef.current = await startPollingLoop(response.polling_code, {
-        onAuthorized: async (authCode) => {
-          await exchangeToken(authCode);
-          setFlowState('success');
-        },
-        onRejected: () => {
-          setFlowState('error');
-        },
-        onError: (error) => {
-          console.error('Poll failed:', error);
-          setFlowState('error');
-        },
-      });
-    } catch (error) {
-      console.error('Failed to initialize auth:', error);
+  useEffect(() => {
+    if (authError) {
       setFlowState('error');
     }
-  };
+  }, [authError]);
+
+  useEffect(() => {
+    if (isLoadingAuth) {
+      setFlowState('loading');
+    } else if (authData && !isLoadingAuth) {
+      setFlowState('ready');
+    }
+  }, [isLoadingAuth, authData]);
+
+  // Handle poll responses
+  useEffect(() => {
+    if (!pollData) return;
+
+    const handlePollResponse = async () => {
+      if (pollData.status === 'authorized' && pollData.authorization_code) {
+        try {
+          await exchangeToken(pollData.authorization_code);
+          setFlowState('success');
+        } catch (error) {
+          console.error('Token exchange failed:', error);
+          setFlowState('error');
+        }
+      } else if (pollData.status === 'rejected') {
+        setFlowState('error');
+      }
+    };
+
+    handlePollResponse();
+  }, [pollData, exchangeToken]);
 
   const resetState = () => {
-    stopPollingRef.current?.();
-    stopPollingRef.current = null;
     setFlowState('ready');
     setDeeplink('');
+    setPollingCode('');
+    queryClient.removeQueries({ queryKey: ['auth-deeplink'] });
+    queryClient.removeQueries({ queryKey: ['auth-poll'] });
   };
 
   const handleRetry = () => {
     resetState();
-    initAuth();
   };
 
   const handleClose = () => {

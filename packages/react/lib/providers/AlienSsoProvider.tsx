@@ -11,7 +11,17 @@ import {
   AlienSsoClient,
   type AlienSsoClientConfig,
 } from "@alien_org/sso-sdk-core";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SignInModal } from "../components";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 type AuthState = {
   isAuthenticated: boolean;
@@ -263,10 +273,12 @@ export function AlienSsoProvider({
   );
 
   return (
-    <SsoContext.Provider value={value}>
-      {children}
-      <SignInModal />
-    </SsoContext.Provider>
+    <QueryClientProvider client={queryClient}>
+      <SsoContext.Provider value={value}>
+        {children}
+        <SignInModal />
+      </SsoContext.Provider>
+    </QueryClientProvider>
   );
 }
 
