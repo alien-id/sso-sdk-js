@@ -25,20 +25,24 @@ export const SignInModal = () => {
 
   const qrInstanceRef = useRef<QRCodeStyling>(new QRCodeStyling(qrOptions));
   const qrElementRef = useRef<HTMLDivElement>(null);
-  const isAppendedRef = useRef(false);
 
   useEffect(() => {
-    if (qrElementRef.current && !isAppendedRef.current) {
+    if (qrElementRef.current) {
       qrInstanceRef.current.append(qrElementRef.current);
-      isAppendedRef.current = true;
     }
-  }, [isOpen]);
+  }, [qrElementRef.current]);
 
   useEffect(() => {
     if (isOpen && !deeplink) {
       initAuth();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    qrInstanceRef.current.update({
+      data: deeplink,
+    });
+  }, [deeplink])
 
   const initAuth = async () => {
     try {
