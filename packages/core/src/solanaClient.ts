@@ -119,60 +119,31 @@ export class AlienSolanaSsoClient {
     return SolanaLinkResponseSchema.parse(json);
   }
 
-  async pollAuth(
-    pollingCode: string
-  ): Promise<Transaction> {
+  async pollAuth(pollingCode: string): Promise<SolanaPollResponse> {
     const pollPayload: SolanaPollRequest = {
       polling_code: pollingCode,
     };
 
     SolanaPollRequestSchema.parse(pollPayload);
 
-    while (true) {
-      const response = await fetch(
-        joinUrl(this.config.ssoBaseUrl, '/solana/poll'),
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-PROVIDER-ADDRESS': this.providerAddress,
-          },
-          body: JSON.stringify(pollPayload),
+    const response = await fetch(
+      joinUrl(this.config.ssoBaseUrl, '/solana/poll'),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-PROVIDER-ADDRESS': this.providerAddress,
         },
-      );
+        body: JSON.stringify(pollPayload),
+      },
+    );
 
-      if (!response.ok) {
-        throw new Error(`Poll failed: ${response.statusText}`);
-      }
-
-      const json = await response.json();
-
-      const pollResponse: SolanaPollResponse =
-        SolanaPollResponseSchema.parse(json);
-
-      if (pollResponse.status === 'authorized') {
-        return this.buildCreateAttestationTransaction({
-          payerPublicKey: new PublicKey(pollResponse.solana_address!),
-          sessionAddress: pollResponse.session_address!,
-          oracleSignature: Buffer.from(pollResponse.oracle_signature!, 'hex'),
-          oraclePublicKey: new PublicKey(pollResponse.oracle_public_key!),
-          timestamp: pollResponse.timestamp!,
-          expiry: 0,
-        });
-      }
-
-      if (pollResponse.status === 'rejected') {
-        throw new Error('Authentication was rejected by user');
-      }
-
-      if (pollResponse.status === 'pending') {
-        await new Promise((resolve) =>
-          setTimeout(resolve, this.pollingInterval),
-        );
-      } else {
-        throw new Error(`Poll failed with unexpected status`);
-      }
+    if (!response.ok) {
+      throw new Error(`Poll failed: ${response.statusText}`);
     }
+
+    const json = await response.json();
+    return SolanaPollResponseSchema.parse(json);
   }
 
   async getAttestation(solanaAddress: string): Promise<string> {
@@ -207,14 +178,14 @@ export class AlienSolanaSsoClient {
   }
 
 
-  private async buildCreateAttestationTransaction(params: {
+  buildCreateAttestationTransaction(params: {
     payerPublicKey: PublicKey;
     sessionAddress: string;
     oracleSignature: Uint8Array;
     oraclePublicKey: PublicKey;
     timestamp: number;
     expiry: number;
-  }): Promise<Transaction> {
+  }): Transaction {
     const {
       payerPublicKey,
       sessionAddress,

@@ -11,7 +11,7 @@ import {
   AlienSolanaSsoClient,
   type AlienSolanaSsoClientConfig,
 } from "@alien_org/sso-sdk-core";
-import type { Transaction } from "@solana/web3.js";
+import { PublicKey, type Transaction } from "@solana/web3.js";
 
 type SolanaAuthState = {
   sessionAddress?: string | null;
@@ -25,7 +25,15 @@ type SolanaSsoContextValue = {
   generateLinkDeeplink: (
     solanaAddress: string
   ) => Promise<import("@alien_org/sso-sdk-core").SolanaLinkResponse>;
-  pollAuth: (pollingCode: string) => Promise<Transaction>;
+  pollAuth: (pollingCode: string) => Promise<import("@alien_org/sso-sdk-core").SolanaPollResponse>;
+  startPollingLoop: (
+    pollingCode: string,
+    callbacks: {
+      onAuthorized: (transaction: Transaction) => void | Promise<void>;
+      onRejected?: () => void | Promise<void>;
+      onError?: (error: Error) => void | Promise<void>;
+    }
+  ) => Promise<() => void>;
   getAttestation: (solanaAddress: string) => Promise<string>;
 };
 
@@ -71,9 +79,9 @@ export function AlienSolanaSsoProvider({
     async (pollingCode: string) => {
       setAuth((s) => ({ ...s, loading: true, error: null }));
       try {
-        const transaction = await client.pollAuth(pollingCode);
+        const pollResponse = await client.pollAuth(pollingCode);
         setAuth((s) => ({ ...s, loading: false }));
-        return transaction;
+        return pollResponse;
       } catch (e: any) {
         setAuth((s) => ({
           ...s,
@@ -82,6 +90,61 @@ export function AlienSolanaSsoProvider({
         }));
         throw e;
       }
+    },
+    [client]
+  );
+
+  const startPollingLoop = useCallback(
+    async (
+      pollingCode: string,
+      callbacks: {
+        onAuthorized: (transaction: Transaction) => void | Promise<void>;
+        onRejected?: () => void | Promise<void>;
+        onError?: (error: Error) => void | Promise<void>;
+      }
+    ): Promise<() => void> => {
+      let intervalId: ReturnType<typeof setInterval> | null = null;
+      let isActive = true;
+
+      const poll = async () => {
+        if (!isActive) return;
+
+        try {
+          const result = await client.pollAuth(pollingCode);
+
+          if (result.status === 'authorized') {
+            isActive = false;
+            if (intervalId) clearInterval(intervalId);
+
+            const transaction = client.buildCreateAttestationTransaction({
+              payerPublicKey: new PublicKey(result.solana_address!),
+              sessionAddress: result.session_address!,
+              oracleSignature: Buffer.from(result.oracle_signature!, 'hex'),
+              oraclePublicKey: new PublicKey(result.oracle_public_key!),
+              timestamp: result.timestamp!,
+              expiry: 0,
+            });
+            await callbacks.onAuthorized(transaction);
+          } else if (result.status === 'rejected') {
+            isActive = false;
+            if (intervalId) clearInterval(intervalId);
+            await callbacks.onRejected?.();
+          }
+        } catch (error) {
+          await callbacks.onError?.(error as Error);
+        }
+      };
+
+      poll();
+      intervalId = setInterval(poll, client.pollingInterval);
+
+      return () => {
+        isActive = false;
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      };
     },
     [client]
   );
@@ -116,9 +179,10 @@ export function AlienSolanaSsoProvider({
       auth,
       generateLinkDeeplink,
       pollAuth,
+      startPollingLoop,
       getAttestation,
     }),
-    [client, auth, generateLinkDeeplink, pollAuth, getAttestation]
+    [client, auth, generateLinkDeeplink, pollAuth, startPollingLoop, getAttestation]
   );
 
   return (

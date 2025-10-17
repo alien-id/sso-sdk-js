@@ -27,7 +27,7 @@ export default defineConfig({
         '@alien_org/sso-sdk-core',
         'clsx',
         'qr-code-styling',
-        '@formkit/auto-animate'
+        'framer-motion'
       ],
       input: Object.fromEntries(
         // https://rollupjs.org/configuration-options/#input

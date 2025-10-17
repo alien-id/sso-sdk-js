@@ -127,46 +127,28 @@ export class AlienSsoClient {
     return AuthorizeResponseSchema.parse(json);
   }
 
-  async pollAuth(pollingCode: string): Promise<string> {
+  async pollAuth(pollingCode: string): Promise<PollResponse> {
     const pollPayload: PollRequest = {
       polling_code: pollingCode,
     };
 
     PollRequestSchema.parse(pollPayload);
 
-    while (true) {
-      const response = await fetch(joinUrl(this.config.ssoBaseUrl, '/sso/poll'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-PROVIDER-ADDRESS': this.providerAddress,
-        },
-        body: JSON.stringify(pollPayload),
-      });
+    const response = await fetch(joinUrl(this.config.ssoBaseUrl, '/sso/poll'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-PROVIDER-ADDRESS': this.providerAddress,
+      },
+      body: JSON.stringify(pollPayload),
+    });
 
-      if (!response.ok) {
-        throw new Error(`Poll failed: ${response.statusText}`);
-      }
-
-      const json = await response.json();
-
-      const pollResponse: PollResponse = PollResponseSchema.parse(json);
-
-      if (
-        pollResponse.status === 'authorized' &&
-        pollResponse.authorization_code
-      ) {
-        return pollResponse.authorization_code;
-      }
-
-      if (pollResponse.status === 'pending') {
-        await new Promise((resolve) =>
-          setTimeout(resolve, this.pollingInterval),
-        );
-      } else {
-        throw new Error(`Poll failed`);
-      }
+    if (!response.ok) {
+      throw new Error(`Poll failed: ${response.statusText}`);
     }
+
+    const json = await response.json();
+    return PollResponseSchema.parse(json);
   }
 
   async exchangeToken(authorizationCode: string): Promise<string> {

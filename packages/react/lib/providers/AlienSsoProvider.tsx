@@ -27,7 +27,15 @@ type SsoContextValue = {
   getAuthDeeplink: () => Promise<
     import("@alien_org/sso-sdk-core").AuthorizeResponse
   >;
-  pollAuth: (pollingCode: string) => Promise<string>;
+  pollAuth: (pollingCode: string) => Promise<import("@alien_org/sso-sdk-core").PollResponse>;
+  startPollingLoop: (
+    pollingCode: string,
+    callbacks: {
+      onAuthorized: (authorizationCode: string) => void | Promise<void>;
+      onRejected?: () => void | Promise<void>;
+      onError?: (error: Error) => void | Promise<void>;
+    }
+  ) => Promise<() => void>;
   exchangeToken: (authCode: string) => Promise<string>;
   verifyAuth: () => Promise<boolean>;
   logout: () => void;
@@ -91,9 +99,9 @@ export function AlienSsoProvider({
     async (pollingCode: string) => {
       setAuth((s) => ({ ...s, loading: true, error: null }));
       try {
-        const code = await client.pollAuth(pollingCode);
+        const data = await client.pollAuth(pollingCode);
         setAuth((s) => ({ ...s, loading: false }));
-        return code;
+        return data;
       } catch (e: any) {
         setAuth((s) => ({
           ...s,
@@ -102,6 +110,52 @@ export function AlienSsoProvider({
         }));
         throw e;
       }
+    },
+    [client],
+  );
+
+  const startPollingLoop = useCallback(
+    async (
+      pollingCode: string,
+      callbacks: {
+        onAuthorized: (authorizationCode: string) => void | Promise<void>;
+        onRejected?: () => void | Promise<void>;
+        onError?: (error: Error) => void | Promise<void>;
+      }
+    ): Promise<() => void> => {
+      let intervalId: ReturnType<typeof setInterval> | null = null;
+      let isActive = true;
+
+      const poll = async () => {
+        if (!isActive) return;
+
+        try {
+          const result = await client.pollAuth(pollingCode);
+
+          if (result.status === 'authorized' && result.authorization_code) {
+            isActive = false;
+            if (intervalId) clearInterval(intervalId);
+            await callbacks.onAuthorized(result.authorization_code);
+          } else if (result.status === 'rejected') {
+            isActive = false;
+            if (intervalId) clearInterval(intervalId);
+            await callbacks.onRejected?.();
+          }
+        } catch (error) {
+          await callbacks.onError?.(error as Error);
+        }
+      };
+
+      poll();
+      intervalId = setInterval(poll, client.pollingInterval);
+
+      return () => {
+        isActive = false;
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      };
     },
     [client],
   );
@@ -185,6 +239,7 @@ export function AlienSsoProvider({
       auth,
       getAuthDeeplink,
       pollAuth,
+      startPollingLoop,
       exchangeToken,
       verifyAuth,
       logout,
@@ -197,6 +252,7 @@ export function AlienSsoProvider({
       auth,
       getAuthDeeplink,
       pollAuth,
+      startPollingLoop,
       exchangeToken,
       verifyAuth,
       logout,

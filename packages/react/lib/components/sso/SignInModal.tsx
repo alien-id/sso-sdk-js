@@ -16,15 +16,15 @@ import { qrOptions } from "../consts/qrConfig";
 type FlowState = 'loading' | 'ready' | 'polling' | 'success' | 'error';
 
 export const SignInModal = () => {
-  const { isModalOpen: isOpen, closeModal: onClose, getAuthDeeplink, pollAuth, exchangeToken } = useAuth();
+  const { isModalOpen: isOpen, closeModal: onClose, getAuthDeeplink, startPollingLoop, exchangeToken } = useAuth();
   const isMobile = useIsMobile();
 
   const [flowState, setFlowState] = useState<FlowState>('ready');
   const [deeplink, setDeeplink] = useState<string>('');
-  const [, setPollingCode] = useState<string>('');
 
   const qrInstanceRef = useRef<QRCodeStyling>(new QRCodeStyling(qrOptions));
   const qrElementRef = useRef<HTMLDivElement>(null);
+  const stopPollingRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (qrElementRef.current) {
@@ -36,45 +36,50 @@ export const SignInModal = () => {
     if (isOpen && !deeplink) {
       initAuth();
     }
+
+    return () => {
+      stopPollingRef.current?.();
+    };
   }, [isOpen]);
 
   useEffect(() => {
     qrInstanceRef.current.update({
       data: deeplink,
     });
-  }, [deeplink])
+  }, [deeplink]);
 
   const initAuth = async () => {
     try {
       setFlowState('loading');
       const response = await getAuthDeeplink();
       setDeeplink(response.deep_link);
-      setPollingCode(response.polling_code);
       qrInstanceRef.current.update({ data: response.deep_link });
       setFlowState('ready');
-      startPolling(response.polling_code);
+
+      stopPollingRef.current = await startPollingLoop(response.polling_code, {
+        onAuthorized: async (authCode) => {
+          await exchangeToken(authCode);
+          setFlowState('success');
+        },
+        onRejected: () => {
+          setFlowState('error');
+        },
+        onError: (error) => {
+          console.error('Poll failed:', error);
+          setFlowState('error');
+        },
+      });
     } catch (error) {
       console.error('Failed to initialize auth:', error);
       setFlowState('error');
     }
   };
 
-  const startPolling = async (code: string) => {
-    try {
-      setFlowState('polling');
-      const authCode = await pollAuth(code);
-      await exchangeToken(authCode);
-      setFlowState('success');
-    } catch (error) {
-      console.error('Auth flow failed:', error);
-      setFlowState('error');
-    }
-  };
-
   const resetState = () => {
+    stopPollingRef.current?.();
+    stopPollingRef.current = null;
     setFlowState('ready');
     setDeeplink('');
-    setPollingCode('');
   };
 
   const handleRetry = () => {
@@ -83,8 +88,8 @@ export const SignInModal = () => {
   };
 
   const handleClose = () => {
-    onClose();
     resetState();
+    onClose();
   };
 
   const isLoading = flowState === 'loading';
