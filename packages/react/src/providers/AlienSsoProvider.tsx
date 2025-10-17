@@ -8,20 +8,21 @@ import React, {
 } from "react";
 import type { ReactNode } from "react";
 import {
-  AlienSsoSdkClient,
-  type AlienSsoSdkClientConfig,
+  AlienSsoClient,
+  type AlienSsoClientConfig,
 } from "@alien_org/sso-sdk-core";
+import { SignInModal } from "../components";
 
 type AuthState = {
   isAuthenticated: boolean;
   token?: string | null;
-  tokenInfo?: ReturnType<AlienSsoSdkClient["getAuthData"]> | null;
+  tokenInfo?: ReturnType<AlienSsoClient["getAuthData"]> | null;
   loading: boolean;
   error?: string | null;
 };
 
 type SsoContextValue = {
-  client: AlienSsoSdkClient;
+  client: AlienSsoClient;
   auth: AuthState;
   getAuthDeeplink: () => Promise<
     import("@alien_org/sso-sdk-core").AuthorizeResponse
@@ -30,11 +31,14 @@ type SsoContextValue = {
   exchangeToken: (authCode: string) => Promise<string>;
   verifyAuth: () => Promise<boolean>;
   logout: () => void;
+  openModal: () => void;
+  closeModal: () => void;
+  isModalOpen: boolean;
 };
 
 const SsoContext = createContext<SsoContextValue | null>(null);
 
-function getInitialAuth(client: AlienSsoSdkClient): AuthState {
+function getInitialAuth(client: AlienSsoClient): AuthState {
   try {
     const token = client.getAccessToken();
     const tokenInfo = client.getAuthData();
@@ -60,10 +64,11 @@ export function AlienSsoProvider({
   config,
   children,
 }: {
-  config: AlienSsoSdkClientConfig;
+  config: AlienSsoClientConfig;
   children: ReactNode;
 }) {
-  const client = useMemo(() => new AlienSsoSdkClient(config), [config]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const client = useMemo(() => new AlienSsoClient(config), [config]);
   const [auth, setAuth] = useState<AuthState>(() => getInitialAuth(client));
 
   const getAuthDeeplink = useCallback(async () => {
@@ -170,6 +175,10 @@ export function AlienSsoProvider({
     });
   }, [client]);
 
+
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
+
   const value = useMemo<SsoContextValue>(
     () => ({
       client,
@@ -179,6 +188,9 @@ export function AlienSsoProvider({
       exchangeToken,
       verifyAuth,
       logout,
+      openModal,
+      closeModal,
+      isModalOpen
     }),
     [
       client,
@@ -188,10 +200,18 @@ export function AlienSsoProvider({
       exchangeToken,
       verifyAuth,
       logout,
+      openModal,
+      closeModal,
+      isModalOpen
     ],
   );
 
-  return <SsoContext.Provider value={value}>{children}</SsoContext.Provider>;
+  return (
+    <SsoContext.Provider value={value}>
+      {children}
+      <SignInModal />
+    </SsoContext.Provider>
+  );
 }
 
 export function useAuth() {

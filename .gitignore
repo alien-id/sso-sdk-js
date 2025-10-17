@@ -6,3 +6,6 @@ coverage
 .DS_STORE
 .turbo
 CLAUDE.md
+
+*storybook.log
+storybook-static

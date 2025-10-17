@@ -29,7 +29,9 @@
     "vite": "^7.1.4"
   },
   "dependencies": {
-    "@alien_org/sso-sdk-core": "*"
+    "@alien_org/sso-sdk-core": "*",
+    "clsx": "^2.1.1",
+    "qr-code-styling": "^1.9.2"
   },
   "peerDependencies": {
     "react": "^19.1.1",
