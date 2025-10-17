@@ -1,4 +1,4 @@
-import React, {useEffect, useRef} from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styles from './SignInModal.module.css';
 import { useAuth } from "../../providers";
 import { ModalBase } from '../base/ModalBase';
@@ -13,9 +13,15 @@ import { RetryIcon } from "../assets/RetryIcon";
 import QRCodeStyling from "qr-code-styling";
 import { qrOptions } from "../consts/qrConfig";
 
+type FlowState = 'loading' | 'ready' | 'polling' | 'success' | 'error';
+
 export const SignInModal: React.FC = () => {
-  const { isModalOpen: isOpen, closeModal: onClose } = useAuth();
+  const { isModalOpen: isOpen, closeModal: onClose, getAuthDeeplink, pollAuth, exchangeToken } = useAuth();
   const isMobile = useIsMobile();
+
+  const [flowState, setFlowState] = useState<FlowState>('ready');
+  const [deeplink, setDeeplink] = useState<string>('');
+  const [pollingCode, setPollingCode] = useState<string>('');
 
   const qrInstanceRef = useRef<QRCodeStyling>(new QRCodeStyling(qrOptions));
   const qrElementRef = useRef<HTMLDivElement>(null);
@@ -28,18 +34,67 @@ export const SignInModal: React.FC = () => {
     }
   }, [isOpen]);
 
-  const isLoading = false;
-  const isSuccess = false;
-  const isError = false;
+  useEffect(() => {
+    if (isOpen && !deeplink) {
+      initAuth();
+    }
+  }, [isOpen]);
+
+  const initAuth = async () => {
+    try {
+      setFlowState('loading');
+      const response = await getAuthDeeplink();
+      setDeeplink(response.deep_link);
+      setPollingCode(response.polling_code);
+      qrInstanceRef.current.update({ data: response.deep_link });
+      setFlowState('ready');
+      startPolling(response.polling_code);
+    } catch (error) {
+      console.error('Failed to initialize auth:', error);
+      setFlowState('error');
+    }
+  };
+
+  const startPolling = async (code: string) => {
+    try {
+      setFlowState('polling');
+      const authCode = await pollAuth(code);
+      await exchangeToken(authCode);
+      setFlowState('success');
+    } catch (error) {
+      console.error('Auth flow failed:', error);
+      setFlowState('error');
+    }
+  };
+
+  const resetState = () => {
+    setFlowState('ready');
+    setDeeplink('');
+    setPollingCode('');
+  };
+
+  const handleRetry = () => {
+    resetState();
+    initAuth();
+  };
+
+  const handleClose = () => {
+    onClose();
+    resetState();
+  };
+
+  const isLoading = flowState === 'loading';
+  const isSuccess = flowState === 'success';
+  const isError = flowState === 'error';
 
   if (isSuccess) {
     return (
-      <ModalBase onClose={onClose} isOpen={isOpen}>
+      <ModalBase onClose={handleClose} isOpen={isOpen}>
         <div className={styles.successfulContainer}>
           <SuccessIcon />
           <div className={styles.successfulTitle}>Sign in successful!</div>
           <div className={styles.successfulSubtitle}>You have signed in successfully.</div>
-          <div className={styles.successfulButton} onClick={onClose}>Done</div>
+          <div className={styles.successfulButton} onClick={handleClose}>Done</div>
         </div>
       </ModalBase>
     )
@@ -47,7 +102,7 @@ export const SignInModal: React.FC = () => {
 
   if (isError) {
     return (
-      <ModalBase onClose={onClose} isOpen={isOpen}>
+      <ModalBase onClose={handleClose} isOpen={isOpen}>
         <div className={styles.errorContainer}>
           <ErrorIcon />
           <div className={styles.errorTitle}>Access rejected</div>
@@ -55,14 +110,14 @@ export const SignInModal: React.FC = () => {
             You did not allow access to sign in.<br />
             Please try again if you want to proceed.
           </div>
-          <div className={styles.errorButton} onClick={onClose}><RetryIcon />Try again</div>
+          <div className={styles.errorButton} onClick={handleRetry}><RetryIcon />Try again</div>
         </div>
       </ModalBase>
     )
   }
 
   return (
-    <ModalBase onClose={onClose} isOpen={isOpen}>
+    <ModalBase onClose={handleClose} isOpen={isOpen}>
       <div className={styles.container}>
         <div className={styles.title}>Sign in with Alien App</div>
 
@@ -87,7 +142,7 @@ export const SignInModal: React.FC = () => {
 
             <div className={styles.footer}>
               <div>
-                <div className={styles.footerTitle}>Don’t have an Alien app yet?</div>
+                <div className={styles.footerTitle}>Don't have an Alien app yet?</div>
                 <div className={styles.footerSubtitle}>Available on iOS and Android.</div>
               </div>
 
@@ -96,9 +151,9 @@ export const SignInModal: React.FC = () => {
           </>
         ) : (
           <>
-            <a href="https://alien.org" target="_blank" className={styles.mobileOpenButton}><span>Open in Alien App</span> <RightIcon /></a>
+            <a href={deeplink || "https://alien.org"} target="_blank" className={styles.mobileOpenButton}><span>Open in Alien App</span> <RightIcon /></a>
             <div className={styles.mobileFooter}>
-              <div className={styles.mobileFooterTitle}>Don’t have an Alien app yet?</div>
+              <div className={styles.mobileFooterTitle}>Don't have an Alien app yet?</div>
               <div className={styles.mobileFooterSubtitle}>
                 Available on iOS and Android.{' '}
                 <a className={styles.mobileFooterButton} target='_blank' href="https://alien.org">Download</a>

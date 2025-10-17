@@ -19,8 +19,21 @@ import {
   VerifyTokenResponseSchema,
 } from './schema';
 import { z } from 'zod/v4-mini';
-import base64url from 'base64url';
 import CryptoJS from 'crypto-js';
+
+// Browser-compatible base64url encoding/decoding
+function base64urlEncode(input: string): string {
+  const base64 = btoa(input);
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function base64urlDecode(input: string): string {
+  let base64 = input.replace(/-/g, '+').replace(/_/g, '/');
+  while (base64.length % 4) {
+    base64 += '=';
+  }
+  return atob(base64);
+}
 
 const SSO_BASE_URL = 'https://sso.alien.com';
 const POLLING_INTERVAL = 5000;
@@ -78,7 +91,7 @@ export class AlienSsoClient {
       str += String.fromCharCode(array[i]);
     }
 
-    return base64url.encode(str);
+    return base64urlEncode(str);
   }
 
   private async generateCodeChallenge(codeVerifier: string) {
@@ -254,7 +267,7 @@ export class AlienSsoClient {
 
     let header: JWTHeader;
     try {
-      const headerJson = base64url.decode(tokenParts[0]);
+      const headerJson = base64urlDecode(tokenParts[0]);
       header = JSON.parse(headerJson);
     } catch {
       return null;
@@ -266,7 +279,7 @@ export class AlienSsoClient {
 
     let payload: TokenInfo;
     try {
-      const payloadJson = JSON.parse(base64url.decode(tokenParts[1]));
+      const payloadJson = JSON.parse(base64urlDecode(tokenParts[1]));
       payload = TokenInfoSchema.parse(payloadJson);
     } catch {
       return null;
