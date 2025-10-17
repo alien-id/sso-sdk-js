@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from './SignInModal.module.css';
 import { useAuth } from "../../providers";
 import { ModalBase } from '../base/ModalBase';
@@ -15,13 +15,13 @@ import { qrOptions } from "../consts/qrConfig";
 
 type FlowState = 'loading' | 'ready' | 'polling' | 'success' | 'error';
 
-export const SignInModal: React.FC = () => {
+export const SignInModal = () => {
   const { isModalOpen: isOpen, closeModal: onClose, getAuthDeeplink, pollAuth, exchangeToken } = useAuth();
   const isMobile = useIsMobile();
 
   const [flowState, setFlowState] = useState<FlowState>('ready');
   const [deeplink, setDeeplink] = useState<string>('');
-  const [pollingCode, setPollingCode] = useState<string>('');
+  const [, setPollingCode] = useState<string>('');
 
   const qrInstanceRef = useRef<QRCodeStyling>(new QRCodeStyling(qrOptions));
   const qrElementRef = useRef<HTMLDivElement>(null);

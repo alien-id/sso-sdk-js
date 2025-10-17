@@ -5,8 +5,6 @@
     right: 0;
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
-
-    backdrop-filter: blur(15px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -15,6 +13,9 @@
     color: var(--alien-text-primary-color);
     font-family: 'AlienBooton', sans-serif;
     font-weight: 400;
+
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
 }
 
 .modal {
@@ -27,6 +28,8 @@
     overflow-y: auto;
     border: 2px solid var(--alien-modal-foreground);
     box-sizing: border-box;
+
+    transform-origin: center;
 }
 
 .modal * {

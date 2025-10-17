@@ -1,36 +1,42 @@
 {
   "name": "@alien_org/sso-sdk-react",
   "version": "1.0.13",
+  "type": "module",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "files": [
+    "dist"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/alien-id/sso-sdk-js.git"
   },
-  "main": "dist/index.umd.js",
-  "module": "dist/index.es.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist",
-    "README.md"
+  "sideEffects": [
+    "**/*.css"
   ],
   "scripts": {
-    "build": "vite build && dts-bundle-generator -o dist/index.d.ts src/index.ts",
     "dev": "vite",
-    "release": "npm publish --access public",
-    "prepublishOnly": "npm run build"
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
   },
   "devDependencies": {
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
-    "@vitejs/plugin-react": "^5.0.2",
-    "dts-bundle-generator": "^9.5.1",
+    "@vitejs/plugin-react": "^5.0.4",
+    "ajv": "^8.17.1",
     "eslint": "^9.35.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.2",
-    "vite": "^7.1.4"
+    "vite": "^7.1.4",
+    "vite-plugin-dts": "^4.5.4",
+    "vite-plugin-lib-inject-css": "^2.2.2"
   },
   "dependencies": {
     "@alien_org/sso-sdk-core": "*",
+    "@formkit/auto-animate": "^0.9.0",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.23.24",
     "qr-code-styling": "^1.9.2"
   },
   "peerDependencies": {
