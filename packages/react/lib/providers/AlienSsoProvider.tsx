@@ -27,8 +27,6 @@ type AuthState = {
   isAuthenticated: boolean;
   token?: string | null;
   tokenInfo?: ReturnType<AlienSsoClient["getAuthData"]> | null;
-  loading: boolean;
-  error?: string | null;
 };
 
 type SsoContextValue = {
@@ -38,14 +36,6 @@ type SsoContextValue = {
     import("@alien_org/sso-sdk-core").AuthorizeResponse
   >;
   pollAuth: (pollingCode: string) => Promise<import("@alien_org/sso-sdk-core").PollResponse>;
-  startPollingLoop: (
-    pollingCode: string,
-    callbacks: {
-      onAuthorized: (authorizationCode: string) => void | Promise<void>;
-      onRejected?: () => void | Promise<void>;
-      onError?: (error: Error) => void | Promise<void>;
-    }
-  ) => Promise<() => void>;
   exchangeToken: (authCode: string) => Promise<string>;
   verifyAuth: () => Promise<boolean>;
   logout: () => void;
@@ -64,16 +54,12 @@ function getInitialAuth(client: AlienSsoClient): AuthState {
       isAuthenticated: Boolean(token && tokenInfo),
       token,
       tokenInfo,
-      loading: false,
-      error: null,
     };
-  } catch (e: any) {
+  } catch {
     return {
       isAuthenticated: false,
       token: null,
       tokenInfo: null,
-      loading: false,
-      error: e?.message ?? "Init error",
     };
   }
 }
@@ -90,138 +76,49 @@ export function AlienSsoProvider({
   const [auth, setAuth] = useState<AuthState>(() => getInitialAuth(client));
 
   const getAuthDeeplink = useCallback(async () => {
-    setAuth((s) => ({ ...s, loading: true, error: null }));
-    try {
-      const res = await client.getAuthDeeplink();
-      setAuth((s) => ({ ...s, loading: false }));
-      return res;
-    } catch (e: any) {
-      setAuth((s) => ({
-        ...s,
-        loading: false,
-        error: e?.message ?? "Authorize error",
-      }));
-      throw e;
-    }
+    return await client.getAuthDeeplink();
   }, [client]);
 
   const pollAuth = useCallback(
     async (pollingCode: string) => {
-      setAuth((s) => ({ ...s, loading: true, error: null }));
-      try {
-        const data = await client.pollAuth(pollingCode);
-        setAuth((s) => ({ ...s, loading: false }));
-        return data;
-      } catch (e: any) {
-        setAuth((s) => ({
-          ...s,
-          loading: false,
-          error: e?.message ?? "Poll error",
-        }));
-        throw e;
-      }
-    },
-    [client],
-  );
-
-  const startPollingLoop = useCallback(
-    async (
-      pollingCode: string,
-      callbacks: {
-        onAuthorized: (authorizationCode: string) => void | Promise<void>;
-        onRejected?: () => void | Promise<void>;
-        onError?: (error: Error) => void | Promise<void>;
-      }
-    ): Promise<() => void> => {
-      let intervalId: ReturnType<typeof setInterval> | null = null;
-      let isActive = true;
-
-      const poll = async () => {
-        if (!isActive) return;
-
-        try {
-          const result = await client.pollAuth(pollingCode);
-
-          if (result.status === 'authorized' && result.authorization_code) {
-            isActive = false;
-            if (intervalId) clearInterval(intervalId);
-            await callbacks.onAuthorized(result.authorization_code);
-          } else if (result.status === 'rejected') {
-            isActive = false;
-            if (intervalId) clearInterval(intervalId);
-            await callbacks.onRejected?.();
-          }
-        } catch (error) {
-          await callbacks.onError?.(error as Error);
-        }
-      };
-
-      poll();
-      intervalId = setInterval(poll, client.pollingInterval);
-
-      return () => {
-        isActive = false;
-        if (intervalId) {
-          clearInterval(intervalId);
-          intervalId = null;
-        }
-      };
+      return await client.pollAuth(pollingCode);
     },
     [client],
   );
 
   const exchangeToken = useCallback(
     async (authCode: string) => {
-      setAuth((s) => ({ ...s, loading: true, error: null }));
-      try {
-        const token = await client.exchangeToken(authCode);
-        const tokenInfo = client.getAuthData();
-        const isAuthenticated = Boolean(token && tokenInfo);
-        setAuth({
-          isAuthenticated,
-          token,
-          tokenInfo,
-          loading: false,
-          error: null,
-        });
-        return token;
-      } catch (e: any) {
-        setAuth((s) => ({
-          ...s,
-          loading: false,
-          error: e?.message ?? "Exchange error",
-        }));
-        throw e;
-      }
+      const token = await client.exchangeToken(authCode);
+      const tokenInfo = client.getAuthData();
+      const isAuthenticated = Boolean(token && tokenInfo);
+      setAuth({
+        isAuthenticated,
+        token,
+        tokenInfo,
+      });
+      return token;
     },
     [client],
   );
 
   const verifyAuth = useCallback(
     async () => {
-      setAuth((s) => ({ ...s, loading: true, error: null }));
       try {
         const valid = await client.verifyAuth();
         const token = client.getAccessToken();
         const tokenInfo = client.getAuthData();
-        setAuth((s) => ({
-          ...s,
+        setAuth({
           isAuthenticated: valid,
           token,
           tokenInfo,
-          loading: false,
-          error: null,
-        }));
+        });
         return valid;
-      } catch (e: any) {
-        setAuth((s) => ({
-          ...s,
+      } catch {
+        setAuth({
           isAuthenticated: false,
           token: null,
           tokenInfo: null,
-          loading: false,
-          error: e?.message ?? "Verify error",
-        }));
+        });
         return false;
       }
     },
@@ -234,8 +131,6 @@ export function AlienSsoProvider({
       isAuthenticated: false,
       token: null,
       tokenInfo: null,
-      loading: false,
-      error: null,
     });
   }, [client]);
 
@@ -249,7 +144,6 @@ export function AlienSsoProvider({
       auth,
       getAuthDeeplink,
       pollAuth,
-      startPollingLoop,
       exchangeToken,
       verifyAuth,
       logout,
@@ -262,7 +156,6 @@ export function AlienSsoProvider({
       auth,
       getAuthDeeplink,
       pollAuth,
-      startPollingLoop,
       exchangeToken,
       verifyAuth,
       logout,

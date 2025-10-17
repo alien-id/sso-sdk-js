@@ -14,31 +14,36 @@ import { RetryIcon } from "../assets/RetryIcon";
 import QRCodeStyling from "qr-code-styling";
 import { qrOptions } from "../consts/qrConfig";
 
-type FlowState = 'loading' | 'ready' | 'polling' | 'success' | 'error';
-
-const qrInstance = new QRCodeStyling(qrOptions)
+const qrCode = new QRCodeStyling(qrOptions)
 
 export const SignInModal = () => {
   const { isModalOpen: isOpen, closeModal: onClose, getAuthDeeplink, pollAuth, exchangeToken, client } = useAuth();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
-  const [flowState, setFlowState] = useState<FlowState>('ready');
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [errorDescription, setErrorDescription] = useState<string>('');
   const [pollingCode, setPollingCode] = useState<string>('');
   const [deeplink, setDeeplink] = useState<string>('');
 
-  const qrInstanceRef = useRef<QRCodeStyling>(qrInstance);
-  const qrElementRef = useRef<HTMLDivElement>(null);
+  const qrInstanceRef = useRef<QRCodeStyling>(qrCode);
+  const [qrElement, setQrElement] = useState<HTMLDivElement | null>(null);
 
   // Initialize auth and get deeplink
-  const { data: authData, isLoading: isLoadingAuth, error: authError } = useQuery({
+  const { isLoading: isLoadingDeeplink } = useQuery({
     queryKey: ['auth-deeplink'],
     queryFn: async () => {
-      const response = await getAuthDeeplink();
-      setDeeplink(response.deep_link);
-      setPollingCode(response.polling_code);
-      qrInstanceRef.current.update({ data: response.deep_link });
-      return response;
+      try {
+        const response = await getAuthDeeplink();
+        setDeeplink(response.deep_link);
+        setPollingCode(response.polling_code);
+        return response;
+      } catch (error) {
+        setErrorMessage('Failed to initialize authentication');
+        setErrorDescription(error instanceof Error ? error.message : 'Unknown error occurred');
+        throw error;
+      }
     },
     enabled: isOpen && !deeplink,
     retry: false,
@@ -49,61 +54,50 @@ export const SignInModal = () => {
   const { data: pollData } = useQuery({
     queryKey: ['auth-poll', pollingCode],
     queryFn: () => pollAuth(pollingCode),
-    enabled: isOpen && !!pollingCode && flowState !== 'success' && flowState !== 'error',
+    enabled: isOpen && !!pollingCode && !isSuccess && !errorMessage,
     refetchInterval: client.pollingInterval,
     retry: false,
     refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
-    if (qrElementRef.current) {
-      qrInstanceRef.current.append(qrElementRef.current);
+    if (qrElement) {
+      qrInstanceRef.current.append(qrElement);
     }
-  }, [qrElementRef.current]);
+  }, [qrElement]);
 
   useEffect(() => {
-    qrInstanceRef.current.update({
-      data: deeplink,
-    });
+    if (deeplink) {
+      qrInstanceRef.current.update({
+        data: deeplink,
+      });
+    }
   }, [deeplink]);
-
-  useEffect(() => {
-    if (authError) {
-      setFlowState('error');
-    }
-  }, [authError]);
-
-  useEffect(() => {
-    if (isLoadingAuth) {
-      setFlowState('loading');
-    } else if (authData && !isLoadingAuth) {
-      setFlowState('ready');
-    }
-  }, [isLoadingAuth, authData]);
 
   // Handle poll responses
   useEffect(() => {
     if (!pollData) return;
 
-    const handlePollResponse = async () => {
+    (async () => {
       if (pollData.status === 'authorized' && pollData.authorization_code) {
         try {
           await exchangeToken(pollData.authorization_code);
-          setFlowState('success');
+          setIsSuccess(true);
         } catch (error) {
-          console.error('Token exchange failed:', error);
-          setFlowState('error');
+          setErrorMessage('Token exchange failed');
+          setErrorDescription(error instanceof Error ? error.message : 'Unknown error occurred');
         }
       } else if (pollData.status === 'rejected') {
-        setFlowState('error');
+        setErrorMessage('Access rejected');
+        setErrorDescription('You did not allow access to sign in.\nPlease try again if you want to proceed.');
       }
-    };
-
-    handlePollResponse();
+    })();
   }, [pollData, exchangeToken]);
 
   const resetState = () => {
-    setFlowState('ready');
+    setIsSuccess(false);
+    setErrorMessage('');
+    setErrorDescription('');
     setDeeplink('');
     setPollingCode('');
     queryClient.removeQueries({ queryKey: ['auth-deeplink'] });
@@ -119,10 +113,6 @@ export const SignInModal = () => {
     onClose();
   };
 
-  const isLoading = flowState === 'loading';
-  const isSuccess = flowState === 'success';
-  const isError = flowState === 'error';
-
   if (isSuccess) {
     return (
       <ModalBase onClose={handleClose} isOpen={isOpen}>
@@ -136,15 +126,14 @@ export const SignInModal = () => {
     )
   }
 
-  if (isError) {
+  if (errorMessage) {
     return (
       <ModalBase onClose={handleClose} isOpen={isOpen}>
         <div className={styles.errorContainer}>
           <ErrorIcon />
-          <div className={styles.errorTitle}>Access rejected</div>
+          <div className={styles.errorTitle}>{errorMessage || 'Error occurred'}</div>
           <div className={styles.errorSubtitle}>
-            You did not allow access to sign in.<br />
-            Please try again if you want to proceed.
+            {errorDescription || 'An error occurred. Please try again.'}
           </div>
           <div className={styles.errorButton} onClick={handleRetry}><RetryIcon />Try again</div>
         </div>
@@ -159,12 +148,12 @@ export const SignInModal = () => {
 
         <div className={styles.subtitle}>Scan this QR code with an Alien App!</div>
         <div className={styles.qrCodeContainer}>
-          {isLoading ? (
+          {isLoadingDeeplink ? (
             <div className={styles.qrCodeSpinContainer}>
               <div className={styles.qrCodeSpin}><SpinIcon /></div>
             </div>
           ) : null}
-          <div className={clsx(styles.qrCode, isLoading && styles.qrCodeLoading)} ref={qrElementRef} />
+          <div className={clsx(styles.qrCode, isLoadingDeeplink && styles.qrCodeLoading)} ref={setQrElement} />
         </div>
 
         <div className={styles.description}>
