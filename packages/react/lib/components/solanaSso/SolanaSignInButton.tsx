@@ -1,17 +1,17 @@
 import React from 'react';
 import { AlienIcon } from "../assets/AlienIcon";
-import styles from './SignInButton.module.css';
-import { useAuth } from "../../providers";
+import styles from './SolanaSignInButton.module.css';
+import { useSolanaAuth } from "../../providers";
 import clsx from "clsx";
 
-export interface SignInButtonProps {
+export interface SolanaSignInButtonProps {
   variant?: 'default' | 'short';
 }
 
-export const SignInButton: React.FC<SignInButtonProps> = ({
+export const SolanaSignInButton: React.FC<SolanaSignInButtonProps> = ({
   variant = 'default',
 }) => {
-  const { openModal } = useAuth();
+  const { openModal } = useSolanaAuth();
 
   if (variant === 'short') {
     return (

@@ -23,7 +23,7 @@ export const SolanaPollRequestSchema = z.object({
 });
 export type SolanaPollRequest = z.infer<typeof SolanaPollRequestSchema>;
 
-const solanaStatus = ['pending', 'authorized', 'rejected'] as const;
+const solanaStatus = ['pending', 'authorized', 'rejected', 'expired'] as const;
 const SolanaStatusEnum = z.enum(solanaStatus);
 type SolanaStatusEnum = z.infer<typeof SolanaStatusEnum>;
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import styles from './SignInModal.module.css';
-import { useAuth } from "../../providers";
+import styles from './SolanaSignInModal.module.css';
+import { useSolanaAuth } from "../../providers";
 import { ModalBase } from '../base/ModalBase';
 import { QrIcon } from "../assets/QrIcon";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -16,8 +16,8 @@ import { qrOptions } from "../consts/qrConfig";
 
 const qrCode = new QRCodeStyling(qrOptions)
 
-export const SignInModal = () => {
-  const { isModalOpen: isOpen, closeModal: onClose, generateDeeplink, pollAuth, exchangeToken, client } = useAuth();
+export const SolanaSignInModal = () => {
+  const { isModalOpen: isOpen, closeModal: onClose, pollAuth, client } = useSolanaAuth();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
@@ -35,10 +35,10 @@ export const SignInModal = () => {
     queryKey: ['auth-deeplink'],
     queryFn: async () => {
       try {
-        const response = await generateDeeplink();
-        setDeeplink(response.deep_link);
-        setPollingCode(response.polling_code);
-        return response;
+        // const response = await generateDeeplink();
+        // setDeeplink(response.deep_link);
+        // setPollingCode(response.polling_code);
+        // return response;
       } catch (error) {
         setErrorMessage('Failed to login');
         setErrorDescription('Login could not be completed');
@@ -87,9 +87,9 @@ export const SignInModal = () => {
     if (!pollData) return;
 
     (async () => {
-      if (pollData.status === 'authorized' && pollData.authorization_code) {
+      if (pollData.status === 'authorized') {
         try {
-          await exchangeToken(pollData.authorization_code);
+          // await exchangeToken(pollData.authorization_code);
           setIsSuccess(true);
         } catch (error) {
           setErrorMessage('Failed to login');
@@ -103,7 +103,7 @@ export const SignInModal = () => {
         setErrorDescription('Login could not be completed');
       }
     })();
-  }, [pollData, exchangeToken]);
+  }, [pollData]);
 
   const resetState = () => {
     setIsSuccess(false);

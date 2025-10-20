@@ -98,7 +98,7 @@ export class AlienSsoClient {
     return CryptoJS.SHA256(codeVerifier).toString(CryptoJS.enc.Hex);
   }
 
-  async getAuthDeeplink(): Promise<AuthorizeResponse> {
+  async generateDeeplink(): Promise<AuthorizeResponse> {
     const codeVerifier = this.generateCodeVerifier();
     const codeChallenge = await this.generateCodeChallenge(codeVerifier);
 

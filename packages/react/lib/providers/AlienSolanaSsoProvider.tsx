@@ -11,30 +11,34 @@ import {
   AlienSolanaSsoClient,
   type AlienSolanaSsoClientConfig,
 } from "@alien_org/sso-sdk-core";
-import { PublicKey, type Transaction } from "@solana/web3.js";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SolanaSignInModal } from "../components";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 type SolanaAuthState = {
   sessionAddress?: string | null;
-  loading: boolean;
-  error?: string | null;
 };
 
 type SolanaSsoContextValue = {
   client: AlienSolanaSsoClient;
   auth: SolanaAuthState;
-  generateLinkDeeplink: (
+  generateDeeplink: (
     solanaAddress: string
   ) => Promise<import("@alien_org/sso-sdk-core").SolanaLinkResponse>;
   pollAuth: (pollingCode: string) => Promise<import("@alien_org/sso-sdk-core").SolanaPollResponse>;
-  startPollingLoop: (
-    pollingCode: string,
-    callbacks: {
-      onAuthorized: (transaction: Transaction) => void | Promise<void>;
-      onRejected?: () => void | Promise<void>;
-      onError?: (error: Error) => void | Promise<void>;
-    }
-  ) => Promise<() => void>;
   getAttestation: (solanaAddress: string) => Promise<string>;
+  logout: () => void;
+  openModal: () => void;
+  closeModal: () => void;
+  isModalOpen: boolean;
 };
 
 const SolanaSsoContext = createContext<SolanaSsoContextValue | null>(null);
@@ -46,149 +50,78 @@ export function AlienSolanaSsoProvider({
   config: AlienSolanaSsoClientConfig;
   children: ReactNode;
 }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const client = useMemo(
     () => new AlienSolanaSsoClient(config),
     [config]
   );
   const [auth, setAuth] = useState<SolanaAuthState>({
     sessionAddress: null,
-    loading: false,
-    error: null,
   });
 
-  const generateLinkDeeplink = useCallback(
+  const generateDeeplink = useCallback(
     async (solanaAddress: string) => {
-      setAuth((s) => ({ ...s, loading: true, error: null }));
-      try {
-        const res = await client.generateLinkDeeplink(solanaAddress);
-        setAuth((s) => ({ ...s, loading: false }));
-        return res;
-      } catch (e: any) {
-        setAuth((s) => ({
-          ...s,
-          loading: false,
-          error: e?.message ?? "Generate link error",
-        }));
-        throw e;
-      }
+      return await client.generateDeeplink(solanaAddress);
     },
     [client]
   );
 
   const pollAuth = useCallback(
     async (pollingCode: string) => {
-      setAuth((s) => ({ ...s, loading: true, error: null }));
-      try {
-        const pollResponse = await client.pollAuth(pollingCode);
-        setAuth((s) => ({ ...s, loading: false }));
-        return pollResponse;
-      } catch (e: any) {
-        setAuth((s) => ({
-          ...s,
-          loading: false,
-          error: e?.message ?? "Poll error",
-        }));
-        throw e;
-      }
-    },
-    [client]
-  );
-
-  const startPollingLoop = useCallback(
-    async (
-      pollingCode: string,
-      callbacks: {
-        onAuthorized: (transaction: Transaction) => void | Promise<void>;
-        onRejected?: () => void | Promise<void>;
-        onError?: (error: Error) => void | Promise<void>;
-      }
-    ): Promise<() => void> => {
-      let intervalId: ReturnType<typeof setInterval> | null = null;
-      let isActive = true;
-
-      const poll = async () => {
-        if (!isActive) return;
-
-        try {
-          const result = await client.pollAuth(pollingCode);
-
-          if (result.status === 'authorized') {
-            isActive = false;
-            if (intervalId) clearInterval(intervalId);
-
-            const transaction = client.buildCreateAttestationTransaction({
-              payerPublicKey: new PublicKey(result.solana_address!),
-              sessionAddress: result.session_address!,
-              oracleSignature: Buffer.from(result.oracle_signature!, 'hex'),
-              oraclePublicKey: new PublicKey(result.oracle_public_key!),
-              timestamp: result.timestamp!,
-              expiry: 0,
-            });
-            await callbacks.onAuthorized(transaction);
-          } else if (result.status === 'rejected') {
-            isActive = false;
-            if (intervalId) clearInterval(intervalId);
-            await callbacks.onRejected?.();
-          }
-        } catch (error) {
-          await callbacks.onError?.(error as Error);
-        }
-      };
-
-      poll();
-      intervalId = setInterval(poll, client.pollingInterval);
-
-      return () => {
-        isActive = false;
-        if (intervalId) {
-          clearInterval(intervalId);
-          intervalId = null;
-        }
-      };
+      return await client.pollAuth(pollingCode);
     },
     [client]
   );
 
   const getAttestation = useCallback(
     async (solanaAddress: string) => {
-      setAuth((s) => ({ ...s, loading: true, error: null }));
-      try {
-        const sessionAddress = await client.getAttestation(solanaAddress);
-        setAuth({
-          sessionAddress,
-          loading: false,
-          error: null,
-        });
-        return sessionAddress;
-      } catch (e: any) {
-        setAuth((s) => ({
-          ...s,
-          sessionAddress: null,
-          loading: false,
-          error: e?.message ?? "Get attestation error",
-        }));
-        throw e;
-      }
+      const sessionAddress = await client.getAttestation(solanaAddress);
+      setAuth({ sessionAddress });
+      return sessionAddress;
     },
     [client]
   );
+
+  const logout = useCallback(() => {
+    setAuth({ sessionAddress: null });
+  }, []);
+
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
 
   const value = useMemo<SolanaSsoContextValue>(
     () => ({
       client,
       auth,
-      generateLinkDeeplink,
+      generateDeeplink,
       pollAuth,
-      startPollingLoop,
       getAttestation,
+      logout,
+      openModal,
+      closeModal,
+      isModalOpen
     }),
-    [client, auth, generateLinkDeeplink, pollAuth, startPollingLoop, getAttestation]
+    [
+      client,
+      auth,
+      generateDeeplink,
+      pollAuth,
+      getAttestation,
+      logout,
+      openModal,
+      closeModal,
+      isModalOpen
+    ]
   );
 
   return (
-    <SolanaSsoContext.Provider value={value}>
-      {children}
-    </SolanaSsoContext.Provider>
+    <QueryClientProvider client={queryClient}>
+      <SolanaSsoContext.Provider value={value}>
+        <SolanaSignInModal />
+        {children}
+      </SolanaSsoContext.Provider>
+    </QueryClientProvider>
   );
 }
 

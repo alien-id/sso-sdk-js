@@ -32,7 +32,7 @@ type AuthState = {
 type SsoContextValue = {
   client: AlienSsoClient;
   auth: AuthState;
-  getAuthDeeplink: () => Promise<
+  generateDeeplink: () => Promise<
     import("@alien_org/sso-sdk-core").AuthorizeResponse
   >;
   pollAuth: (pollingCode: string) => Promise<import("@alien_org/sso-sdk-core").PollResponse>;
@@ -75,8 +75,8 @@ export function AlienSsoProvider({
   const client = useMemo(() => new AlienSsoClient(config), [config]);
   const [auth, setAuth] = useState<AuthState>(() => getInitialAuth(client));
 
-  const getAuthDeeplink = useCallback(async () => {
-    return await client.getAuthDeeplink();
+  const generateDeeplink = useCallback(async () => {
+    return await client.generateDeeplink();
   }, [client]);
 
   const pollAuth = useCallback(
@@ -142,7 +142,7 @@ export function AlienSsoProvider({
     () => ({
       client,
       auth,
-      getAuthDeeplink,
+      generateDeeplink,
       pollAuth,
       exchangeToken,
       verifyAuth,
@@ -154,7 +154,7 @@ export function AlienSsoProvider({
     [
       client,
       auth,
-      getAuthDeeplink,
+      generateDeeplink,
       pollAuth,
       exchangeToken,
       verifyAuth,

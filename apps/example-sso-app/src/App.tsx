@@ -126,6 +126,16 @@ function AppContent() {
           zIndex: 1
         }}>
           <h1 style={{
+            fontSize: '36px',
+            marginBottom: '16px',
+            background: 'linear-gradient(135deg, #fff 0%, #e0e7ff 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            fontWeight: '700'
+          }}>
+            Demo app
+          </h1>
+          <h1 style={{
             fontSize: '42px',
             marginBottom: '16px',
             background: 'linear-gradient(135deg, #fff 0%, #e0e7ff 100%)',

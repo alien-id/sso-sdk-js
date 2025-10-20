@@ -37,8 +37,8 @@ const POLLING_INTERVAL = 5000;
 
 // Default Solana program IDs
 const DEFAULT_CREDENTIAL_SIGNER_PROGRAM_ID = '9cstDz8WWRAFaq1vVpTjfHz6tjgh6SJaqYFeZWi1pFHG';
+const DEFAULT_SESSION_REGISTRY_PROGRAM_ID = 'DeHa6pyZ2CFSbQQiNMm7FgoCXqmkX6tXG77C4Qycpta6';
 const DEFAULT_SAS_PROGRAM_ID = '22zoJMtdu4tQc2PzL74ZUT7FrwgB1Udec8DdW4yw4BdG'; // Solana Attestation Service
-const DEFAULT_SESSION_REGISTRY_PROGRAM_ID = 'SessionRegistryProgramId11111111111111111'; // TODO: replace with actual
 
 // Default credential and schema parameters
 const DEFAULT_CREDENTIAL_AUTHORITY = '11111111111111111111111111111111';
@@ -92,7 +92,7 @@ export class AlienSolanaSsoClient {
     );
   }
 
-  async generateLinkDeeplink(solanaAddress: string): Promise<SolanaLinkResponse> {
+  async generateDeeplink(solanaAddress: string): Promise<SolanaLinkResponse> {
     const linkPayload: SolanaLinkRequest = {
       solana_address: solanaAddress,
     };
