@@ -40,8 +40,8 @@ export const SignInModal = () => {
         setPollingCode(response.polling_code);
         return response;
       } catch (error) {
-        setErrorMessage('Failed to initialize authentication');
-        setErrorDescription(error instanceof Error ? error.message : 'Unknown error occurred');
+        setErrorMessage('Failed to login');
+        setErrorDescription('Login could not be completed');
         throw error;
       }
     },
@@ -53,7 +53,15 @@ export const SignInModal = () => {
   // Polling query
   const { data: pollData } = useQuery({
     queryKey: ['auth-poll', pollingCode],
-    queryFn: () => pollAuth(pollingCode),
+    queryFn: async () => {
+      try {
+        return await pollAuth(pollingCode);
+      } catch (error: any) {
+        setErrorMessage('Failed to login');
+        setErrorDescription('Login could not be completed');
+        throw error;
+      }
+    },
     enabled: isOpen && !!pollingCode && !isSuccess && !errorMessage,
     refetchInterval: client.pollingInterval,
     retry: false,
@@ -84,12 +92,15 @@ export const SignInModal = () => {
           await exchangeToken(pollData.authorization_code);
           setIsSuccess(true);
         } catch (error) {
-          setErrorMessage('Token exchange failed');
-          setErrorDescription(error instanceof Error ? error.message : 'Unknown error occurred');
+          setErrorMessage('Failed to login');
+          setErrorDescription('Login could not be completed');
         }
       } else if (pollData.status === 'rejected') {
         setErrorMessage('Access rejected');
-        setErrorDescription('You did not allow access to sign in.\nPlease try again if you want to proceed.');
+        setErrorDescription('You did not allow access to sign in');
+      } else if (pollData.status === 'expired') {
+        setErrorMessage('Link expired');
+        setErrorDescription('Login could not be completed');
       }
     })();
   }, [pollData, exchangeToken]);
@@ -115,7 +126,7 @@ export const SignInModal = () => {
 
   if (isSuccess) {
     return (
-      <ModalBase onClose={handleClose} isOpen={isOpen}>
+      <ModalBase onClose={handleClose} isOpen={isOpen} showClose={false}>
         <div className={styles.successfulContainer}>
           <SuccessIcon />
           <div className={styles.successfulTitle}>Sign in successful!</div>

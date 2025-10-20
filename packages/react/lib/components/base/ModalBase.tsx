@@ -9,9 +9,10 @@ export interface ModalBaseProps {
   isOpen: boolean;
   onClose: () => void;
   children: ReactNode;
+  showClose?: boolean;
 }
 
-export const ModalBase: React.FC<ModalBaseProps> = ({ isOpen, onClose, children }) => {
+export const ModalBase: React.FC<ModalBaseProps> = ({ isOpen, onClose, children, showClose = true }) => {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -59,11 +60,13 @@ export const ModalBase: React.FC<ModalBaseProps> = ({ isOpen, onClose, children 
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
           >
-            <div className={styles.closeContainer}>
-              <div className={styles.closeIcon} onClick={onClose}>
-                <CrossIcon />
+            {showClose && (
+              <div className={styles.closeContainer}>
+                <div className={styles.closeIcon} onClick={onClose}>
+                  <CrossIcon />
+                </div>
               </div>
-            </div>
+            )}
             {children}
           </motion.div>
         </motion.div>

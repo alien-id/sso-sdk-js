@@ -189,20 +189,16 @@
   background: transparent;
 }
 
-@media (max-width: 768px) {
-  .successfulContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
+.successfulContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-@media (max-width: 768px) {
-  .errorContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .errorTitle {

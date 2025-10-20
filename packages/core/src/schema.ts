@@ -26,7 +26,7 @@ export const PollRequestSchema = z.object({
 
 export type PollRequest = z.infer<typeof PollRequestSchema>;
 
-const status = ['pending', 'authorized', 'rejected'] as const;
+const status = ['pending', 'authorized', 'rejected', 'expired'] as const;
 const StatusEnum = z.enum(status);
 type StatusEnum = z.infer<typeof StatusEnum>;
 
