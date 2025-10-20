@@ -9,14 +9,7 @@
     ".": "./dist/index.js",
     "./*": "./dist/*.js"
   },
-  "types": "./dist/types/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "*": [
-        "dist/types/*.d.ts"
-      ]
-    }
-  },
+  "types": "./dist/index.d.ts",
   "files": [
     "dist",
     "README.md"
