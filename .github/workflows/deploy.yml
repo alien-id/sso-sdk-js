@@ -1,0 +1,183 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Build example-sso-app
+        run: VITE_GITHUB_PAGES=true npm --filter example-sso-app run build
+
+      - name: Build example-solana-sso-app
+        run: VITE_GITHUB_PAGES=true npm --filter example-solana-sso-app run build
+
+      - name: Create deployment directory
+        run: |
+          mkdir -p deploy/example-sso-app
+          mkdir -p deploy/example-solana-sso-app
+          cp -r apps/example-sso-app/dist/* deploy/example-sso-app/
+          cp -r apps/example-solana-sso-app/dist/* deploy/example-solana-sso-app/
+
+      - name: Create landing page
+        run: |
+          cat > deploy/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Alien SSO SDK Examples</title>
+            <style>
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+              }
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+              }
+              .container {
+                background: white;
+                border-radius: 24px;
+                padding: 60px 40px;
+                max-width: 600px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+              }
+              h1 {
+                font-size: 42px;
+                font-weight: 700;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                margin-bottom: 16px;
+                text-align: center;
+              }
+              p {
+                color: #64748b;
+                text-align: center;
+                margin-bottom: 40px;
+                font-size: 16px;
+                line-height: 1.6;
+              }
+              .examples {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+              }
+              .example-card {
+                display: block;
+                padding: 24px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                text-decoration: none;
+                border-radius: 16px;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+              }
+              .example-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 12px 24px rgba(102, 126, 234, 0.4);
+              }
+              .example-card h2 {
+                font-size: 24px;
+                margin-bottom: 8px;
+              }
+              .example-card p {
+                color: rgba(255,255,255,0.9);
+                text-align: left;
+                margin: 0;
+                font-size: 14px;
+              }
+              .solana-card {
+                background: linear-gradient(135deg, #14F195 0%, #9945FF 100%);
+              }
+              .footer {
+                margin-top: 40px;
+                text-align: center;
+                color: #64748b;
+                font-size: 14px;
+              }
+              .footer a {
+                color: #667eea;
+                text-decoration: none;
+              }
+              .footer a:hover {
+                text-decoration: underline;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>🚀 Alien SSO SDK</h1>
+              <p>Interactive examples demonstrating Alien SSO integration</p>
+
+              <div class="examples">
+                <a href="/sso-sdk-js/example-sso-app/" class="example-card">
+                  <h2>Standard SSO Example</h2>
+                  <p>Web authentication with Alien identity using OIDC flow</p>
+                </a>
+
+                <a href="/sso-sdk-js/example-solana-sso-app/" class="example-card solana-card">
+                  <h2>Solana SSO Example</h2>
+                  <p>Blockchain authentication linking Solana wallet with Alien identity</p>
+                </a>
+              </div>
+
+              <div class="footer">
+                <p>
+                  <a href="https://github.com/alien-id/sso-sdk-js" target="_blank">View on GitHub</a> ·
+                  <a href="https://docs.alien.com" target="_blank">Documentation</a>
+                </p>
+              </div>
+            </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: deploy
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
