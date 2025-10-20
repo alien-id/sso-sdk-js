@@ -34,7 +34,11 @@ jobs:
         run: npm ci
 
       - name: Build all packages and apps
-        run: VITE_GITHUB_PAGES=true npm run build
+        run: npm run build
+        env:
+          VITE_GITHUB_PAGES: true
+          VITE_ALIEN_SSO_BASE_URL: ${{ vars.VITE_ALIEN_SSO_BASE_URL }}
+          VITE_ALIEN_PROVIDER_ADDRESS: ${{ vars.VITE_ALIEN_PROVIDER_ADDRESS }}
 
       - name: Create deployment directory
         run: |
