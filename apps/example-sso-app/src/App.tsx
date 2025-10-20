@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AlienSsoProvider, useAuth } from '@alien_org/sso-sdk-react';
 import { SignInButton } from '@alien_org/sso-sdk-react';
 import './App.css';
@@ -7,6 +7,29 @@ const ssoConfig = {
   ssoBaseUrl: import.meta.env.VITE_ALIEN_SSO_BASE_URL,
   providerAddress: import.meta.env.VITE_ALIEN_PROVIDER_ADDRESS,
 };
+
+function AuthVerifier() {
+  const { verifyAuth, logout, auth } = useAuth();
+
+  useEffect(() => {
+    if (!auth.token) {
+      return;
+    }
+
+    (async () => {
+      try {
+        const isValid = await verifyAuth();
+        if (!isValid) {
+          logout();
+        }
+      } catch (error) {
+        logout();
+      }
+    })();
+  }, [verifyAuth, logout, auth.token]);
+
+  return null;
+}
 
 function AppContent() {
   const { auth, logout } = useAuth();
@@ -153,6 +176,7 @@ function AppContent() {
 function App() {
   return (
     <AlienSsoProvider config={ssoConfig}>
+      <AuthVerifier />
       <AppContent />
     </AlienSsoProvider>
   );

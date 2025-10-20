@@ -114,6 +114,11 @@
   font-size: 18px;
   font-weight: 500;
   border-radius: 24px;
+  transition: transform 0.2s ease;
+}
+
+.footerButton:active {
+  transform: scale(0.987);
 }
 
 .mobileOpenButton {
@@ -133,10 +138,15 @@
   background: var(--alien-brand-color);
   font-size: 18px;
   font-weight: 500;
+  transition: transform 0.2s ease, background 0.2s ease;
 }
 
 .mobileOpenButton:hover {
   background: var(--alien-brand-color-hover);
+}
+
+.mobileOpenButton:active {
+  transform: scale(0.987);
 }
 
 .mobileFooter {
@@ -187,6 +197,11 @@
   font-weight: 500;
   line-height: 24px;
   background: transparent;
+  transition: transform 0.2s ease;
+}
+
+.successfulButton:active {
+  transform: scale(0.987);
 }
 
 .successfulContainer {
@@ -231,4 +246,9 @@
   font-size: 18px;
   font-weight: 500;
   line-height: 24px;
+  transition: transform 0.2s ease;
+}
+
+.errorButton:active {
+  transform: scale(0.987);
 }
