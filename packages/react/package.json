@@ -42,6 +42,8 @@
   },
   "peerDependencies": {
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "@solana/wallet-adapter-react": "^0.15.0",
+    "@solana/web3.js": "^1.95.0"
   }
 }

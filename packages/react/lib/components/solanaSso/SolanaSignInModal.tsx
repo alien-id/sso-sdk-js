@@ -13,11 +13,15 @@ import { ErrorIcon } from "../assets/ErrorIcon";
 import { RetryIcon } from "../assets/RetryIcon";
 import QRCodeStyling from "qr-code-styling";
 import { qrOptions } from "../consts/qrConfig";
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { PublicKey } from '@solana/web3.js';
 
 const qrCode = new QRCodeStyling(qrOptions)
 
 export const SolanaSignInModal = () => {
   const { isModalOpen: isOpen, closeModal: onClose, generateDeeplink, pollAuth, client, auth } = useSolanaAuth();
+  const { publicKey, signTransaction } = useWallet();
+  const { connection } = useConnection();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
@@ -26,6 +30,8 @@ export const SolanaSignInModal = () => {
   const [errorDescription, setErrorDescription] = useState<string>('');
   const [pollingCode, setPollingCode] = useState<string>('');
   const [deeplink, setDeeplink] = useState<string>('');
+  const [isSigningTransaction, setIsSigningTransaction] = useState(false);
+  const [pendingTransactionData, setPendingTransactionData] = useState<any>(null);
 
   const qrInstanceRef = useRef<QRCodeStyling>(qrCode);
   const [qrElement, setQrElement] = useState<HTMLDivElement | null>(null);
@@ -65,7 +71,7 @@ export const SolanaSignInModal = () => {
         throw e;
       }
     },
-    enabled: isOpen && !!pollingCode && !isSuccess && !errorMessage,
+    enabled: isOpen && !!pollingCode && !isSuccess && !errorMessage && !isSigningTransaction && !pendingTransactionData,
     refetchInterval: client.pollingInterval,
     retry: false,
     refetchOnWindowFocus: false,
@@ -89,24 +95,77 @@ export const SolanaSignInModal = () => {
   useEffect(() => {
     if (!pollData) return;
 
-    (async () => {
-      if (pollData.status === 'authorized') {
-        try {
-          // await exchangeToken(pollData.authorization_code);
-          setIsSuccess(true);
-        } catch (error) {
-          setErrorMessage('Failed to login');
-          setErrorDescription('Login could not be completed');
-        }
-      } else if (pollData.status === 'rejected') {
-        setErrorMessage('Access rejected');
-        setErrorDescription('You did not allow access to sign in');
-      } else if (pollData.status === 'expired') {
-        setErrorMessage('Link expired');
-        setErrorDescription('Login could not be completed');
+    if (pollData.status === 'authorized') {
+      if (!pollData.oracle_signature || !pollData.oracle_public_key || !pollData.session_address || !pollData.timestamp || !auth.solanaAddress) {
+        setErrorMessage('Failed to login');
+        setErrorDescription('Missing required data from authorization');
+        return;
       }
-    })();
-  }, [pollData]);
+
+      // Store transaction data, show confirm UI
+      setPendingTransactionData({
+        oracleSignature: pollData.oracle_signature,
+        oraclePublicKey: pollData.oracle_public_key,
+        sessionAddress: pollData.session_address,
+        timestamp: pollData.timestamp,
+        solanaAddress: auth.solanaAddress,
+      });
+    } else if (pollData.status === 'rejected') {
+      setErrorMessage('Access rejected');
+      setErrorDescription('You did not allow access to sign in');
+    } else if (pollData.status === 'expired') {
+      setErrorMessage('Link expired');
+      setErrorDescription('Login could not be completed');
+    }
+  }, [pollData, auth.solanaAddress]);
+
+  const handleConfirmTransaction = async () => {
+    if (!pendingTransactionData || !publicKey || !signTransaction) {
+      setErrorMessage('Wallet not connected');
+      setErrorDescription('Please connect your Solana wallet first');
+      return;
+    }
+
+    try {
+      setIsSigningTransaction(true);
+
+      // Build transaction
+      const oracleSignature = Uint8Array.from(Buffer.from(pendingTransactionData.oracleSignature, 'base64'));
+      const oraclePublicKey = new PublicKey(pendingTransactionData.oraclePublicKey);
+      const payerPublicKey = publicKey;
+
+      const transaction = client.buildCreateAttestationTransaction({
+        payerPublicKey,
+        sessionAddress: pendingTransactionData.sessionAddress,
+        oracleSignature,
+        oraclePublicKey,
+        timestamp: pendingTransactionData.timestamp,
+        expiry: pendingTransactionData.timestamp + 86400, // 24 hours expiry
+      });
+
+      // Get recent blockhash
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = payerPublicKey;
+
+      // Sign transaction with wallet-adapter
+      const signedTransaction = await signTransaction(transaction);
+
+      // Send transaction
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+
+      // Wait for confirmation
+      await connection.confirmTransaction(signature, 'confirmed');
+
+      setIsSuccess(true);
+    } catch (error: any) {
+      console.error('Transaction error:', error);
+      setErrorMessage('Failed to sign transaction');
+      setErrorDescription(error?.message || 'Could not complete transaction');
+    } finally {
+      setIsSigningTransaction(false);
+    }
+  };
 
   const resetState = () => {
     setIsSuccess(false);
@@ -114,6 +173,8 @@ export const SolanaSignInModal = () => {
     setErrorDescription('');
     setDeeplink('');
     setPollingCode('');
+    setIsSigningTransaction(false);
+    setPendingTransactionData(null);
     queryClient.removeQueries({ queryKey: ['auth-deeplink'] });
     queryClient.removeQueries({ queryKey: ['auth-poll'] });
   };
@@ -135,6 +196,31 @@ export const SolanaSignInModal = () => {
           <div className={styles.successfulTitle}>Sign in successful!</div>
           <div className={styles.successfulSubtitle}>You have signed in successfully.</div>
           <div className={styles.successfulButton} onClick={handleClose}>Done</div>
+        </div>
+      </ModalBase>
+    )
+  }
+
+  if (pendingTransactionData && !isSigningTransaction) {
+    return (
+      <ModalBase onClose={handleClose} isOpen={isOpen}>
+        <div className={styles.successfulContainer}>
+          <SuccessIcon />
+          <div className={styles.successfulTitle}>Authorization Complete</div>
+          <div className={styles.successfulSubtitle}>Click confirm to create your attestation on Solana</div>
+          <div className={styles.successfulButton} onClick={handleConfirmTransaction}>Confirm</div>
+        </div>
+      </ModalBase>
+    )
+  }
+
+  if (isSigningTransaction) {
+    return (
+      <ModalBase onClose={handleClose} isOpen={isOpen} showClose={false}>
+        <div className={styles.successfulContainer}>
+          <div className={styles.qrCodeSpin}><SpinIcon /></div>
+          <div className={styles.successfulTitle}>Sign Transaction</div>
+          <div className={styles.successfulSubtitle}>Please approve the transaction in your wallet</div>
         </div>
       </ModalBase>
     )
