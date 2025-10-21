@@ -16,7 +16,7 @@ const ssoConfig = {
 
 function AppContent() {
   const { publicKey, sendTransaction } = useWallet();
-  const { auth, openModal, getAttestation, logout } = useSolanaAuth();
+  const { auth, getAttestation, logout } = useSolanaAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,22 +34,12 @@ function AppContent() {
         await getAttestation(publicKey.toBase58());
       } catch (error: any) {
         console.error('Failed to get attestation:', error);
-        // Don't set error here - user might not have attestation yet
+        setError(error?.message || 'Failed to check attestation');
       } finally {
         setIsLoading(false);
       }
     })();
   }, [publicKey, getAttestation, logout]);
-
-  const handleCreateAttestation = async () => {
-    if (!publicKey) {
-      setError('Please connect your Solana wallet first');
-      return;
-    }
-
-    setError(null);
-    openModal();
-  };
 
   if (publicKey && auth.sessionAddress) {
     return (
@@ -176,10 +166,10 @@ function AppContent() {
                 alignItems: 'center',
                 width: '100%'
               }}>
-                <SolanaSignInButton />
+                <SolanaSignInButton solanaAddress={publicKey.toBase58()} />
                 or short variant:
                 <div>
-                  <SolanaSignInButton variant="short" />
+                  <SolanaSignInButton variant="short" solanaAddress={publicKey.toBase58()} />
                 </div>
               </div>
             )}

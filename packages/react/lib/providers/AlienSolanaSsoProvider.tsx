@@ -25,6 +25,7 @@ const queryClient = new QueryClient({
 
 type SolanaAuthState = {
   sessionAddress?: string | null;
+  solanaAddress?: string | null;
 };
 
 type SolanaSsoContextValue = {
@@ -34,9 +35,9 @@ type SolanaSsoContextValue = {
     solanaAddress: string
   ) => Promise<import("@alien_org/sso-sdk-core").SolanaLinkResponse>;
   pollAuth: (pollingCode: string) => Promise<import("@alien_org/sso-sdk-core").SolanaPollResponse>;
-  getAttestation: (solanaAddress: string) => Promise<string>;
+  getAttestation: (solanaAddress: string) => Promise<string | null>;
   logout: () => void;
-  openModal: () => void;
+  openModal: (solanaAddress: string) => void;
   closeModal: () => void;
   isModalOpen: boolean;
 };
@@ -58,6 +59,7 @@ export function AlienSolanaSsoProvider({
   );
   const [auth, setAuth] = useState<SolanaAuthState>({
     sessionAddress: null,
+    solanaAddress: null,
   });
 
   const generateDeeplink = useCallback(
@@ -77,18 +79,24 @@ export function AlienSolanaSsoProvider({
   const getAttestation = useCallback(
     async (solanaAddress: string) => {
       const sessionAddress = await client.getAttestation(solanaAddress);
-      setAuth({ sessionAddress });
+      setAuth((prev) => ({ ...prev, sessionAddress }));
       return sessionAddress;
     },
     [client]
   );
 
   const logout = useCallback(() => {
-    setAuth({ sessionAddress: null });
+    setAuth({ sessionAddress: null, solanaAddress: null });
   }, []);
 
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
+  const openModal = useCallback((solanaAddress: string) => {
+    setAuth((prev) => ({ ...prev, solanaAddress }));
+    setIsModalOpen(true);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+  }, []);
 
   const value = useMemo<SolanaSsoContextValue>(
     () => ({

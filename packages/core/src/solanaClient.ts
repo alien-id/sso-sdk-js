@@ -146,7 +146,7 @@ export class AlienSolanaSsoClient {
     return SolanaPollResponseSchema.parse(json);
   }
 
-  async getAttestation(solanaAddress: string): Promise<string> {
+  async getAttestation(solanaAddress: string): Promise<string | null> {
     const attestationPayload: SolanaAttestationRequest = {
       solana_address: solanaAddress,
     };
@@ -164,6 +164,10 @@ export class AlienSolanaSsoClient {
         body: JSON.stringify(attestationPayload),
       },
     );
+
+    if (response.status === 404) {
+      return null;
+    }
 
     if (!response.ok) {
       throw new Error(`GetAttestation failed: ${response.statusText}`);

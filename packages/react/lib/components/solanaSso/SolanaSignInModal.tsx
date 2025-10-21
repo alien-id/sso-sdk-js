@@ -17,7 +17,7 @@ import { qrOptions } from "../consts/qrConfig";
 const qrCode = new QRCodeStyling(qrOptions)
 
 export const SolanaSignInModal = () => {
-  const { isModalOpen: isOpen, closeModal: onClose, pollAuth, client } = useSolanaAuth();
+  const { isModalOpen: isOpen, closeModal: onClose, generateDeeplink, pollAuth, client, auth } = useSolanaAuth();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
@@ -32,20 +32,23 @@ export const SolanaSignInModal = () => {
 
   // Initialize auth and get deeplink
   const { isLoading: isLoadingDeeplink } = useQuery({
-    queryKey: ['auth-deeplink'],
+    queryKey: ['auth-deeplink', auth.solanaAddress],
     queryFn: async () => {
+      if (!auth.solanaAddress) {
+        throw new Error('Solana address is required');
+      }
       try {
-        // const response = await generateDeeplink();
-        // setDeeplink(response.deep_link);
-        // setPollingCode(response.polling_code);
-        // return response;
-      } catch (error) {
+        const response = await generateDeeplink(auth.solanaAddress);
+        setDeeplink(response.deep_link);
+        setPollingCode(response.polling_code);
+        return response;
+      } catch (e) {
         setErrorMessage('Failed to login');
         setErrorDescription('Login could not be completed');
-        throw error;
+        throw e;
       }
     },
-    enabled: isOpen && !deeplink,
+    enabled: isOpen && !deeplink && !!auth.solanaAddress,
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -56,10 +59,10 @@ export const SolanaSignInModal = () => {
     queryFn: async () => {
       try {
         return await pollAuth(pollingCode);
-      } catch (error: any) {
+      } catch (e) {
         setErrorMessage('Failed to login');
         setErrorDescription('Login could not be completed');
-        throw error;
+        throw e;
       }
     },
     enabled: isOpen && !!pollingCode && !isSuccess && !errorMessage,
