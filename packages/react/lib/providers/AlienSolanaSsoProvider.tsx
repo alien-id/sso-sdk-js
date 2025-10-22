@@ -54,7 +54,13 @@ type SolanaSsoContextValue = {
   isModalOpen: boolean;
 };
 
+// Internal context with additional methods for modal
+type SolanaSsoInternalContextValue = SolanaSsoContextValue & {
+  setSessionAddress: (sessionAddress: string) => void;
+};
+
 const SolanaSsoContext = createContext<SolanaSsoContextValue | null>(null);
+const SolanaSsoInternalContext = createContext<SolanaSsoInternalContextValue | null>(null);
 
 export function AlienSolanaSsoProvider({
   config,
@@ -101,6 +107,10 @@ export function AlienSolanaSsoProvider({
     [client]
   );
 
+  const setSessionAddress = useCallback((sessionAddress: string) => {
+    setAuth((prev) => ({ ...prev, sessionAddress }));
+  }, []);
+
   const logout = useCallback(() => {
     setAuth({ sessionAddress: null, solanaAddress: null });
   }, []);
@@ -143,10 +153,20 @@ export function AlienSolanaSsoProvider({
     ]
   );
 
+  const internalValue = useMemo<SolanaSsoInternalContextValue>(
+    () => ({
+      ...value,
+      setSessionAddress,
+    }),
+    [value, setSessionAddress]
+  );
+
   return (
     <QueryClientProvider client={queryClient}>
       <SolanaSsoContext.Provider value={value}>
-        <SolanaSignInModal />
+        <SolanaSsoInternalContext.Provider value={internalValue}>
+          <SolanaSignInModal />
+        </SolanaSsoInternalContext.Provider>
         {children}
       </SolanaSsoContext.Provider>
     </QueryClientProvider>
@@ -157,5 +177,13 @@ export function useSolanaAuth() {
   const ctx = useContext(SolanaSsoContext);
   if (!ctx)
     throw new Error("useSolanaAuth must be used within <AlienSolanaSsoProvider>");
+  return ctx;
+}
+
+// Internal hook for modal only
+export function useSolanaAuthInternal() {
+  const ctx = useContext(SolanaSsoInternalContext);
+  if (!ctx)
+    throw new Error("useSolanaAuthInternal must be used within <AlienSolanaSsoProvider>");
   return ctx;
 }

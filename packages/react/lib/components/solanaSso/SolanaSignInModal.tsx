@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import styles from './SolanaSignInModal.module.css';
 import { useSolanaAuth } from "../../providers";
+import { useSolanaAuthInternal } from "../../providers";
 import { ModalBase } from '../base/ModalBase';
 import { QrIcon } from "../assets/QrIcon";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -34,6 +35,7 @@ export const SolanaSignInModal = () => {
     wallet: { publicKey, signTransaction },
     connectionAdapter: { connection }
   } = useSolanaAuth();
+  const { setSessionAddress } = useSolanaAuthInternal()
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
@@ -190,6 +192,8 @@ export const SolanaSignInModal = () => {
       }, 'confirmed');
 
       setIsSuccess(true);
+
+      setSessionAddress(pendingTransactionData.sessionAddress);
     } catch (error: any) {
       console.error('Transaction error:', error);
       setErrorMessage('Failed to sign transaction');
