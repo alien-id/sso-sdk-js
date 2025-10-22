@@ -111,12 +111,16 @@
   outline: none;
   cursor: pointer;
   padding: 16px;
-  background: var(--alien-modal-button-background);
-  color: var(--alien-modal-button-text);
+  background: var(--alien-modal-secondary-button-background-color);
+  color: var(--alien-modal-secondary-button-color);
   font-size: 18px;
   font-weight: 500;
   border-radius: 24px;
-  transition: transform 0.2s ease;
+  transition: 0.2s ease;
+}
+
+.footerButton:hover {
+  color: var(--alien-modal-secondary-button-hover-color);
 }
 
 .footerButton:active {
@@ -127,7 +131,7 @@
   text-decoration: unset;
   outline: none;
   cursor: pointer;
-  color: var(--alien-text-primary-color);
+  color: var(--alien-brand-button-color);
 
   margin-top: 18px;
   border-radius: 24px;
@@ -137,14 +141,14 @@
   justify-content: center;
   gap: 8px;
   padding: 16px 20px;
-  background: var(--alien-brand-color);
+  background: var(--alien-brand-button-background-color);
   font-size: 18px;
   font-weight: 500;
-  transition: transform 0.2s ease, background 0.2s ease;
+  transition: 0.2s ease;
 }
 
 .mobileOpenButton:hover {
-  background: var(--alien-brand-color-hover);
+  background: var(--alien-brand-button-hover-background-color);
 }
 
 .mobileOpenButton:active {
@@ -168,7 +172,7 @@
   text-decoration: unset;
   outline: none;
   cursor: pointer;
-  color: var(--alien-modal-button-text);
+  color: var(--alien-modal-secondary-button-color);
 }
 
 .successfulTitle {
@@ -195,13 +199,18 @@
   justify-content: center;
   padding: 16px 20px;
   border-radius: 24px;
-  border: 1px solid var(--alien-modal-foreground);
+  color: var(--alien-modal-button-color);
+  border: 1px solid var(--alien-modal-button-border-color);
 
   font-size: 18px;
   font-weight: 500;
   line-height: 24px;
   background: transparent;
-  transition: transform 0.2s ease;
+  transition: 0.2s ease;
+}
+
+.successfulButton:hover {
+  color: var(--alien-modal-button-hover-color);
 }
 
 .successfulButton:active {
@@ -277,13 +286,22 @@
   justify-content: center;
   padding: 16px 20px;
   border-radius: 24px;
-  border: 1px solid var(--alien-modal-foreground);
+  color: var(--alien-modal-button-color);
+  border: 1px solid var(--alien-modal-button-border-color);
 
   font-size: 18px;
   font-weight: 500;
   line-height: 24px;
   background: transparent;
-  transition: transform 0.2s ease;
+  transition: 0.2s ease;
+}
+
+.pendingButton:hover {
+  color: var(--alien-modal-button-hover-color);
+}
+
+.pendingButton:active {
+  transform: scale(0.987);
 }
 
 .pendingButtonContainer {
@@ -328,14 +346,28 @@
   gap: 8px;
   padding: 16px 20px;
   border-radius: 24px;
-  background: var(--alien-modal-button-background);
-  color: var(--alien-modal-button-text);
-  border: 1px solid var(--alien-modal-button-background);
+  background: var(--alien-modal-secondary-button-background-color);
+  color: var(--alien-modal-secondary-button-color);
+  border: 1px solid var(--alien-modal-secondary-button-border-color);
 
   font-size: 18px;
   font-weight: 500;
   line-height: 24px;
-  transition: transform 0.2s ease;
+  transition: 0.2s ease;
+}
+
+.errorButton:hover {
+  color: var(--alien-modal-secondary-button-hover-color);
+}
+
+.errorButton svg,
+.errorButton svg * {
+  transition: 0.2s ease;
+}
+.errorButton:hover svg,
+.errorButton:hover svg * {
+  color: var(--alien-modal-secondary-button-hover-color) !important;
+  fill: var(--alien-modal-secondary-button-hover-color) !important;
 }
 
 .errorButton:active {

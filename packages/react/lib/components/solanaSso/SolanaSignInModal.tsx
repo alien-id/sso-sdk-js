@@ -134,6 +134,10 @@ export const SolanaSignInModal = () => {
   }, [pollData, auth.solanaAddress]);
 
   const handleConfirmTransaction = async () => {
+    if (isSigningTransaction) {
+      return
+    }
+
     if (!pendingTransactionData || !publicKey || !signTransaction) {
       setErrorMessage('Wallet not connected');
       setErrorDescription('Please connect your Solana wallet first');
