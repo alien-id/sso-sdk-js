@@ -20,6 +20,7 @@ import {
   SYSVAR_INSTRUCTIONS_PUBKEY,
   Transaction,
   TransactionInstruction,
+  Connection,
 } from '@solana/web3.js';
 import {
   deriveProgramStatePda,
@@ -182,15 +183,17 @@ export class AlienSolanaSsoClient {
   }
 
 
-  buildCreateAttestationTransaction(params: {
+  async buildCreateAttestationTransaction(params: {
+    connection: Connection;
     payerPublicKey: PublicKey;
     sessionAddress: string;
     oracleSignature: Uint8Array;
     oraclePublicKey: PublicKey;
     timestamp: number;
     expiry: number;
-  }): Transaction {
+  }): Promise<Transaction> {
     const {
+      connection,
       payerPublicKey,
       sessionAddress,
       oracleSignature,
@@ -199,27 +202,21 @@ export class AlienSolanaSsoClient {
       expiry,
     } = params;
 
-    // Generate credential and schema addresses
-    const credentialAuthority = this.config.credentialAuthority || DEFAULT_CREDENTIAL_AUTHORITY;
-    const credentialName = this.config.credentialName || DEFAULT_CREDENTIAL_NAME;
-    const schemaName = this.config.schemaName || DEFAULT_SCHEMA_NAME;
-    const schemaVersion = this.config.schemaVersion ?? DEFAULT_SCHEMA_VERSION;
-
-    const [credentialAddress] = deriveCredentialPda(
-      new PublicKey(credentialAuthority),
-      credentialName,
-      this.sasProgramId
-    );
-
-    const [schemaAddress] = deriveSchemaPda(
-      credentialAddress,
-      schemaName,
-      schemaVersion,
-      this.sasProgramId
-    );
-
-    // Derive all PDAs
+    // Derive program state PDA and fetch it to get credential and schema addresses
     const [programStateAddress] = deriveProgramStatePda(this.credentialSignerProgramId);
+    const programStateAccount = await connection.getAccountInfo(programStateAddress);
+
+    if (!programStateAccount) {
+      throw new Error('ProgramState account not found');
+    }
+
+    // Deserialize ProgramState (skip 8-byte discriminator)
+    // struct ProgramState { oracle_pubkey: Pubkey, credential_pda: Pubkey, schema_pda: Pubkey, event_authority_pda: Pubkey, authority: Pubkey, session_registry: Pubkey }
+    const data = programStateAccount.data;
+    const credentialAddress = new PublicKey(data.slice(8 + 32, 8 + 64)); // Skip discriminator + oracle_pubkey
+    const schemaAddress = new PublicKey(data.slice(8 + 64, 8 + 96)); // Skip discriminator + oracle_pubkey + credential_pda
+
+    // Derive other PDAs
     const [credentialSignerAddress] = deriveCredentialSignerPda(this.credentialSignerProgramId);
     const [sessionRegistryAddress] = deriveSessionRegistryPda(this.sessionRegistryProgramId);
     const [sessionEntryAddress] = deriveSessionEntryPda(sessionAddress, this.sessionRegistryProgramId);
@@ -291,7 +288,7 @@ export class AlienSolanaSsoClient {
     timestamp: number,
   ): Buffer {
     const discriminator = Buffer.from([
-      0x9b, 0x8f, 0x4c, 0x6a, 0x3f, 0x59, 0x3e, 0x57,
+      49, 24, 67, 80, 12, 249, 96, 239,
     ]);
 
     const sessionAddressLength = Buffer.alloc(4);

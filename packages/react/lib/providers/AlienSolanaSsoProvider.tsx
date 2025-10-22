@@ -13,6 +13,16 @@ import {
 } from "@alien_org/sso-sdk-core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SolanaSignInModal } from "../components";
+import type { PublicKey, Transaction, VersionedTransaction, Connection } from "@solana/web3.js";
+
+export interface SolanaWalletAdapter {
+  publicKey: PublicKey | null;
+  signTransaction?: <T extends Transaction | VersionedTransaction>(transaction: T) => Promise<T>;
+}
+
+export interface SolanaConnectionAdapter {
+  connection: Connection;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,6 +41,8 @@ type SolanaAuthState = {
 type SolanaSsoContextValue = {
   client: AlienSolanaSsoClient;
   auth: SolanaAuthState;
+  wallet: SolanaWalletAdapter;
+  connectionAdapter: SolanaConnectionAdapter;
   generateDeeplink: (
     solanaAddress: string
   ) => Promise<import("@alien_org/sso-sdk-core").SolanaLinkResponse>;
@@ -46,9 +58,13 @@ const SolanaSsoContext = createContext<SolanaSsoContextValue | null>(null);
 
 export function AlienSolanaSsoProvider({
   config,
+  wallet,
+  connectionAdapter,
   children,
 }: {
   config: AlienSolanaSsoClientConfig;
+  wallet: SolanaWalletAdapter;
+  connectionAdapter: SolanaConnectionAdapter;
   children: ReactNode;
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -102,6 +118,8 @@ export function AlienSolanaSsoProvider({
     () => ({
       client,
       auth,
+      wallet,
+      connectionAdapter,
       generateDeeplink,
       pollAuth,
       getAttestation,
@@ -113,6 +131,8 @@ export function AlienSolanaSsoProvider({
     [
       client,
       auth,
+      wallet,
+      connectionAdapter,
       generateDeeplink,
       pollAuth,
       getAttestation,

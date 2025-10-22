@@ -13,15 +13,21 @@ import { ErrorIcon } from "../assets/ErrorIcon";
 import { RetryIcon } from "../assets/RetryIcon";
 import QRCodeStyling from "qr-code-styling";
 import { qrOptions } from "../consts/qrConfig";
-import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 
 const qrCode = new QRCodeStyling(qrOptions)
 
 export const SolanaSignInModal = () => {
-  const { isModalOpen: isOpen, closeModal: onClose, generateDeeplink, pollAuth, client, auth } = useSolanaAuth();
-  const { publicKey, signTransaction } = useWallet();
-  const { connection } = useConnection();
+  const {
+    isModalOpen: isOpen,
+    closeModal: onClose,
+    generateDeeplink,
+    pollAuth,
+    client,
+    auth,
+    wallet: { publicKey, signTransaction },
+    connectionAdapter: { connection }
+  } = useSolanaAuth();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
@@ -130,21 +136,21 @@ export const SolanaSignInModal = () => {
       setIsSigningTransaction(true);
 
       // Build transaction
-      const oracleSignature = Uint8Array.from(Buffer.from(pendingTransactionData.oracleSignature, 'base64'));
-      const oraclePublicKey = new PublicKey(pendingTransactionData.oraclePublicKey);
-      const payerPublicKey = publicKey;
+      const oracleSignature = Uint8Array.from(Buffer.from(pendingTransactionData.oracleSignature, 'hex'));
+      const oraclePublicKey = new PublicKey(Buffer.from(pendingTransactionData.oraclePublicKey, 'hex'));
+      const payerPublicKey = new PublicKey(pendingTransactionData.solanaAddress);
 
-      const transaction = client.buildCreateAttestationTransaction({
+      const transaction = await client.buildCreateAttestationTransaction({
+        connection,
         payerPublicKey,
         sessionAddress: pendingTransactionData.sessionAddress,
         oracleSignature,
         oraclePublicKey,
         timestamp: pendingTransactionData.timestamp,
-        expiry: pendingTransactionData.timestamp + 86400, // 24 hours expiry
+        expiry: 0,
       });
 
-      // Get recent blockhash
-      const { blockhash } = await connection.getLatestBlockhash();
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = payerPublicKey;
 
@@ -152,10 +158,17 @@ export const SolanaSignInModal = () => {
       const signedTransaction = await signTransaction(transaction);
 
       // Send transaction
-      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize(), {
+        skipPreflight: false,
+        maxRetries: 2,
+      });
 
       // Wait for confirmation
-      await connection.confirmTransaction(signature, 'confirmed');
+      await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight,
+      }, 'confirmed');
 
       setIsSuccess(true);
     } catch (error: any) {
@@ -201,14 +214,20 @@ export const SolanaSignInModal = () => {
     )
   }
 
-  if (pendingTransactionData && !isSigningTransaction) {
+  if (pendingTransactionData) {
     return (
       <ModalBase onClose={handleClose} isOpen={isOpen}>
         <div className={styles.successfulContainer}>
           <SuccessIcon />
           <div className={styles.successfulTitle}>Authorization Complete</div>
           <div className={styles.successfulSubtitle}>Click confirm to create your attestation on Solana</div>
-          <div className={styles.successfulButton} onClick={handleConfirmTransaction}>Confirm</div>
+          <div className={styles.successfulButton} onClick={handleConfirmTransaction}>
+            {isSigningTransaction ? (
+              <div className={styles.qrCodeSpin}><SpinIcon /></div>
+            ) :
+              'Confirm'
+            }
+          </div>
         </div>
       </ModalBase>
     )

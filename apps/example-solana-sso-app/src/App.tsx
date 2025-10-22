@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlienSolanaSsoProvider, useSolanaAuth } from '@alien_org/sso-sdk-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
-import { ConnectionProvider, WalletProvider, useWallet } from '@solana/wallet-adapter-react';
+import { ConnectionProvider, WalletProvider, useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletModalProvider, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { clusterApiUrl } from '@solana/web3.js';
@@ -33,13 +33,12 @@ function AppContent() {
       try {
         await getAttestation(publicKey.toBase58());
       } catch (error: any) {
-        console.error('Failed to get attestation:', error);
         setError(error?.message || 'Failed to check attestation');
       } finally {
         setIsLoading(false);
       }
     })();
-  }, [publicKey, getAttestation, logout]);
+  }, [publicKey?.toBase58(), getAttestation, logout]);
 
   if (publicKey && auth.sessionAddress) {
     return (
@@ -222,12 +221,25 @@ function App() {
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
-          <AlienSolanaSsoProvider config={ssoConfig}>
-            <AppContent />
-          </AlienSolanaSsoProvider>
+          <AppWithWallet />
         </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
+  );
+}
+
+function AppWithWallet() {
+  const wallet = useWallet();
+  const { connection } = useConnection();
+
+  return (
+    <AlienSolanaSsoProvider
+      config={ssoConfig}
+      wallet={wallet}
+      connectionAdapter={{ connection }}
+    >
+      <AppContent />
+    </AlienSolanaSsoProvider>
   );
 }
 
