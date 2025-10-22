@@ -14,8 +14,14 @@ import { RetryIcon } from "../assets/RetryIcon";
 import QRCodeStyling from "qr-code-styling";
 import { qrOptions } from "../consts/qrConfig";
 import { PublicKey } from '@solana/web3.js';
+import { SolanaIcon } from "../assets/SolanaIcon.tsx";
+import { SolanaColorIcon } from "../assets/SolanaColorIcon.tsx";
 
 const qrCode = new QRCodeStyling(qrOptions)
+
+const shortenAddress = (address: string, startChars = 11, endChars = 4): string => {
+  return `${address.slice(0, startChars)}...${address.slice(-endChars)}`;
+};
 
 export const SolanaSignInModal = () => {
   const {
@@ -154,12 +160,25 @@ export const SolanaSignInModal = () => {
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = payerPublicKey;
 
+      // @ts-ignore - simulateTransaction is fine for our use case
+      const simulation = await connection.simulateTransaction(transaction);
+
+      if (simulation.value.err) {
+        console.error('Pre-flight simulation failed:', simulation.value.err);
+        console.error('Simulation logs:', simulation.value.logs);
+        throw new Error(
+          `Transaction will fail: ${JSON.stringify(simulation.value.err)}`
+        );
+      }
+
       // Sign transaction with wallet-adapter
+      if (!signTransaction) {
+        throw new Error('Wallet does not support signing transactions');
+      }
       const signedTransaction = await signTransaction(transaction);
 
-      // Send transaction
       const signature = await connection.sendRawTransaction(signedTransaction.serialize(), {
-        skipPreflight: false,
+        skipPreflight: true, // Skip RPC preflight - we already simulated
         maxRetries: 2,
       });
 
@@ -207,39 +226,8 @@ export const SolanaSignInModal = () => {
         <div className={styles.successfulContainer}>
           <SuccessIcon />
           <div className={styles.successfulTitle}>Sign in successful!</div>
-          <div className={styles.successfulSubtitle}>You have signed in successfully.</div>
+          <div className={styles.successfulSubtitle}>You have successfully signed in <br /> and your Solana address is now linked</div>
           <div className={styles.successfulButton} onClick={handleClose}>Done</div>
-        </div>
-      </ModalBase>
-    )
-  }
-
-  if (pendingTransactionData) {
-    return (
-      <ModalBase onClose={handleClose} isOpen={isOpen}>
-        <div className={styles.successfulContainer}>
-          <SuccessIcon />
-          <div className={styles.successfulTitle}>Authorization Complete</div>
-          <div className={styles.successfulSubtitle}>Click confirm to create your attestation on Solana</div>
-          <div className={styles.successfulButton} onClick={handleConfirmTransaction}>
-            {isSigningTransaction ? (
-              <div className={styles.qrCodeSpin}><SpinIcon /></div>
-            ) :
-              'Confirm'
-            }
-          </div>
-        </div>
-      </ModalBase>
-    )
-  }
-
-  if (isSigningTransaction) {
-    return (
-      <ModalBase onClose={handleClose} isOpen={isOpen} showClose={false}>
-        <div className={styles.successfulContainer}>
-          <div className={styles.qrCodeSpin}><SpinIcon /></div>
-          <div className={styles.successfulTitle}>Sign Transaction</div>
-          <div className={styles.successfulSubtitle}>Please approve the transaction in your wallet</div>
         </div>
       </ModalBase>
     )
@@ -260,12 +248,45 @@ export const SolanaSignInModal = () => {
     )
   }
 
+  if (pendingTransactionData) {
+    return (
+      <ModalBase onClose={handleClose} isOpen={isOpen}>
+        <div className={styles.pendingContainer}>
+          <SolanaIcon />
+          <div className={styles.pendingTitle}>Link Your Solana Address</div>
+          <div className={styles.pendingSubtitle}>
+            Finish signing and link your Solana <br /> address to your Alien ID.{' '}
+            <span className={styles.pendingWarning}>It cannot be changed</span>
+          </div>
+          <div className={styles.pendingWalletContainer}>
+            <SolanaColorIcon />
+            <div>
+              <div className={styles.pendingWalletAddress}>{shortenAddress(pendingTransactionData.solanaAddress)}</div>
+              <div className={styles.pendingWalletSubtitle}>
+                Connected Solana address
+              </div>
+            </div>
+          </div>
+          <div className={styles.pendingButton} onClick={handleConfirmTransaction}>
+            <div className={styles.pendingButtonContainer}>
+              {isSigningTransaction ? (
+                <div className={styles.qrCodeSpin}><SpinIcon /></div>
+              ) :
+                'Send transaction'
+              }
+            </div>
+          </div>
+        </div>
+      </ModalBase>
+    )
+  }
+
   return (
     <ModalBase onClose={handleClose} isOpen={isOpen}>
       <div className={styles.container}>
         <div className={styles.title}>Sign in with Alien App</div>
 
-        <div className={styles.subtitle}>Scan this QR code with an Alien App!</div>
+        <div className={styles.subtitle}>Scan this QR code with Alien App<br />and link your Solana address to your Alien ID</div>
         <div className={styles.qrCodeContainer}>
           {isLoadingDeeplink ? (
             <div className={styles.qrCodeSpinContainer}>
@@ -276,7 +297,7 @@ export const SolanaSignInModal = () => {
         </div>
 
         <div className={styles.description}>
-          Open an Alien App and tap <br /> the scan button
+          Open Alien App and tap <br /> the scan button
           <div className={styles.descriptionIcon}><QrIcon /></div>
         </div>
 

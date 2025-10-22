@@ -168,7 +168,7 @@ export const SignInModal = () => {
         </div>
 
         <div className={styles.description}>
-          Open an Alien App and tap <br /> the scan button
+          Open Alien App and tap <br /> the scan button
           <div className={styles.descriptionIcon}><QrIcon /></div>
         </div>
 
