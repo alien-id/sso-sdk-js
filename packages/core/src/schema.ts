@@ -62,6 +62,7 @@ export type VerifyTokenRequest = z.infer<typeof VerifyTokenRequestSchema>;
 
 export const VerifyTokenResponseSchema = z.object({
   is_valid: z.boolean(),
+  access_token: z.optional(z.string()),
 });
 
 export type VerifyTokenResponse = z.infer<typeof VerifyTokenResponseSchema>;

@@ -229,6 +229,14 @@ export class AlienSsoClient {
     const verifyTokenResponse: VerifyTokenResponse =
       VerifyTokenResponseSchema.parse(json);
 
+    // If server returned a new token, update localStorage
+    if (verifyTokenResponse.access_token) {
+      localStorage.setItem(
+        STORAGE_KEY + 'access_token',
+        verifyTokenResponse.access_token,
+      );
+    }
+
     return verifyTokenResponse.is_valid;
   }
 
