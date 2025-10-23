@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import styles from './SignInModal.module.css';
 import { useAuth } from "../../providers";
 import { ModalBase } from '../base/ModalBase';
@@ -17,9 +17,8 @@ import { qrOptions } from "../consts/qrConfig";
 const qrCode = new QRCodeStyling(qrOptions)
 
 export const SignInModal = () => {
-  const { isModalOpen: isOpen, closeModal: onClose, generateDeeplink, pollAuth, exchangeToken, client } = useAuth();
+  const { isModalOpen: isOpen, closeModal: onClose, generateDeeplink, pollAuth, exchangeToken, client, queryClient } = useAuth();
   const isMobile = useIsMobile();
-  const queryClient = useQueryClient();
 
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -65,7 +64,7 @@ export const SignInModal = () => {
     enabled: isOpen && !!pollingCode && !isSuccess && !errorMessage,
     refetchInterval: client.pollingInterval,
     retry: false,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {

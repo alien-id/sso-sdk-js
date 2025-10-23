@@ -11,7 +11,7 @@ import {
   AlienSolanaSsoClient,
   type AlienSolanaSsoClientConfig,
 } from "@alien_org/sso-sdk-core";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { SolanaSignInModal } from "../components";
 import type { PublicKey, Transaction, VersionedTransaction, Connection } from "@solana/web3.js";
 
@@ -24,15 +24,6 @@ export interface SolanaConnectionAdapter {
   connection: Connection;
 }
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-
 type SolanaAuthState = {
   sessionAddress?: string | null;
   solanaAddress?: string | null;
@@ -43,6 +34,7 @@ type SolanaSsoContextValue = {
   auth: SolanaAuthState;
   wallet: SolanaWalletAdapter;
   connectionAdapter: SolanaConnectionAdapter;
+  queryClient: QueryClient;
   generateDeeplink: (
     solanaAddress: string
   ) => Promise<import("@alien_org/sso-sdk-core").SolanaLinkResponse>;
@@ -67,11 +59,13 @@ export function AlienSolanaSsoProvider({
   wallet,
   connectionAdapter,
   children,
+  queryClient,
 }: {
   config: AlienSolanaSsoClientConfig;
   wallet: SolanaWalletAdapter;
   connectionAdapter: SolanaConnectionAdapter;
   children: ReactNode;
+  queryClient: QueryClient;
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -130,6 +124,7 @@ export function AlienSolanaSsoProvider({
       auth,
       wallet,
       connectionAdapter,
+      queryClient,
       generateDeeplink,
       pollAuth,
       getAttestation,
@@ -143,6 +138,7 @@ export function AlienSolanaSsoProvider({
       auth,
       wallet,
       connectionAdapter,
+      queryClient,
       generateDeeplink,
       pollAuth,
       getAttestation,
@@ -162,14 +158,12 @@ export function AlienSolanaSsoProvider({
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <SolanaSsoContext.Provider value={value}>
-        <SolanaSsoInternalContext.Provider value={internalValue}>
-          <SolanaSignInModal />
-        </SolanaSsoInternalContext.Provider>
-        {children}
-      </SolanaSsoContext.Provider>
-    </QueryClientProvider>
+    <SolanaSsoContext.Provider value={value}>
+      <SolanaSsoInternalContext.Provider value={internalValue}>
+        <SolanaSignInModal />
+      </SolanaSsoInternalContext.Provider>
+      {children}
+    </SolanaSsoContext.Provider>
   );
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import styles from './SolanaSignInModal.module.css';
 import { useSolanaAuth } from "../../providers";
 import { useSolanaAuthInternal } from "../../providers";
@@ -33,11 +33,11 @@ export const SolanaSignInModal = () => {
     client,
     auth,
     wallet: { publicKey, signTransaction },
-    connectionAdapter: { connection }
+    connectionAdapter: { connection },
+    queryClient
   } = useSolanaAuth();
   const { setSessionAddress } = useSolanaAuthInternal()
   const isMobile = useIsMobile();
-  const queryClient = useQueryClient();
 
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -88,7 +88,7 @@ export const SolanaSignInModal = () => {
     enabled: isOpen && !!pollingCode && !isSuccess && !errorMessage && !isSigningTransaction && !pendingTransactionData,
     refetchInterval: client.pollingInterval,
     retry: false,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {

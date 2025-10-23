@@ -19,7 +19,7 @@ import {
   VerifyTokenResponseSchema,
 } from './schema';
 import { z } from 'zod/v4-mini';
-import CryptoJS from 'crypto-js';
+import { sha256 } from 'js-sha256';
 
 // Browser-compatible base64url encoding/decoding
 function base64urlEncode(input: string): string {
@@ -94,13 +94,13 @@ export class AlienSsoClient {
     return base64urlEncode(str);
   }
 
-  private async generateCodeChallenge(codeVerifier: string) {
-    return CryptoJS.SHA256(codeVerifier).toString(CryptoJS.enc.Hex);
+  private generateCodeChallenge(codeVerifier: string): string {
+    return sha256(codeVerifier);
   }
 
   async generateDeeplink(): Promise<AuthorizeResponse> {
     const codeVerifier = this.generateCodeVerifier();
-    const codeChallenge = await this.generateCodeChallenge(codeVerifier);
+    const codeChallenge = this.generateCodeChallenge(codeVerifier);
 
     sessionStorage.setItem(STORAGE_KEY + 'code_verifier', codeVerifier);
 

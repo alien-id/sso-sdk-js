@@ -5,17 +5,23 @@
     "type": "git",
     "url": "git+https://github.com/alien-id/sso-sdk-js.git"
   },
-  "exports": {
-    ".": "./dist/index.js",
-    "./*": "./dist/*.js"
-  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.esm.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs"
+    }
+  },
   "files": [
     "dist",
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "vite build",
+    "dev": "vite build --watch",
     "test": "jest",
     "test:unit": "jest tests/unit",
     "test:integration": "jest tests/integration",
@@ -24,7 +30,6 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "@types/crypto-js": "^4.2.2",
     "@types/express": "^5.0.3",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.3.0",
@@ -40,11 +45,12 @@
     "nock": "^14.0.10",
     "prettier": "^3.6.2",
     "ts-jest": "^29.4.1",
-    "turbo": "^2.5.6"
+    "turbo": "^2.5.6",
+    "vite": "^7.1.12",
+    "vite-plugin-dts": "^4.5.4"
   },
   "dependencies": {
-    "@solana/web3.js": "^1.95.0",
-    "crypto-js": "^4.2.0",
+    "js-sha256": "^0.11.1",
     "zod": "^4.1.5"
   },
   "peerDependencies": {

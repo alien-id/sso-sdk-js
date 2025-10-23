@@ -27,7 +27,10 @@ export default defineConfig({
         '@alien_org/sso-sdk-core',
         'clsx',
         'qr-code-styling',
-        'framer-motion'
+        'framer-motion',
+        '@tanstack/react-query',
+        '@solana/wallet-adapter-react',
+        '@solana/web3.js',
       ],
       input: Object.fromEntries(
         // https://rollupjs.org/configuration-options/#input

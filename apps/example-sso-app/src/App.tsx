@@ -1,7 +1,10 @@
 import React, { useEffect } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AlienSsoProvider, useAuth } from '@alien_org/sso-sdk-react';
 import { SignInButton } from '@alien_org/sso-sdk-react';
 import './App.css';
+
+const queryClient = new QueryClient();
 
 const ssoConfig = {
   ssoBaseUrl: import.meta.env.VITE_ALIEN_SSO_BASE_URL,
@@ -185,10 +188,12 @@ function AppContent() {
 
 function App() {
   return (
-    <AlienSsoProvider config={ssoConfig}>
-      <AuthVerifier />
-      <AppContent />
-    </AlienSsoProvider>
+    <QueryClientProvider client={queryClient}>
+      <AlienSsoProvider config={ssoConfig} queryClient={queryClient}>
+        <AuthVerifier />
+        <AppContent />
+      </AlienSsoProvider>
+    </QueryClientProvider>
   );
 }
 
