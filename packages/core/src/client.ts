@@ -200,7 +200,7 @@ export class AlienSsoClient {
     const access_token = this.getAccessToken();
 
     if (!access_token) {
-      throw new Error('Access token is invalid.');
+      return false;
     }
 
     const verifyTokenPayload: VerifyTokenRequest = {
@@ -222,11 +222,10 @@ export class AlienSsoClient {
     );
 
     if (!response.ok) {
-      throw new Error(`VerifyToken failed: ${response.statusText}`);
+      return false;
     }
 
     const json = await response.json();
-
     const verifyTokenResponse: VerifyTokenResponse =
       VerifyTokenResponseSchema.parse(json);
 

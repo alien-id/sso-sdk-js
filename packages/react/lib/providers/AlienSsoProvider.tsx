@@ -97,24 +97,15 @@ export function AlienSsoProvider({
 
   const verifyAuth = useCallback(
     async () => {
-      try {
-        const valid = await client.verifyAuth();
-        const token = client.getAccessToken();
-        const tokenInfo = client.getAuthData();
-        setAuth({
-          isAuthenticated: valid,
-          token,
-          tokenInfo,
-        });
-        return valid;
-      } catch {
-        setAuth({
-          isAuthenticated: false,
-          token: null,
-          tokenInfo: null,
-        });
-        return false;
-      }
+      const valid = await client.verifyAuth();
+      const token = client.getAccessToken();
+      const tokenInfo = client.getAuthData();
+      setAuth({
+        isAuthenticated: valid,
+        token,
+        tokenInfo,
+      });
+      return valid;
     },
     [client],
   );

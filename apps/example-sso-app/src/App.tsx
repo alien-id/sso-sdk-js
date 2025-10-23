@@ -26,7 +26,7 @@ function AuthVerifier() {
           logout();
         }
       } catch (error) {
-        logout();
+        console.error('Auth verification network error:', error);
       }
     })();
   }, [verifyAuth, logout, auth.token]);
