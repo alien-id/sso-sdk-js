@@ -11,7 +11,7 @@ import {
   AlienSolanaSsoClient,
   type AlienSolanaSsoClientConfig,
 } from "@alien_org/solana-sso-sdk-core";
-import type { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SolanaSignInModal } from "../components";
 import type { PublicKey, Transaction, VersionedTransaction, Connection } from "@solana/web3.js";
 
@@ -59,18 +59,26 @@ type SolanaSsoInternalContextValue = SolanaSsoContextValue & {
 const SolanaSsoContext = createContext<SolanaSsoContextValue | null>(null);
 const SolanaSsoInternalContext = createContext<SolanaSsoInternalContextValue | null>(null);
 
+// Create a single QueryClient instance for the Solana SSO provider
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
 export function AlienSolanaSsoProvider({
   config,
   wallet,
   connectionAdapter,
   children,
-  queryClient,
 }: {
   config: AlienSolanaSsoClientConfig;
   wallet: SolanaWalletAdapter;
   connectionAdapter: SolanaConnectionAdapter;
   children: ReactNode;
-  queryClient: QueryClient;
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -221,12 +229,14 @@ export function AlienSolanaSsoProvider({
   );
 
   return (
-    <SolanaSsoContext.Provider value={value}>
-      <SolanaSsoInternalContext.Provider value={internalValue}>
-        <SolanaSignInModal />
-      </SolanaSsoInternalContext.Provider>
-      {children}
-    </SolanaSsoContext.Provider>
+    <QueryClientProvider client={queryClient}>
+      <SolanaSsoContext.Provider value={value}>
+        <SolanaSsoInternalContext.Provider value={internalValue}>
+          <SolanaSignInModal />
+        </SolanaSsoInternalContext.Provider>
+        {children}
+      </SolanaSsoContext.Provider>
+    </QueryClientProvider>
   );
 }
 

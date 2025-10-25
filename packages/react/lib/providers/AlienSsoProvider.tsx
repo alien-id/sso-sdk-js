@@ -11,7 +11,7 @@ import {
   AlienSsoClient,
   type AlienSsoClientConfig,
 } from "@alien_org/sso-sdk-core";
-import type { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SignInModal } from "../components";
 
 type AuthState = {
@@ -38,6 +38,15 @@ type SsoContextValue = {
 
 const SsoContext = createContext<SsoContextValue | null>(null);
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
 function getInitialAuth(client: AlienSsoClient): AuthState {
   try {
     const token = client.getAccessToken();
@@ -59,11 +68,9 @@ function getInitialAuth(client: AlienSsoClient): AuthState {
 export function AlienSsoProvider({
   config,
   children,
-  queryClient,
 }: {
   config: AlienSsoClientConfig;
   children: ReactNode;
-  queryClient: QueryClient;
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const client = useMemo(() => new AlienSsoClient(config), [config]);
@@ -140,7 +147,6 @@ export function AlienSsoProvider({
     [
       client,
       auth,
-      queryClient,
       generateDeeplink,
       pollAuth,
       exchangeToken,
@@ -153,10 +159,12 @@ export function AlienSsoProvider({
   );
 
   return (
-    <SsoContext.Provider value={value}>
-      {children}
-      <SignInModal />
-    </SsoContext.Provider>
+    <QueryClientProvider client={queryClient}>
+      <SsoContext.Provider value={value}>
+        {children}
+        <SignInModal />
+      </SsoContext.Provider>
+    </QueryClientProvider>
   );
 }
 

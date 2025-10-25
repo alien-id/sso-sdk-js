@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AlienSolanaSsoProvider, useSolanaAuth } from '@alien_org/solana-sso-sdk-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { ConnectionProvider, WalletProvider, useWallet, useConnection } from '@solana/wallet-adapter-react';
@@ -9,8 +8,6 @@ import { clusterApiUrl } from '@solana/web3.js';
 import './App.css';
 import '@solana/wallet-adapter-react-ui/styles.css';
 import { SolanaSignInButton } from "@alien_org/solana-sso-sdk-react";
-
-const queryClient = new QueryClient();
 
 const ssoConfig = {
   ssoBaseUrl: import.meta.env.VITE_ALIEN_SSO_BASE_URL,
@@ -214,16 +211,13 @@ function AppWithWallet() {
   const { connection } = useConnection();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AlienSolanaSsoProvider
-        config={ssoConfig}
-        wallet={wallet}
-        connectionAdapter={{ connection }}
-        queryClient={queryClient}
-      >
-        <AppContent />
-      </AlienSolanaSsoProvider>
-    </QueryClientProvider>
+    <AlienSolanaSsoProvider
+      config={ssoConfig}
+      wallet={wallet}
+      connectionAdapter={{ connection }}
+    >
+      <AppContent />
+    </AlienSolanaSsoProvider>
   );
 }
 
