@@ -29,19 +29,27 @@ export const SignInModal = () => {
   const qrInstanceRef = useRef<QRCodeStyling>(qrCode);
   const [qrElement, setQrElement] = useState<HTMLDivElement | null>(null);
 
+  const [isLoadingQr, setIsLoadingQr] = useState<boolean>(true);
+
   // Initialize auth and get deeplink
-  const { isLoading: isLoadingDeeplink } = useQuery({
+  useQuery({
     queryKey: ['auth-deeplink'],
     queryFn: async () => {
       try {
+        setIsLoadingQr(true);
         const response = await generateDeeplink();
         setDeeplink(response.deep_link);
         setPollingCode(response.polling_code);
-        return response;
+
+        qrInstanceRef.current.update({
+          data: response.deep_link,
+        });
       } catch (error) {
         setErrorMessage('Failed to login');
         setErrorDescription('Login could not be completed');
         throw error;
+      } finally {
+        setIsLoadingQr(false);
       }
     },
     enabled: isOpen && !deeplink,
@@ -72,14 +80,6 @@ export const SignInModal = () => {
       qrInstanceRef.current.append(qrElement);
     }
   }, [qrElement]);
-
-  useEffect(() => {
-    if (deeplink) {
-      qrInstanceRef.current.update({
-        data: deeplink,
-      });
-    }
-  }, [deeplink]);
 
   // Handle poll responses
   useEffect(() => {
@@ -158,12 +158,12 @@ export const SignInModal = () => {
 
         <div className={styles.subtitle}>Scan this QR code with an Alien App!</div>
         <div className={styles.qrCodeContainer}>
-          {isLoadingDeeplink ? (
+          {isLoadingQr ? (
             <div className={styles.qrCodeSpinContainer}>
               <div className={styles.qrCodeSpin}><SpinIcon /></div>
             </div>
           ) : null}
-          <div className={clsx(styles.qrCode, isLoadingDeeplink && styles.qrCodeLoading)} ref={setQrElement} />
+          <div className={clsx(styles.qrCode, isLoadingQr && styles.qrCodeLoading)} ref={setQrElement} />
         </div>
 
         <div className={styles.description}>

@@ -50,22 +50,31 @@ export const SolanaSignInModal = () => {
   const qrInstanceRef = useRef<QRCodeStyling>(qrCode);
   const [qrElement, setQrElement] = useState<HTMLDivElement | null>(null);
 
+  const [isLoadingQr, setIsLoadingQr] = useState(false);
+
   // Initialize auth and get deeplink
-  const { isLoading: isLoadingDeeplink } = useQuery({
+  useQuery({
     queryKey: ['auth-deeplink', auth.solanaAddress],
     queryFn: async () => {
       if (!auth.solanaAddress) {
         throw new Error('Solana address is required');
       }
       try {
+        setIsLoadingQr(true);
         const response = await generateDeeplink(auth.solanaAddress);
         setDeeplink(response.deep_link);
         setPollingCode(response.polling_code);
+
+        qrInstanceRef.current.update({
+          data: response.deep_link,
+        });
         return response;
       } catch (e) {
         setErrorMessage('Failed to login');
         setErrorDescription('Login could not be completed');
         throw e;
+      } finally {
+        setIsLoadingQr(false);
       }
     },
     enabled: isOpen && !deeplink && !!auth.solanaAddress,
@@ -96,14 +105,6 @@ export const SolanaSignInModal = () => {
       qrInstanceRef.current.append(qrElement);
     }
   }, [qrElement]);
-
-  useEffect(() => {
-    if (deeplink) {
-      qrInstanceRef.current.update({
-        data: deeplink,
-      });
-    }
-  }, [deeplink]);
 
   // Handle poll responses
   useEffect(() => {
@@ -299,12 +300,12 @@ export const SolanaSignInModal = () => {
 
         <div className={styles.subtitle}>Scan this QR code with Alien App<br />and link your Solana address to your Alien ID</div>
         <div className={styles.qrCodeContainer}>
-          {isLoadingDeeplink ? (
+          {isLoadingQr ? (
             <div className={styles.qrCodeSpinContainer}>
               <div className={styles.qrCodeSpin}><SpinIcon /></div>
             </div>
           ) : null}
-          <div className={clsx(styles.qrCode, isLoadingDeeplink && styles.qrCodeLoading)} ref={setQrElement} />
+          <div className={clsx(styles.qrCode, isLoadingQr && styles.qrCodeLoading)} ref={setQrElement} />
         </div>
 
         <div className={styles.description}>
