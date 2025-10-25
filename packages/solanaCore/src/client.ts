@@ -11,7 +11,7 @@ import {
   SolanaAttestationRequestSchema,
   SolanaAttestationResponse,
   SolanaAttestationResponseSchema,
-} from './solanaSchema';
+} from './schema';
 import { z } from 'zod/v4-mini';
 import {
   Ed25519Program,
@@ -31,7 +31,7 @@ import {
   deriveAttestationPda,
   deriveCredentialPda,
   deriveSchemaPda,
-} from './solanaPda';
+} from './pda';
 
 const SSO_BASE_URL = 'https://sso.alien.com';
 const POLLING_INTERVAL = 5000;

@@ -195,6 +195,9 @@ export const SolanaSignInModal = () => {
         lastValidBlockHeight,
       }, 'confirmed');
 
+      // Save to cache immediately after successful transaction
+      localStorage.setItem('alien-sso_solana_authed_address', pendingTransactionData.solanaAddress);
+
       setIsSuccess(true);
 
       setSessionAddress(pendingTransactionData.sessionAddress);

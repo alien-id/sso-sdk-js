@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AlienSolanaSsoProvider, useSolanaAuth } from '@alien_org/sso-sdk-react';
+import { AlienSolanaSsoProvider, useSolanaAuth } from '@alien_org/solana-sso-sdk-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { ConnectionProvider, WalletProvider, useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletModalProvider, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
@@ -8,7 +8,7 @@ import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { clusterApiUrl } from '@solana/web3.js';
 import './App.css';
 import '@solana/wallet-adapter-react-ui/styles.css';
-import { SolanaSignInButton } from "@alien_org/sso-sdk-react";
+import { SolanaSignInButton } from "@alien_org/solana-sso-sdk-react";
 
 const queryClient = new QueryClient();
 
@@ -19,29 +19,17 @@ const ssoConfig = {
 
 function AppContent() {
   const { publicKey, sendTransaction } = useWallet();
-  const { auth, getAttestation, logout } = useSolanaAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { auth, verifyAttestation, logout } = useSolanaAuth();
 
   useEffect(() => {
     if (!publicKey) {
       logout();
-      setIsLoading(false);
       return;
     }
 
-    (async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        await getAttestation(publicKey.toBase58());
-      } catch (error: any) {
-        setError(error?.message || 'Failed to check attestation');
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  }, [publicKey?.toBase58(), getAttestation, logout]);
+    // Automatically verify attestation on load (only for previously authenticated addresses)
+    verifyAttestation(publicKey.toBase58()).catch(console.error);
+  }, [publicKey, verifyAttestation, logout]);
 
   if (publicKey && auth.sessionAddress) {
     return (
@@ -159,7 +147,7 @@ function AppContent() {
               background: publicKey ? 'rgba(20,241,149,0.2)' : 'linear-gradient(135deg, #14F195 0%, #9945FF 100%)',
             }} />
 
-            {publicKey && !isLoading && !auth.sessionAddress && (
+            {publicKey && !auth.isLoading && !auth.sessionAddress && (
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -176,23 +164,13 @@ function AppContent() {
               </div>
             )}
 
-            {isLoading && (
+            {auth.isLoading && (
               <p style={{
                 fontSize: '14px',
                 opacity: 0.7,
                 marginTop: '16px'
               }}>
                 Checking attestation...
-              </p>
-            )}
-
-            {error && (
-              <p style={{
-                color: '#ff6b6b',
-                fontSize: '14px',
-                marginTop: '8px'
-              }}>
-                {error}
               </p>
             )}
           </div>
@@ -206,7 +184,7 @@ function AppContent() {
           }}>
             {!publicKey
               ? 'Connect your Solana wallet to continue'
-              : isLoading
+              : auth.isLoading
               ? 'Checking your attestation...'
               : 'Sign in with Alien to link your wallet'}
           </div>

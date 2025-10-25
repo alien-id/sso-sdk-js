@@ -1,0 +1,37 @@
+:root {
+    --alien-text-primary-color: #FFFFFF;
+    --alien-text-secondary-color: #8D8D8D;
+
+    --alien-brand-button-background-color: #2979FF;
+    --alien-brand-button-color: #FFFFFF;
+    --alien-brand-button-border-color: rgba(255, 255, 255, 0.16);
+    --alien-brand-button-hover-background-color: #0A66FF;
+
+    --alien-modal-button-color: #FFFFFF;
+    --alien-modal-button-border-color: rgba(141, 141, 141, 0.30);
+    --alien-modal-button-hover-color: rgba(255, 255, 255, 0.40);
+
+    --alien-modal-secondary-button-background-color: rgba(41, 121, 255, 0.16);
+    --alien-modal-secondary-button-color: #2979FF;
+    --alien-modal-secondary-button-border-color: rgba(41, 121, 255, 0.16);
+    --alien-modal-secondary-button-hover-color: rgba(41, 121, 255, 0.40);
+
+    --alien-modal-background: #1A1A1A;
+    --alien-modal-foreground: rgba(141, 141, 141, 0.16);
+}
+
+@font-face {
+    font-family: 'AlienBooton';
+    src: url('./fonts/Booton-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'AlienBooton';
+    src: url('./fonts/Booton-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}

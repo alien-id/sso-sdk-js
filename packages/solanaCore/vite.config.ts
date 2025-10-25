@@ -23,11 +23,12 @@ export default defineConfig({
     },
     target: 'es2015',
     rollupOptions: {
-      external: ['zod', 'zod/v4-mini', 'js-sha256'],
+      external: ['zod', 'zod/v4-mini', '@solana/web3.js', 'js-sha256'],
       output: {
         globals: {
           'zod': 'Zod',
           'zod/v4-mini': 'Zod',
+          '@solana/web3.js': 'solanaWeb3',
           'js-sha256': 'jsSha256',
         },
       },

@@ -24,11 +24,13 @@ export default defineConfig({
         'react',
         'react-dom',
         'react/jsx-runtime',
-        '@alien_org/sso-sdk-core',
+        '@alien_org/solana-sso-sdk-core',
         'clsx',
         'qr-code-styling',
         'framer-motion',
         '@tanstack/react-query',
+        '@solana/wallet-adapter-react',
+        '@solana/web3.js',
       ],
       input: Object.fromEntries(
         // https://rollupjs.org/configuration-options/#input
