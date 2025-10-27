@@ -25,12 +25,10 @@ export interface SolanaConnectionAdapter {
 }
 
 const STORAGE_KEY = 'alien-sso_';
-const AUTHED_ADDRESS_KEY = STORAGE_KEY + 'solana_authed_address';
+export const AUTHED_ADDRESS_KEY = STORAGE_KEY + 'solana_authed_address';
 
 type SolanaAuthState = {
   sessionAddress?: string | null;
-  solanaAddress?: string | null;
-  isLoading?: boolean;
 };
 
 type SolanaSsoContextValue = {
@@ -46,7 +44,7 @@ type SolanaSsoContextValue = {
   getAttestation: (solanaAddress: string) => Promise<string | null>;
   verifyAttestation: (solanaAddress: string) => Promise<string | null>;
   logout: () => void;
-  openModal: (solanaAddress: string) => void;
+  openModal: () => void;
   closeModal: () => void;
   isModalOpen: boolean;
 };
@@ -88,7 +86,6 @@ export function AlienSolanaSsoProvider({
   );
   const [auth, setAuth] = useState<SolanaAuthState>({
     sessionAddress: null,
-    solanaAddress: null,
   });
 
   const generateDeeplink = useCallback(
@@ -107,24 +104,17 @@ export function AlienSolanaSsoProvider({
 
   const getAttestation = useCallback(
     async (solanaAddress: string) => {
-      setAuth((prev) => ({ ...prev, isLoading: true }));
+      const sessionAddress = await client.getAttestation(solanaAddress);
 
-      try {
-        const sessionAddress = await client.getAttestation(solanaAddress);
-
-        if (sessionAddress) {
-          // Save to cache on success
-          localStorage.setItem(AUTHED_ADDRESS_KEY, solanaAddress);
-          setAuth({ sessionAddress, solanaAddress, isLoading: false });
-        } else {
-          setAuth({ sessionAddress: null, solanaAddress, isLoading: false });
-        }
-
-        return sessionAddress;
-      } catch (error) {
-        setAuth((prev) => ({ ...prev, isLoading: false }));
-        throw error;
+      if (sessionAddress) {
+        // Save to cache on success
+        localStorage.setItem(AUTHED_ADDRESS_KEY, solanaAddress);
+        setAuth({ sessionAddress });
+      } else {
+        setAuth({ sessionAddress: null });
       }
+
+      return sessionAddress;
     },
     [client]
   );
@@ -135,12 +125,10 @@ export function AlienSolanaSsoProvider({
 
       // Only verify if this address was previously authenticated
       if (cachedAddress !== solanaAddress) {
-        setAuth((prev) => ({ ...prev, isLoading: false }));
         return null;
       }
 
       try {
-        // Reuse getAttestation
         return await getAttestation(solanaAddress);
       } catch (error) {
         // Clear cache if verification fails (might be invalid)
@@ -157,30 +145,14 @@ export function AlienSolanaSsoProvider({
 
   const logout = useCallback(() => {
     localStorage.removeItem(AUTHED_ADDRESS_KEY);
-    setAuth({ sessionAddress: null, solanaAddress: null, isLoading: false });
+    setAuth({ sessionAddress: null });
   }, []);
 
   const openModal = useCallback(
-    async (solanaAddress: string) => {
-      setAuth((prev) => ({ ...prev, solanaAddress }));
-
-      try {
-        // Check existing attestation first
-        const sessionAddress = await getAttestation(solanaAddress);
-
-        if (sessionAddress) {
-          // Already authenticated - don't show modal
-          // getAttestation already saved to localStorage
-          return;
-        }
-      } catch (error) {
-        console.error('Failed to check existing attestation:', error);
-      }
-
-      // No attestation - show modal for new authentication
+    () => {
       setIsModalOpen(true);
     },
-    [getAttestation]
+    []
   );
 
   const closeModal = useCallback(() => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { AlienSolanaSsoProvider, useSolanaAuth } from '@alien_org/solana-sso-sdk-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { ConnectionProvider, WalletProvider, useWallet, useConnection } from '@solana/wallet-adapter-react';
@@ -15,16 +15,12 @@ const ssoConfig = {
 };
 
 function AppContent() {
-  const { publicKey, sendTransaction } = useWallet();
+  const { publicKey } = useWallet();
   const { auth, verifyAttestation, logout } = useSolanaAuth();
 
   useEffect(() => {
-    if (!publicKey) {
-      logout();
-      return;
-    }
+    if (!publicKey) return;
 
-    // Automatically verify attestation on load (only for previously authenticated addresses)
     verifyAttestation(publicKey.toBase58()).catch(console.error);
   }, [publicKey, verifyAttestation, logout]);
 
@@ -40,7 +36,29 @@ function AppContent() {
             boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
             position: 'relative'
           }}>
-            <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 10 }}>
+            <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 10, display: 'flex', gap: '12px' }}>
+              <button
+                onClick={logout}
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  transition: 'all 0.2s',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.3)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                }}
+              >
+                Logout
+              </button>
               <WalletMultiButton />
             </div>
 
@@ -144,7 +162,7 @@ function AppContent() {
               background: publicKey ? 'rgba(20,241,149,0.2)' : 'linear-gradient(135deg, #14F195 0%, #9945FF 100%)',
             }} />
 
-            {publicKey && !auth.isLoading && !auth.sessionAddress && (
+            {publicKey && !auth.sessionAddress && (
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -153,22 +171,12 @@ function AppContent() {
                 alignItems: 'center',
                 width: '100%'
               }}>
-                <SolanaSignInButton solanaAddress={publicKey.toBase58()} />
+                <SolanaSignInButton />
                 or short variant:
                 <div>
-                  <SolanaSignInButton variant="short" solanaAddress={publicKey.toBase58()} />
+                  <SolanaSignInButton variant="short" />
                 </div>
               </div>
-            )}
-
-            {auth.isLoading && (
-              <p style={{
-                fontSize: '14px',
-                opacity: 0.7,
-                marginTop: '16px'
-              }}>
-                Checking attestation...
-              </p>
             )}
           </div>
 
@@ -181,8 +189,6 @@ function AppContent() {
           }}>
             {!publicKey
               ? 'Connect your Solana wallet to continue'
-              : auth.isLoading
-              ? 'Checking your attestation...'
               : 'Sign in with Alien to link your wallet'}
           </div>
         </div>

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import styles from './SolanaSignInModal.module.css';
-import { useSolanaAuth } from "../../providers";
+import { AUTHED_ADDRESS_KEY, useSolanaAuth } from "../../providers";
 import { useSolanaAuthInternal } from "../../providers";
 import { ModalBase } from '../base/ModalBase';
 import { QrIcon } from "../assets/QrIcon";
@@ -29,12 +29,12 @@ export const SolanaSignInModal = () => {
     isModalOpen: isOpen,
     closeModal: onClose,
     generateDeeplink,
+    getAttestation,
     pollAuth,
     client,
-    auth,
     wallet: { publicKey, signTransaction },
     connectionAdapter: { connection },
-    queryClient
+    queryClient,
   } = useSolanaAuth();
   const { setSessionAddress } = useSolanaAuthInternal()
   const isMobile = useIsMobile();
@@ -52,16 +52,28 @@ export const SolanaSignInModal = () => {
 
   const [isLoadingQr, setIsLoadingQr] = useState(false);
 
+  const solanaAddress = useMemo(() => publicKey?.toBase58(), [publicKey])
+
   // Initialize auth and get deeplink
   useQuery({
-    queryKey: ['auth-deeplink', auth.solanaAddress],
+    queryKey: ['auth-deeplink', solanaAddress],
     queryFn: async () => {
-      if (!auth.solanaAddress) {
-        throw new Error('Solana address is required');
+      if (!solanaAddress) {
+        setErrorMessage('Failed to login');
+        setErrorDescription('Login could not be completed');
+        return;
       }
       try {
         setIsLoadingQr(true);
-        const response = await generateDeeplink(auth.solanaAddress);
+
+        const sessionAddress = await getAttestation(solanaAddress);
+        if (sessionAddress) {
+          setIsLoadingQr(false);
+          setIsSuccess(true);
+          return sessionAddress;
+        }
+
+        const response = await generateDeeplink(solanaAddress);
         setDeeplink(response.deep_link);
         setPollingCode(response.polling_code);
 
@@ -77,7 +89,7 @@ export const SolanaSignInModal = () => {
         setIsLoadingQr(false);
       }
     },
-    enabled: isOpen && !deeplink && !!auth.solanaAddress,
+    enabled: isOpen && !deeplink && !!solanaAddress,
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -111,19 +123,12 @@ export const SolanaSignInModal = () => {
     if (!pollData) return;
 
     if (pollData.status === 'authorized') {
-      if (!pollData.oracle_signature || !pollData.oracle_public_key || !pollData.session_address || !pollData.timestamp || !auth.solanaAddress) {
-        setErrorMessage('Failed to login');
-        setErrorDescription('Missing required data from authorization');
-        return;
-      }
-
-      // Store transaction data, show confirm UI
       setPendingTransactionData({
         oracleSignature: pollData.oracle_signature,
         oraclePublicKey: pollData.oracle_public_key,
         sessionAddress: pollData.session_address,
         timestamp: pollData.timestamp,
-        solanaAddress: auth.solanaAddress,
+        solanaAddress: pollData.solana_address,
       });
     } else if (pollData.status === 'rejected') {
       setErrorMessage('Access rejected');
@@ -132,14 +137,14 @@ export const SolanaSignInModal = () => {
       setErrorMessage('Link expired');
       setErrorDescription('Login could not be completed');
     }
-  }, [pollData, auth.solanaAddress]);
+  }, [pollData]);
 
   const handleConfirmTransaction = async () => {
     if (isSigningTransaction) {
       return
     }
 
-    if (!pendingTransactionData || !publicKey || !signTransaction) {
+    if (!pendingTransactionData || !solanaAddress || !signTransaction) {
       setErrorMessage('Wallet not connected');
       setErrorDescription('Please connect your Solana wallet first');
       return;
@@ -167,25 +172,10 @@ export const SolanaSignInModal = () => {
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = payerPublicKey;
 
-      // @ts-ignore - simulateTransaction is fine for our use case
-      const simulation = await connection.simulateTransaction(transaction);
-
-      if (simulation.value.err) {
-        console.error('Pre-flight simulation failed:', simulation.value.err);
-        console.error('Simulation logs:', simulation.value.logs);
-        throw new Error(
-          `Transaction will fail: ${JSON.stringify(simulation.value.err)}`
-        );
-      }
-
-      // Sign transaction with wallet-adapter
-      if (!signTransaction) {
-        throw new Error('Wallet does not support signing transactions');
-      }
       const signedTransaction = await signTransaction(transaction);
 
       const signature = await connection.sendRawTransaction(signedTransaction.serialize(), {
-        skipPreflight: true, // Skip RPC preflight - we already simulated
+        skipPreflight: false,
         maxRetries: 2,
       });
 
@@ -197,7 +187,7 @@ export const SolanaSignInModal = () => {
       }, 'confirmed');
 
       // Save to cache immediately after successful transaction
-      localStorage.setItem('alien-sso_solana_authed_address', pendingTransactionData.solanaAddress);
+      localStorage.setItem(AUTHED_ADDRESS_KEY, pendingTransactionData.solanaAddress);
 
       setIsSuccess(true);
 
@@ -328,7 +318,7 @@ export const SolanaSignInModal = () => {
           </>
         ) : (
           <>
-            <a href={deeplink || "https://alien.org"} target="_blank" className={styles.mobileOpenButton}><span>Open in Alien App</span> <RightIcon /></a>
+            {deeplink && <a href={deeplink} target="_blank" className={styles.mobileOpenButton}><span>Open in Alien App</span> <RightIcon /></a>}
             <div className={styles.mobileFooter}>
               <div className={styles.mobileFooterTitle}>Don't have an Alien app yet?</div>
               <div className={styles.mobileFooterSubtitle}>

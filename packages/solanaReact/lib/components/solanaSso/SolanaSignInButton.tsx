@@ -6,17 +6,15 @@ import clsx from "clsx";
 
 export interface SolanaSignInButtonProps {
   variant?: 'default' | 'short';
-  solanaAddress: string;
 }
 
 export const SolanaSignInButton: React.FC<SolanaSignInButtonProps> = ({
   variant = 'default',
-  solanaAddress,
 }) => {
   const { openModal } = useSolanaAuth();
 
   const handleClick = () => {
-    openModal(solanaAddress);
+    openModal();
   };
 
   if (variant === 'short') {
