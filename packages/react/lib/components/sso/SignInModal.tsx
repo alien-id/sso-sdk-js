@@ -186,7 +186,7 @@ export const SignInModal = () => {
           </>
         ) : (
           <>
-            <a href={deeplink || "https://alien.org"} target="_blank" className={styles.mobileOpenButton}><span>Open in Alien App</span> <RightIcon /></a>
+            {deeplink && <a href={deeplink} target="_blank" className={styles.mobileOpenButton}><span>Open in Alien App</span> <RightIcon /></a>}
             <div className={styles.mobileFooter}>
               <div className={styles.mobileFooterTitle}>Don't have an Alien app yet?</div>
               <div className={styles.mobileFooterSubtitle}>
