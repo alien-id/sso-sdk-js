@@ -175,8 +175,7 @@ export const SolanaSignInModal = () => {
       const signedTransaction = await signTransaction(transaction);
 
       const signature = await connection.sendRawTransaction(signedTransaction.serialize(), {
-        skipPreflight: false,
-        maxRetries: 2,
+        skipPreflight: true,
       });
 
       // Wait for confirmation
@@ -188,10 +187,9 @@ export const SolanaSignInModal = () => {
 
       // Save to cache immediately after successful transaction
       localStorage.setItem(AUTHED_ADDRESS_KEY, pendingTransactionData.solanaAddress);
+      setSessionAddress(pendingTransactionData.sessionAddress);
 
       setIsSuccess(true);
-
-      setSessionAddress(pendingTransactionData.sessionAddress);
     } catch (error: any) {
       console.error('Transaction error:', error);
       setErrorMessage('Failed to sign transaction');

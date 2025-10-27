@@ -128,13 +128,13 @@ export function AlienSolanaSsoProvider({
         return null;
       }
 
-      try {
-        return await getAttestation(solanaAddress);
-      } catch (error) {
-        // Clear cache if verification fails (might be invalid)
+      const sessionAddress = await getAttestation(solanaAddress);
+
+      if (!sessionAddress) {
         localStorage.removeItem(AUTHED_ADDRESS_KEY);
-        throw error;
       }
+
+      return sessionAddress;
     },
     [getAttestation]
   );
