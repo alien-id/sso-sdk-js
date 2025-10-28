@@ -22,7 +22,7 @@ function AppContent() {
     if (!publicKey) return;
 
     verifyAttestation(publicKey.toBase58()).catch(console.error);
-  }, [publicKey, verifyAttestation, logout]);
+  }, [publicKey]);
 
   if (publicKey && auth.sessionAddress) {
     return (
@@ -205,25 +205,14 @@ function App() {
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
-          <AppWithWallet />
+          <AlienSolanaSsoProvider
+            config={ssoConfig}
+          >
+            <AppContent />
+          </AlienSolanaSsoProvider>
         </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
-  );
-}
-
-function AppWithWallet() {
-  const wallet = useWallet();
-  const { connection } = useConnection();
-
-  return (
-    <AlienSolanaSsoProvider
-      config={ssoConfig}
-      wallet={wallet}
-      connectionAdapter={{ connection }}
-    >
-      <AppContent />
-    </AlienSolanaSsoProvider>
   );
 }
 

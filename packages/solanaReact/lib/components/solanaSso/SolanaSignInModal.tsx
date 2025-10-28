@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import styles from './SolanaSignInModal.module.css';
-import { AUTHED_ADDRESS_KEY, useSolanaAuth } from "../../providers";
+import { ATTESTATION_CREATED_AT_KEY, AUTHED_ADDRESS_KEY, SESSION_ADDRESS_KEY, useSolanaAuth } from "../../providers";
 import { useSolanaAuthInternal } from "../../providers";
 import { ModalBase } from '../base/ModalBase';
 import { QrIcon } from "../assets/QrIcon";
@@ -29,7 +29,6 @@ export const SolanaSignInModal = () => {
     isModalOpen: isOpen,
     closeModal: onClose,
     generateDeeplink,
-    getAttestation,
     pollAuth,
     client,
     wallet: { publicKey, signTransaction },
@@ -66,8 +65,10 @@ export const SolanaSignInModal = () => {
       try {
         setIsLoadingQr(true);
 
-        const sessionAddress = await getAttestation(solanaAddress);
+        const sessionAddress = await client.getAttestation(solanaAddress);
         if (sessionAddress) {
+          localStorage.setItem(AUTHED_ADDRESS_KEY, solanaAddress);
+          setSessionAddress(sessionAddress);
           setIsLoadingQr(false);
           setIsSuccess(true);
           return sessionAddress;
@@ -187,6 +188,8 @@ export const SolanaSignInModal = () => {
 
       // Save to cache immediately after successful transaction
       localStorage.setItem(AUTHED_ADDRESS_KEY, pendingTransactionData.solanaAddress);
+      localStorage.setItem(SESSION_ADDRESS_KEY, pendingTransactionData.sessionAddress);
+      localStorage.setItem(ATTESTATION_CREATED_AT_KEY, Date.now().toString());
       setSessionAddress(pendingTransactionData.sessionAddress);
 
       setIsSuccess(true);

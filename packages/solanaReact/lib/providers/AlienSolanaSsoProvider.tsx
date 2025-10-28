@@ -14,6 +14,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SolanaSignInModal } from "../components";
 import type { PublicKey, Transaction, VersionedTransaction, Connection } from "@solana/web3.js";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 export interface SolanaWalletAdapter {
   publicKey: PublicKey | null;
@@ -26,6 +27,9 @@ export interface SolanaConnectionAdapter {
 
 const STORAGE_KEY = 'alien-sso_';
 export const AUTHED_ADDRESS_KEY = STORAGE_KEY + 'solana_authed_address';
+export const SESSION_ADDRESS_KEY = STORAGE_KEY + 'session_address';
+export const ATTESTATION_CREATED_AT_KEY = STORAGE_KEY + 'attestation_created_at';
+const GRACE_PERIOD_MS = 60000; // 60 seconds grace period for RPC indexing
 
 type SolanaAuthState = {
   sessionAddress?: string | null;
@@ -41,7 +45,6 @@ type SolanaSsoContextValue = {
     solanaAddress: string
   ) => Promise<import("@alien_org/solana-sso-sdk-core").SolanaLinkResponse>;
   pollAuth: (pollingCode: string) => Promise<import("@alien_org/solana-sso-sdk-core").SolanaPollResponse>;
-  getAttestation: (solanaAddress: string) => Promise<string | null>;
   verifyAttestation: (solanaAddress: string) => Promise<string | null>;
   logout: () => void;
   openModal: () => void;
@@ -69,16 +72,15 @@ const queryClient = new QueryClient({
 
 export function AlienSolanaSsoProvider({
   config,
-  wallet,
-  connectionAdapter,
   children,
 }: {
   config: AlienSolanaSsoClientConfig;
-  wallet: SolanaWalletAdapter;
-  connectionAdapter: SolanaConnectionAdapter;
   children: ReactNode;
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const wallet = useWallet();
+  const connectionAdapter = useConnection();
 
   const client = useMemo(
     () => new AlienSolanaSsoClient(config),
@@ -102,41 +104,51 @@ export function AlienSolanaSsoProvider({
     [client]
   );
 
-  const getAttestation = useCallback(
-    async (solanaAddress: string) => {
-      const sessionAddress = await client.getAttestation(solanaAddress);
-
-      if (sessionAddress) {
-        // Save to cache on success
-        localStorage.setItem(AUTHED_ADDRESS_KEY, solanaAddress);
-        setAuth({ sessionAddress });
-      } else {
-        setAuth({ sessionAddress: null });
-      }
-
-      return sessionAddress;
-    },
-    [client]
-  );
-
   const verifyAttestation = useCallback(
     async (solanaAddress: string) => {
       const cachedAddress = localStorage.getItem(AUTHED_ADDRESS_KEY);
+      const cachedSessionAddress = localStorage.getItem(SESSION_ADDRESS_KEY);
+      const createdAt = localStorage.getItem(ATTESTATION_CREATED_AT_KEY);
 
       // Only verify if this address was previously authenticated
       if (cachedAddress !== solanaAddress) {
         return null;
       }
 
-      const sessionAddress = await getAttestation(solanaAddress);
+      // If attestation was created recently, return cached session address without verification
+      if (cachedSessionAddress && createdAt) {
+        const timeSinceCreation = Date.now() - parseInt(createdAt, 10);
 
-      if (!sessionAddress) {
-        localStorage.removeItem(AUTHED_ADDRESS_KEY);
+        if (timeSinceCreation < GRACE_PERIOD_MS) {
+          // Within grace period - trust cached value, set auth state immediately
+          setAuth({ sessionAddress: cachedSessionAddress });
+
+          // Verify in background after grace period expires
+          setTimeout(async () => {
+            const verifiedSessionAddress = await client.getAttestation(solanaAddress);
+            if (!verifiedSessionAddress) {
+              logout();
+            }
+          }, GRACE_PERIOD_MS - timeSinceCreation);
+
+          return cachedSessionAddress;
+        } else {
+          localStorage.removeItem(SESSION_ADDRESS_KEY);
+          localStorage.removeItem(ATTESTATION_CREATED_AT_KEY);
+        }
       }
 
+      // Outside grace period or no cache - verify normally
+      const sessionAddress = await client.getAttestation(solanaAddress);
+
+      if (!sessionAddress) {
+        logout();
+      }
+
+      setAuth({ sessionAddress });
       return sessionAddress;
     },
-    [getAttestation]
+    [client]
   );
 
   const setSessionAddress = useCallback((sessionAddress: string) => {
@@ -145,6 +157,8 @@ export function AlienSolanaSsoProvider({
 
   const logout = useCallback(() => {
     localStorage.removeItem(AUTHED_ADDRESS_KEY);
+    localStorage.removeItem(SESSION_ADDRESS_KEY);
+    localStorage.removeItem(ATTESTATION_CREATED_AT_KEY);
     setAuth({ sessionAddress: null });
   }, []);
 
@@ -168,7 +182,6 @@ export function AlienSolanaSsoProvider({
       queryClient,
       generateDeeplink,
       pollAuth,
-      getAttestation,
       verifyAttestation,
       logout,
       openModal,
@@ -183,7 +196,6 @@ export function AlienSolanaSsoProvider({
       queryClient,
       generateDeeplink,
       pollAuth,
-      getAttestation,
       verifyAttestation,
       logout,
       openModal,
