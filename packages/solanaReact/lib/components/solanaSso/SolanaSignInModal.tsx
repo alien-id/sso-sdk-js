@@ -24,6 +24,8 @@ const shortenAddress = (address: string, startChars = 11, endChars = 4): string 
   return `${address.slice(0, startChars)}...${address.slice(-endChars)}`;
 };
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const SolanaSignInModal = () => {
   const {
     isModalOpen: isOpen,
@@ -45,6 +47,7 @@ export const SolanaSignInModal = () => {
   const [deeplink, setDeeplink] = useState<string>('');
   const [isSigningTransaction, setIsSigningTransaction] = useState(false);
   const [pendingTransactionData, setPendingTransactionData] = useState<any>(null);
+  const [isTransactionExpired, setIsTransactionExpired] = useState(false);
 
   const qrInstanceRef = useRef<QRCodeStyling>(qrCode);
   const [qrElement, setQrElement] = useState<HTMLDivElement | null>(null);
@@ -153,6 +156,7 @@ export const SolanaSignInModal = () => {
 
     try {
       setIsSigningTransaction(true);
+      setIsTransactionExpired(false);
 
       // Build transaction
       const oracleSignature = Uint8Array.from(Buffer.from(pendingTransactionData.oracleSignature, 'hex'));
@@ -174,29 +178,70 @@ export const SolanaSignInModal = () => {
       transaction.feePayer = payerPublicKey;
 
       const signedTransaction = await signTransaction(transaction);
+      const rawTransaction = signedTransaction.serialize();
 
-      const signature = await connection.sendRawTransaction(signedTransaction.serialize(), {
-        skipPreflight: true,
-      });
+      // Retry loop with blockhash expiration tracking
+      let currentBlockHeight = await connection.getBlockHeight();
+      let transactionSent = false;
 
-      // Wait for confirmation
-      await connection.confirmTransaction({
-        signature,
-        blockhash,
-        lastValidBlockHeight,
-      }, 'confirmed');
+      while (currentBlockHeight < lastValidBlockHeight) {
+        try {
+          const signature = await connection.sendRawTransaction(rawTransaction, {
+            skipPreflight: true,
+            maxRetries: 0,
+          });
 
-      // Save to cache immediately after successful transaction
-      localStorage.setItem(AUTHED_ADDRESS_KEY, pendingTransactionData.solanaAddress);
-      localStorage.setItem(SESSION_ADDRESS_KEY, pendingTransactionData.sessionAddress);
-      localStorage.setItem(ATTESTATION_CREATED_AT_KEY, Date.now().toString());
-      setSessionAddress(pendingTransactionData.sessionAddress);
+          // Try to confirm transaction
+          const confirmation = await connection.confirmTransaction({
+            signature,
+            blockhash,
+            lastValidBlockHeight,
+          }, 'confirmed');
 
-      setIsSuccess(true);
+          if (confirmation.value.err) {
+            // Transaction failed, continue retry loop
+            await sleep(500);
+            currentBlockHeight = await connection.getBlockHeight();
+            continue;
+          }
+
+          // Transaction confirmed successfully
+          transactionSent = true;
+
+          // Save to cache immediately after successful transaction
+          localStorage.setItem(AUTHED_ADDRESS_KEY, pendingTransactionData.solanaAddress);
+          localStorage.setItem(SESSION_ADDRESS_KEY, pendingTransactionData.sessionAddress);
+          localStorage.setItem(ATTESTATION_CREATED_AT_KEY, Date.now().toString());
+          setSessionAddress(pendingTransactionData.sessionAddress);
+
+          setIsSuccess(true);
+          return;
+        } catch (error: any) {
+          // If error is not related to confirmation timeout, continue retry
+          console.log('Retry attempt failed, continuing...', error.message);
+          await sleep(500);
+          currentBlockHeight = await connection.getBlockHeight();
+        }
+      }
+
+      // Blockhash expired without successful confirmation
+      if (!transactionSent) {
+        setIsTransactionExpired(true);
+        setErrorMessage('Transaction expired');
+        setErrorDescription('The transaction blockhash has expired. Please try sending the transaction again.');
+      }
     } catch (error: any) {
       console.error('Transaction error:', error);
-      setErrorMessage('Failed to sign transaction');
-      setErrorDescription(error?.message || 'Could not complete transaction');
+
+      // Check if error is related to blockhash expiration
+      if (error?.message?.includes('blockhash') || error?.message?.includes('expired')) {
+        setIsTransactionExpired(true);
+        setErrorMessage('Transaction expired');
+        setErrorDescription('The transaction blockhash has expired. Please try sending the transaction again.');
+      } else {
+        setErrorMessage('Failed to sign transaction');
+        setErrorDescription(error?.message || 'Could not complete transaction');
+      }
     } finally {
       setIsSigningTransaction(false);
     }
@@ -210,12 +255,19 @@ export const SolanaSignInModal = () => {
     setPollingCode('');
     setIsSigningTransaction(false);
     setPendingTransactionData(null);
+    setIsTransactionExpired(false);
     queryClient.removeQueries({ queryKey: ['auth-deeplink'] });
     queryClient.removeQueries({ queryKey: ['auth-poll'] });
   };
 
   const handleRetry = () => {
     resetState();
+  };
+
+  const handleSendTransactionAgain = () => {
+    setErrorMessage('');
+    setErrorDescription('');
+    setIsTransactionExpired(false);
   };
 
   const handleClose = () => {
@@ -245,7 +297,11 @@ export const SolanaSignInModal = () => {
           <div className={styles.errorSubtitle}>
             {errorDescription || 'An error occurred. Please try again.'}
           </div>
-          <div className={styles.errorButton} onClick={handleRetry}><RetryIcon />Try again</div>
+          {isTransactionExpired ? (
+            <div className={styles.errorButton} onClick={handleSendTransactionAgain}><RetryIcon />Send transaction again</div>
+          ) : (
+            <div className={styles.errorButton} onClick={handleRetry}><RetryIcon />Try again</div>
+          )}
         </div>
       </ModalBase>
     )
