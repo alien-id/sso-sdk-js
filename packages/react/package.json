@@ -1,6 +1,6 @@
 {
   "name": "@alien_org/sso-sdk-react",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "type": "module",
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
