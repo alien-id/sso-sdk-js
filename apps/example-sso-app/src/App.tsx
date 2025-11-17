@@ -162,9 +162,11 @@ function AppContent() {
             alignItems: 'center'
           }}>
             <SignInButton />
+            <SignInButton color='dark' />
             or short variant:
-            <div>
+            <div style={{ display: 'flex', flexDirection: 'row', gap: '12px' }}>
                <SignInButton variant="short" />
+               <SignInButton variant="short" color="dark" />
             </div>
           </div>
 

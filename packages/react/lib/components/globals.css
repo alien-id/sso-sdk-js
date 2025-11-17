@@ -2,10 +2,13 @@
     --alien-text-primary-color: #FFFFFF;
     --alien-text-secondary-color: #8D8D8D;
 
-    --alien-brand-button-background-color: #2979FF;
+    --alien-brand-button-background-color-light: #2979FF;
+    --alien-brand-button-background-color-dark: #171719;
     --alien-brand-button-color: #FFFFFF;
-    --alien-brand-button-border-color: rgba(255, 255, 255, 0.16);
-    --alien-brand-button-hover-background-color: #0A66FF;
+    --alien-brand-button-border-color-light: rgba(255, 255, 255, 0.16);
+    --alien-brand-button-border-color-dark: rgba(141, 141, 141, 0.3);
+    --alien-brand-button-hover-background-color-light: #0A66FF;
+    --alien-brand-button-hover-background-color-dark: #171719;
 
     --alien-modal-button-color: #FFFFFF;
     --alien-modal-button-border-color: rgba(141, 141, 141, 0.30);

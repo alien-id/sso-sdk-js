@@ -172,9 +172,11 @@ function AppContent() {
                 width: '100%'
               }}>
                 <SolanaSignInButton />
+                <SolanaSignInButton color='dark' />
                 or short variant:
-                <div>
+                <div style={{ display: 'flex', flexDirection: 'row', gap: '12px' }}>
                   <SolanaSignInButton variant="short" />
+                  <SolanaSignInButton variant="short" color="dark" />
                 </div>
               </div>
             )}

@@ -141,14 +141,14 @@
   justify-content: center;
   gap: 8px;
   padding: 16px 20px;
-  background: var(--alien-brand-button-background-color);
+  background: var(--alien-brand-button-background-color-light);
   font-size: 18px;
   font-weight: 500;
   transition: 0.2s ease;
 }
 
 .mobileOpenButton:hover {
-  background: var(--alien-brand-button-hover-background-color);
+  background: var(--alien-brand-button-hover-background-color-light);
 }
 
 .mobileOpenButton:active {

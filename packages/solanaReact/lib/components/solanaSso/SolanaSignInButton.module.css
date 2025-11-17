@@ -5,8 +5,8 @@
     box-sizing: border-box;
 
     padding: 16px 20px;
-    background-color: var(--alien-brand-button-background-color);
-    border: 1px solid var(--alien-brand-button-border-color);
+    background-color: var(--alien-brand-button-background-color-light);
+    border: 1px solid var(--alien-brand-button-border-color-light);
     border-radius: 24px;
     font-size: 16px;
     cursor: pointer;
@@ -23,7 +23,7 @@
 }
 
 .button:hover {
-    background-color: var(--alien-brand-button-hover-background-color);
+    background-color: var(--alien-brand-button-hover-background-color-light);
 }
 
 .buttonShort {
@@ -42,4 +42,22 @@
     word-wrap: break-word;
     overflow-wrap: break-word;
     hyphens: auto;
+}
+
+.buttonLight {
+    background-color: var(--alien-brand-button-background-color-light);
+    border: 1px solid var(--alien-brand-button-border-color-light);
+}
+
+.buttonLight:hover {
+    background-color: var(--alien-brand-button-hover-background-color-light);
+}
+
+.buttonDark {
+    background-color: var(--alien-brand-button-background-color-dark);
+    border: 1px solid var(--alien-brand-button-border-color-dark);
+}
+
+.buttonDark:hover {
+    background-color: var(--alien-brand-button-hover-background-color-dark);
 }
