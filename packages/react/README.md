@@ -2,6 +2,10 @@
 
 React hooks and components for [Alien SSO](https://alien.org) authentication. Built on top of [@alien_org/sso-sdk-core](https://www.npmjs.com/package/@alien_org/sso-sdk-core).
 
+## ⚠️ Alpha Version Notice
+
+**This is an early alpha version.** The SDK is under active development and may contain bugs or undergo breaking changes. Use with caution in production environments.
+
 ## Installation
 
 ```bash

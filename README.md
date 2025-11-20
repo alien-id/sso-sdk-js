@@ -1,3 +1,7 @@
+## ⚠️ Alpha Version Notice
+
+**This is an early alpha version of the Alien SSO SDK.** The SDK is under active development and may contain bugs or undergo breaking changes. Use with caution in production environments.
+
 ## Overview
 
 This monorepo provides two authentication approaches:

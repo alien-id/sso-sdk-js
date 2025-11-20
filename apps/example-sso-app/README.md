@@ -1,4 +1,6 @@
-# Getting Started with Create React App
+# Alien SSO Example App
+
+⚠️ **Alpha Version Notice**: This is an early alpha version of the Alien SSO SDK. The SDK is under active development and may contain bugs or undergo breaking changes.
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 

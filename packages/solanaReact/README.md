@@ -2,6 +2,10 @@
 
 React hooks and components for [Alien SSO](https://alien.org) Solana authentication. Built on top of [@alien_org/solana-sso-sdk-core](https://www.npmjs.com/package/@alien_org/solana-sso-sdk-core) with Solana wallet adapter integration.
 
+## ⚠️ Alpha Version Notice
+
+**This is an early alpha version.** The SDK is under active development and may contain bugs or undergo breaking changes. Use with caution in production environments.
+
 ## Installation
 
 ```bash

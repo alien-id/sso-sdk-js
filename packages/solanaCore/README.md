@@ -2,6 +2,10 @@
 
 Solana-specific authentication client for [Alien SSO](https://alien.org) with on-chain attestation support. Enables blockchain-native authentication with session verification on Solana.
 
+## ⚠️ Alpha Version Notice
+
+**This is an early alpha version.** The SDK is under active development and may contain bugs or undergo breaking changes. Use with caution in production environments.
+
 ## Installation
 
 ```bash

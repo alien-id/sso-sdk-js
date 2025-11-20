@@ -2,6 +2,10 @@
 
 Core TypeScript client for [Alien SSO](https://alien.org) authentication. Provides OIDC-compatible authentication with blockchain and TEE backing.
 
+## ⚠️ Alpha Version Notice
+
+**This is an early alpha version.** The SDK is under active development and may contain bugs or undergo breaking changes. Use with caution in production environments.
+
 ## Installation
 
 ```bash
