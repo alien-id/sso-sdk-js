@@ -94,10 +94,6 @@ To use the SDK, you need a provider address. Register your application at the [D
 - Modern browsers with ES2020+ support
 - Chrome, Firefox, Safari, Edge (latest versions)
 
-## License
-
-MIT
-
 ## Support
 
 - 📖 [Documentation](https://dev.alien.org/docs)
