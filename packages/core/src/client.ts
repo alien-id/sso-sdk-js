@@ -60,6 +60,9 @@ export class AlienSsoClient {
   readonly ssoBaseUrl: string;
   readonly providerAddress: string;
 
+  // Singleton promise to prevent concurrent refresh token requests
+  private static refreshPromise: Promise<TokenResponse> | null = null;
+
   constructor(config: AlienSsoClientConfig) {
     this.config = AlienSsoClientSchema.parse(config);
 
@@ -368,8 +371,27 @@ export class AlienSsoClient {
   /**
    * Refreshes the access token using the stored refresh token
    * POST /oauth/token with grant_type=refresh_token
+   * Uses singleton pattern to prevent concurrent refresh requests (race condition)
    */
   async refreshAccessToken(): Promise<TokenResponse> {
+    // If refresh is already in progress, wait for it
+    if (AlienSsoClient.refreshPromise) {
+      return AlienSsoClient.refreshPromise;
+    }
+
+    // Start new refresh and store promise
+    AlienSsoClient.refreshPromise = this.doRefreshAccessToken()
+      .finally(() => {
+        AlienSsoClient.refreshPromise = null;
+      });
+
+    return AlienSsoClient.refreshPromise;
+  }
+
+  /**
+   * Internal method that performs the actual token refresh
+   */
+  private async doRefreshAccessToken(): Promise<TokenResponse> {
     const refreshToken = this.getRefreshToken();
 
     if (!refreshToken) {
