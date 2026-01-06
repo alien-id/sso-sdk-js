@@ -44,6 +44,7 @@ export const SignInModal = () => {
         qrInstanceRef.current.update({
           data: response.deep_link,
         });
+        return response;
       } catch (error) {
         setErrorMessage('Failed to login');
         setErrorDescription('Login could not be completed');

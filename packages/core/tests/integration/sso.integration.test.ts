@@ -6,8 +6,6 @@ global.fetch = fetch;
 
 const config = {
   providerAddress: '00000001000000000000000000000000',
-  providerPrivateKey:
-    'c366d7b8eb1396a486d6a8f8ed1ae5a94b9923264e827e9e33aa6d4b702cf177',
 };
 
 const SSO_BASE_URL = 'http://localhost:3001';
@@ -31,32 +29,61 @@ describe('SSO Integration', () => {
   });
 
   it('successful SSO flow', async () => {
-    const authorizeResponse = await client.getAuthDeeplink();
+    // Step 1: Generate deeplink
+    const authorizeResponse = await client.generateDeeplink();
     expect(authorizeResponse).toEqual({
       deep_link: expect.any(String),
       polling_code: expect.any(String),
       expired_at: expect.any(Number),
     });
 
-    const authCode = await client.pollAuth(authorizeResponse.polling_code);
-    expect(authCode).toEqual(expect.any(String));
+    // Step 2: Poll for authorization
+    const pollResponse = await client.pollAuth(authorizeResponse.polling_code);
+    expect(pollResponse.status).toEqual('authorized');
+    expect(pollResponse.authorization_code).toEqual(expect.any(String));
 
-    const accessToken = await client.exchangeToken(authCode);
-    expect(accessToken).toEqual(expect.any(String));
-
-    const isValid = await client.verifyAuth();
-    expect(isValid).toEqual(true);
-
-    const userInfo = client.getAuthData();
-    expect(userInfo).toEqual({
-      app_callback_session_address: expect.any(String),
-      expired_at: expect.any(Number),
-      issued_at: expect.any(Number),
+    // Step 3: Exchange authorization code for tokens
+    const tokenResponse = await client.exchangeToken(pollResponse.authorization_code!);
+    expect(tokenResponse).toEqual({
+      access_token: expect.any(String),
+      token_type: 'Bearer',
+      expires_in: expect.any(Number),
+      id_token: expect.any(String),
     });
+
+    // Step 4: Verify auth via userinfo endpoint
+    const userInfo = await client.verifyAuth();
+    expect(userInfo).toEqual({
+      sub: expect.any(String),
+    });
+
+    // Step 5: Check parsed token data (OIDC claims)
+    const tokenInfo = client.getAuthData();
+    expect(tokenInfo).toEqual({
+      iss: expect.any(String),
+      sub: expect.any(String),
+      aud: expect.any(String),
+      exp: expect.any(Number),
+      iat: expect.any(Number),
+    });
+
+    // Step 6: Check helper methods
+    expect(client.getSubject()).toEqual(expect.any(String));
+    expect(client.isTokenExpired()).toBe(false);
   });
 
   it('successful logout', async () => {
+    // First authenticate
+    const authorizeResponse = await client.generateDeeplink();
+    const pollResponse = await client.pollAuth(authorizeResponse.polling_code);
+    await client.exchangeToken(pollResponse.authorization_code!);
+
+    // Then logout
     client.logout();
-    await expect(client.verifyAuth()).rejects.toThrow();
+
+    // Verify tokens are cleared
+    expect(client.getAccessToken()).toBeNull();
+    expect(client.getIdToken()).toBeNull();
+    expect(client.getAuthData()).toBeNull();
   });
 });

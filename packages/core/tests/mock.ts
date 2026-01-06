@@ -3,39 +3,61 @@ import base64url from 'base64url';
 
 export const initializeSsoMock = (baseUrl) => {
   nock(baseUrl).get('/sso/health').reply(200);
+
+  // OAuth2 authorize endpoint (GET with query params, response_mode=json)
   nock(baseUrl)
-    .post('/sso/authorize')
+    .persist()
+    .get(/\/oauth\/authorize.*/)
     .reply(200, {
       deep_link: 'alienapp://authorize_session',
       polling_code: 'polling-code-test-1234-5678',
       expired_at: Math.floor(Date.now() / 1000) + 300,
     });
-  nock(baseUrl).post('/sso/poll').reply(200, {
+
+  // OAuth2 poll endpoint
+  nock(baseUrl).persist().post('/oauth/poll').reply(200, {
     status: 'authorized',
     authorization_code: 'auth-code-test-1234-5678',
   });
 
+  // Create OIDC-compliant JWT tokens
   const tokenHeader = JSON.stringify({
-    alg: 'HS256',
+    alg: 'EdDSA',
     typ: 'JWT',
   });
+  const now = Math.floor(Date.now() / 1000);
   const tokenPayload = JSON.stringify({
-    app_callback_session_address: 'session-address-test',
-    expired_at: Math.floor(Date.now() / 1000) + 3600,
-    issued_at: Math.floor(Date.now() / 1000),
+    iss: 'https://sso.alien.com',
+    sub: 'session-address-test',
+    aud: 'provider-address-test',
+    exp: now + 3600,
+    iat: now,
   });
+  const accessToken = [
+    base64url.encode(tokenHeader),
+    base64url.encode(tokenPayload),
+    'access-token-signature-test-1234-5678',
+  ].join('.');
+  const idToken = [
+    base64url.encode(tokenHeader),
+    base64url.encode(tokenPayload),
+    'id-token-signature-test-1234-5678',
+  ].join('.');
+
+  // OAuth2 token endpoint (form-urlencoded)
   nock(baseUrl)
-    .post('/sso/access_token/exchange')
+    .persist()
+    .post('/oauth/token')
     .reply(200, {
-      access_token: [
-        base64url.encode(tokenHeader),
-        base64url.encode(tokenPayload),
-        'access-token-signature-test-1234-5678',
-      ].join('.'),
+      access_token: accessToken,
+      token_type: 'Bearer',
+      expires_in: 3600,
+      id_token: idToken,
     });
 
-  nock(baseUrl).post('/sso/access_token/verify').reply(200, {
-    is_valid: true,
+  // OAuth2 userinfo endpoint
+  nock(baseUrl).persist().get('/oauth/userinfo').reply(200, {
+    sub: 'session-address-test',
   });
 };
 

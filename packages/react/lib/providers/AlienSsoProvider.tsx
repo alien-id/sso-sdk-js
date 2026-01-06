@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import {
   AlienSsoClient,
   type AlienSsoClientConfig,
+  type TokenResponse,
 } from "@alien_org/sso-sdk-core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SignInModal } from "../components";
@@ -28,8 +29,9 @@ type SsoContextValue = {
     import("@alien_org/sso-sdk-core").AuthorizeResponse
   >;
   pollAuth: (pollingCode: string) => Promise<import("@alien_org/sso-sdk-core").PollResponse>;
-  exchangeToken: (authCode: string) => Promise<string>;
+  exchangeToken: (authCode: string) => Promise<TokenResponse>;
   verifyAuth: () => Promise<boolean>;
+  refreshToken: () => Promise<boolean>;
   logout: () => void;
   openModal: () => void;
   closeModal: () => void;
@@ -89,22 +91,23 @@ export function AlienSsoProvider({
 
   const exchangeToken = useCallback(
     async (authCode: string) => {
-      const token = await client.exchangeToken(authCode);
+      const tokenResponse = await client.exchangeToken(authCode);
       const tokenInfo = client.getAuthData();
-      const isAuthenticated = Boolean(token && tokenInfo);
+      const isAuthenticated = Boolean(tokenResponse.access_token && tokenInfo);
       setAuth({
         isAuthenticated,
-        token,
+        token: tokenResponse.access_token,
         tokenInfo,
       });
-      return token;
+      return tokenResponse;
     },
     [client],
   );
 
   const verifyAuth = useCallback(
     async () => {
-      const valid = await client.verifyAuth();
+      const userInfo = await client.verifyAuth();
+      const valid = userInfo !== null;
       const token = client.getAccessToken();
       const tokenInfo = client.getAuthData();
       setAuth({
@@ -113,6 +116,31 @@ export function AlienSsoProvider({
         tokenInfo,
       });
       return valid;
+    },
+    [client],
+  );
+
+  const refreshToken = useCallback(
+    async () => {
+      try {
+        const tokenResponse = await client.refreshAccessToken();
+        const tokenInfo = client.getAuthData();
+        const isAuthenticated = Boolean(tokenResponse.access_token && tokenInfo);
+        setAuth({
+          isAuthenticated,
+          token: tokenResponse.access_token,
+          tokenInfo,
+        });
+        return true;
+      } catch {
+        // Refresh failed, client.refreshAccessToken already calls logout
+        setAuth({
+          isAuthenticated: false,
+          token: null,
+          tokenInfo: null,
+        });
+        return false;
+      }
     },
     [client],
   );
@@ -139,6 +167,7 @@ export function AlienSsoProvider({
       pollAuth,
       exchangeToken,
       verifyAuth,
+      refreshToken,
       logout,
       openModal,
       closeModal,
@@ -151,6 +180,7 @@ export function AlienSsoProvider({
       pollAuth,
       exchangeToken,
       verifyAuth,
+      refreshToken,
       logout,
       openModal,
       closeModal,

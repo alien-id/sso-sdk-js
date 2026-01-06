@@ -1,22 +1,16 @@
 import {
-  AuthorizeRequest,
   AuthorizeResponse,
   AuthorizeResponseSchema,
-  ExchangeCodeRequest,
-  ExchangeCodeRequestSchema,
-  ExchangeCodeResponse,
-  ExchangeCodeResponseSchema,
-  AuthorizeRequestSchema,
   PollRequest,
   PollRequestSchema,
   PollResponse,
   PollResponseSchema,
+  TokenResponse,
+  TokenResponseSchema,
   TokenInfo,
   TokenInfoSchema,
-  VerifyTokenRequest,
-  VerifyTokenRequestSchema,
-  VerifyTokenResponse,
-  VerifyTokenResponseSchema,
+  UserInfoResponse,
+  UserInfoResponseSchema,
 } from './schema';
 import { z } from 'zod/v4-mini';
 import { sha256 } from 'js-sha256';
@@ -39,6 +33,8 @@ const SSO_BASE_URL = 'https://sso.alien.com';
 const POLLING_INTERVAL = 5000;
 
 const STORAGE_KEY = 'alien-sso_';
+const REFRESH_TOKEN_KEY = STORAGE_KEY + 'refresh_token';
+const TOKEN_EXPIRY_KEY = STORAGE_KEY + 'token_expiry';
 
 const joinUrl = (base: string, path: string): string => {
   return new URL(path, base).toString();
@@ -47,6 +43,7 @@ const joinUrl = (base: string, path: string): string => {
 export interface JWTHeader {
   alg: string;
   typ: string;
+  kid?: string;
 }
 
 export const AlienSsoClientSchema = z.object({
@@ -95,38 +92,51 @@ export class AlienSsoClient {
   }
 
   private generateCodeChallenge(codeVerifier: string): string {
-    return sha256(codeVerifier);
+    // RFC 7636: code_challenge = BASE64URL(SHA256(code_verifier))
+    const hashArray = sha256.array(codeVerifier);
+    const hashBytes = String.fromCharCode(...hashArray);
+    return base64urlEncode(hashBytes);
   }
 
+  /**
+   * Initiates OAuth2 authorization flow with response_mode=json for SPA
+   * GET /oauth/authorize?response_type=code&response_mode=json&...
+   */
   async generateDeeplink(): Promise<AuthorizeResponse> {
     const codeVerifier = this.generateCodeVerifier();
     const codeChallenge = this.generateCodeChallenge(codeVerifier);
 
     sessionStorage.setItem(STORAGE_KEY + 'code_verifier', codeVerifier);
 
-    const authorizeUrl = `${this.config.ssoBaseUrl}/sso/authorize`;
-
-    const authorizePayload: AuthorizeRequest = {
+    // Build OAuth2 authorize URL with query params
+    const params = new URLSearchParams({
+      response_type: 'code',
+      response_mode: 'json',
+      client_id: this.providerAddress,
+      scope: 'openid',
       code_challenge: codeChallenge,
-      code_challenge_method: 'S256'
-    };
-
-    AuthorizeRequestSchema.parse(authorizePayload);
-
-    const response = await fetch(authorizeUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-PROVIDER-ADDRESS': this.providerAddress,
-      },
-      body: JSON.stringify(authorizePayload),
+      code_challenge_method: 'S256',
     });
 
-    const json = await response.json();
+    const authorizeUrl = `${this.config.ssoBaseUrl}/oauth/authorize?${params.toString()}`;
 
+    const response = await fetch(authorizeUrl, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(`Authorize failed: ${error.error_description || error.error || response.statusText}`);
+    }
+
+    const json = await response.json();
     return AuthorizeResponseSchema.parse(json);
   }
 
+  /**
+   * Polls for authorization completion
+   * POST /oauth/poll
+   */
   async pollAuth(pollingCode: string): Promise<PollResponse> {
     const pollPayload: PollRequest = {
       polling_code: pollingCode,
@@ -134,11 +144,10 @@ export class AlienSsoClient {
 
     PollRequestSchema.parse(pollPayload);
 
-    const response = await fetch(joinUrl(this.config.ssoBaseUrl, '/sso/poll'), {
+    const response = await fetch(joinUrl(this.config.ssoBaseUrl, '/oauth/poll'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-PROVIDER-ADDRESS': this.providerAddress,
       },
       body: JSON.stringify(pollPayload),
     });
@@ -151,101 +160,116 @@ export class AlienSsoClient {
     return PollResponseSchema.parse(json);
   }
 
-  async exchangeToken(authorizationCode: string): Promise<string> {
+  /**
+   * Exchanges authorization code for tokens
+   * POST /oauth/token (application/x-www-form-urlencoded)
+   * Returns both access_token and id_token
+   */
+  async exchangeToken(authorizationCode: string): Promise<TokenResponse> {
     const codeVerifier = sessionStorage.getItem(STORAGE_KEY + 'code_verifier');
 
     if (!codeVerifier) throw new Error('Missing code verifier.');
 
-    const exchangeCodePayload: ExchangeCodeRequest = {
-      authorization_code: authorizationCode,
+    // Build form-urlencoded body (OAuth2 standard)
+    const body = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: authorizationCode,
+      client_id: this.providerAddress,
       code_verifier: codeVerifier,
-    };
-
-    ExchangeCodeRequestSchema.parse(exchangeCodePayload);
+    });
 
     const response = await fetch(
-      joinUrl(this.config.ssoBaseUrl, '/sso/access_token/exchange'),
+      joinUrl(this.config.ssoBaseUrl, '/oauth/token'),
       {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-PROVIDER-ADDRESS': this.providerAddress,
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify(exchangeCodePayload),
+        body: body.toString(),
       },
     );
 
     if (!response.ok) {
-      throw new Error(`ExchangeCode failed: ${response.statusText}`);
+      const error = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(`Token exchange failed: ${error.error_description || error.error || response.statusText}`);
     }
 
     const json = await response.json();
+    const tokenResponse = TokenResponseSchema.parse(json);
 
-    const exchangeCodeResponse: ExchangeCodeResponse =
-      ExchangeCodeResponseSchema.parse(json);
+    // Store tokens
+    localStorage.setItem(STORAGE_KEY + 'access_token', tokenResponse.access_token);
+    localStorage.setItem(STORAGE_KEY + 'id_token', tokenResponse.id_token);
+    localStorage.setItem(REFRESH_TOKEN_KEY, tokenResponse.refresh_token);
 
-    if (exchangeCodeResponse.access_token) {
-      localStorage.setItem(
-        STORAGE_KEY + 'access_token',
-        exchangeCodeResponse.access_token,
-      );
+    // Calculate and store expiry timestamp (expires_in is in seconds)
+    const expiryTime = Date.now() + (tokenResponse.expires_in * 1000);
+    localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
 
-      return exchangeCodeResponse.access_token;
-    } else {
-      throw new Error('Exchange failed');
-    }
+    // Clear code verifier after successful exchange
+    sessionStorage.removeItem(STORAGE_KEY + 'code_verifier');
+
+    return tokenResponse;
   }
 
-  async verifyAuth(): Promise<boolean> {
-    const access_token = this.getAccessToken();
+  /**
+   * Verifies authentication by calling userinfo endpoint
+   * GET /oauth/userinfo
+   * Automatically refreshes token on 401 if refresh token is available
+   */
+  async verifyAuth(): Promise<UserInfoResponse | null> {
+    return this.withAutoRefresh(async () => {
+      const accessToken = this.getAccessToken();
 
-    if (!access_token) {
-      return false;
-    }
+      if (!accessToken) {
+        return null;
+      }
 
-    const verifyTokenPayload: VerifyTokenRequest = {
-      access_token,
-    };
-
-    VerifyTokenRequestSchema.parse(verifyTokenPayload);
-
-    const response = await fetch(
-      joinUrl(this.config.ssoBaseUrl, '/sso/access_token/verify'),
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-PROVIDER-ADDRESS': this.providerAddress,
+      const response = await fetch(
+        joinUrl(this.config.ssoBaseUrl, '/oauth/userinfo'),
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
         },
-        body: JSON.stringify(verifyTokenPayload),
-      },
-    );
-
-    if (!response.ok) {
-      return false;
-    }
-
-    const json = await response.json();
-    const verifyTokenResponse: VerifyTokenResponse =
-      VerifyTokenResponseSchema.parse(json);
-
-    // If server returned a new token, update localStorage
-    if (verifyTokenResponse.access_token) {
-      localStorage.setItem(
-        STORAGE_KEY + 'access_token',
-        verifyTokenResponse.access_token,
       );
-    }
 
-    return verifyTokenResponse.is_valid;
+      if (!response.ok) {
+        if (response.status === 401) {
+          const error = new Error('Unauthorized') as Error & { response?: { status: number } };
+          error.response = { status: 401 };
+          throw error;
+        }
+        return null;
+      }
+
+      const json = await response.json();
+      return UserInfoResponseSchema.parse(json);
+    });
   }
 
+  /**
+   * Gets stored access token
+   */
   getAccessToken(): string | null {
     return localStorage.getItem(STORAGE_KEY + 'access_token');
   }
 
+  /**
+   * Gets stored ID token
+   */
+  getIdToken(): string | null {
+    return localStorage.getItem(STORAGE_KEY + 'id_token');
+  }
+
+  /**
+   * Decodes and validates JWT token to extract claims
+   * Works with both access_token and id_token (EdDSA signed)
+   */
   getAuthData(): TokenInfo | null {
-    const token = this.getAccessToken();
+    // Prefer id_token as it contains more user claims
+    const token = this.getIdToken() || this.getAccessToken();
 
     if (!token) return null;
 
@@ -262,7 +286,8 @@ export class AlienSsoClient {
       return null;
     }
 
-    if (header.alg !== 'HS256' || header.typ !== 'JWT') {
+    // Accept RS256 (current OIDC standard)
+    if (header.alg !== 'RS256' || header.typ !== 'JWT') {
       return null;
     }
 
@@ -274,11 +299,152 @@ export class AlienSsoClient {
       return null;
     }
 
+    // Verify audience matches this client's provider address
+    const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+    if (!aud.includes(this.providerAddress)) {
+      return null;
+    }
+
     return payload;
   }
 
+  /**
+   * Gets the subject (user identifier) from the token
+   */
+  getSubject(): string | null {
+    const authData = this.getAuthData();
+    return authData?.sub || null;
+  }
+
+  /**
+   * Checks if the current token is expired
+   */
+  isTokenExpired(): boolean {
+    const authData = this.getAuthData();
+    if (!authData) return true;
+    return Date.now() / 1000 > authData.exp;
+  }
+
+  /**
+   * Clears all stored authentication data
+   */
   logout(): void {
     localStorage.removeItem(STORAGE_KEY + 'access_token');
+    localStorage.removeItem(STORAGE_KEY + 'id_token');
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(TOKEN_EXPIRY_KEY);
     sessionStorage.removeItem(STORAGE_KEY + 'code_verifier');
+  }
+
+  /**
+   * Gets stored refresh token
+   */
+  getRefreshToken(): string | null {
+    return localStorage.getItem(REFRESH_TOKEN_KEY);
+  }
+
+  /**
+   * Checks if a refresh token is available
+   */
+  hasRefreshToken(): boolean {
+    return !!this.getRefreshToken();
+  }
+
+  /**
+   * Checks if the access token is expired or will expire soon (within 5 minutes)
+   */
+  isAccessTokenExpired(): boolean {
+    const expiryStr = localStorage.getItem(TOKEN_EXPIRY_KEY);
+
+    if (!expiryStr) return true;
+
+    const expiry = parseInt(expiryStr, 10);
+    const now = Date.now();
+    const bufferTime = 5 * 60 * 1000; // 5 minutes buffer
+
+    return now >= (expiry - bufferTime);
+  }
+
+  /**
+   * Refreshes the access token using the stored refresh token
+   * POST /oauth/token with grant_type=refresh_token
+   */
+  async refreshAccessToken(): Promise<TokenResponse> {
+    const refreshToken = this.getRefreshToken();
+
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    const body = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: this.providerAddress,
+    });
+
+    const response = await fetch(
+      joinUrl(this.config.ssoBaseUrl, '/oauth/token'),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
+      },
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: response.statusText }));
+
+      // If refresh fails, clear all tokens
+      this.logout();
+
+      throw new Error(`Token refresh failed: ${error.error_description || error.error || response.statusText}`);
+    }
+
+    const json = await response.json();
+    const tokenResponse = TokenResponseSchema.parse(json);
+
+    // Store new tokens
+    localStorage.setItem(STORAGE_KEY + 'access_token', tokenResponse.access_token);
+    localStorage.setItem(STORAGE_KEY + 'id_token', tokenResponse.id_token);
+    localStorage.setItem(REFRESH_TOKEN_KEY, tokenResponse.refresh_token);
+
+    const expiryTime = Date.now() + (tokenResponse.expires_in * 1000);
+    localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+
+    return tokenResponse;
+  }
+
+  /**
+   * Executes a function that makes an authenticated request
+   * Automatically refreshes token and retries on 401 error
+   */
+  async withAutoRefresh<T>(
+    requestFn: () => Promise<T>,
+    maxRetries: number = 1
+  ): Promise<T> {
+    try {
+      return await requestFn();
+    } catch (error: any) {
+      // Check if error is a 401 and we haven't exceeded retries
+      const is401 = error?.response?.status === 401 ||
+                    error?.message?.includes('401') ||
+                    error?.message?.includes('Unauthorized');
+
+      if (is401 && maxRetries > 0 && this.hasRefreshToken()) {
+        // Try to refresh token
+        try {
+          await this.refreshAccessToken();
+          // Retry the original request
+          return await requestFn();
+        } catch (refreshError) {
+          // Refresh failed, throw original error
+          throw error;
+        }
+      }
+
+      throw error;
+    }
   }
 }

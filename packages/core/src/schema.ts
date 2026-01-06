@@ -1,14 +1,9 @@
 import { z } from 'zod/v4-mini';
 
 /**
- * Authorize request/response schema
+ * Authorize response schema (for response_mode=json)
+ * GET /oauth/authorize?response_mode=json&...
  */
-export const AuthorizeRequestSchema = z.object({
-  code_challenge: z.string(),
-  code_challenge_method: z.literal('S256'),
-});
-export type AuthorizeRequest = z.infer<typeof AuthorizeRequestSchema>;
-
 export const AuthorizeResponseSchema = z.object({
   deep_link: z.string(),
   polling_code: z.string(),
@@ -19,6 +14,7 @@ export type AuthorizeResponse = z.infer<typeof AuthorizeResponseSchema>;
 
 /**
  * Poll request/response schema
+ * POST /oauth/poll
  */
 export const PollRequestSchema = z.object({
   polling_code: z.string(),
@@ -38,41 +34,44 @@ export const PollResponseSchema = z.object({
 export type PollResponse = z.infer<typeof PollResponseSchema>;
 
 /**
- * ExchangeCode request/response schema
+ * Token exchange response schema (OAuth2 standard)
+ * POST /oauth/token
  */
-export const ExchangeCodeRequestSchema = z.object({
-  authorization_code: z.string(),
-  code_verifier: z.string(),
-});
-export type ExchangeCodeRequest = z.infer<typeof ExchangeCodeRequestSchema>;
-
-export const ExchangeCodeResponseSchema = z.object({
+export const TokenResponseSchema = z.object({
   access_token: z.string(),
+  token_type: z.string(),
+  expires_in: z.number(),
+  id_token: z.string(),
+  refresh_token: z.string(),
 });
 
-export type ExchangeCodeResponse = z.infer<typeof ExchangeCodeResponseSchema>;
+export type TokenResponse = z.infer<typeof TokenResponseSchema>;
 
 /**
- * VerifyToken request/response schema
+ * UserInfo response schema
+ * GET /oauth/userinfo
  */
-export const VerifyTokenRequestSchema = z.object({
-  access_token: z.string(),
-});
-export type VerifyTokenRequest = z.infer<typeof VerifyTokenRequestSchema>;
-
-export const VerifyTokenResponseSchema = z.object({
-  is_valid: z.boolean(),
-  access_token: z.optional(z.string()),
+export const UserInfoResponseSchema = z.object({
+  sub: z.string(),
 });
 
-export type VerifyTokenResponse = z.infer<typeof VerifyTokenResponseSchema>;
+export type UserInfoResponse = z.infer<typeof UserInfoResponseSchema>;
 
 /**
- * Token info schema
+ * Token info schema (parsed from JWT)
+ * Standard OIDC claims
  */
 export const TokenInfoSchema = z.object({
-  app_callback_session_address: z.string(),
-  expired_at: z.number(),
-  issued_at: z.number(),
+  iss: z.string(),
+  sub: z.string(),
+  aud: z.union([z.string(), z.array(z.string())]),
+  exp: z.number(),
+  iat: z.number(),
+  nonce: z.optional(z.string()),
+  auth_time: z.optional(z.number()),
 });
 export type TokenInfo = z.infer<typeof TokenInfoSchema>;
+
+// Legacy exports for backward compatibility during transition
+export const ExchangeCodeResponseSchema = TokenResponseSchema;
+export type ExchangeCodeResponse = TokenResponse;

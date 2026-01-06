@@ -68,14 +68,14 @@ function AppContent() {
                     borderRadius: '4px',
                     fontSize: '12px'
                   }}>
-                    {auth.tokenInfo.app_callback_session_address}
+                    {auth.tokenInfo.sub}
                   </code>
                 </p>
                 <p style={{ margin: '8px 0' }}>
-                  <strong style={{ opacity: 0.8 }}>Issued:</strong> {new Date(auth.tokenInfo.issued_at * 1000).toLocaleString()}
+                  <strong style={{ opacity: 0.8 }}>Issued:</strong> {new Date(auth.tokenInfo.iat * 1000).toLocaleString()}
                 </p>
                 <p style={{ margin: '8px 0' }}>
-                  <strong style={{ opacity: 0.8 }}>Expires:</strong> {new Date(auth.tokenInfo.expired_at * 1000).toLocaleString()}
+                  <strong style={{ opacity: 0.8 }}>Expires:</strong> {new Date(auth.tokenInfo.exp * 1000).toLocaleString()}
                 </p>
               </div>
             </div>
