@@ -41,7 +41,7 @@ export const TokenResponseSchema = z.object({
   access_token: z.string(),
   token_type: z.string(),
   expires_in: z.number(),
-  id_token: z.string(),
+  id_token: z.optional(z.string()),  // Optional - not returned on refresh_token grant
   refresh_token: z.string(),
 });
 

@@ -202,7 +202,9 @@ export class AlienSsoClient {
 
     // Store tokens
     localStorage.setItem(STORAGE_KEY + 'access_token', tokenResponse.access_token);
-    localStorage.setItem(STORAGE_KEY + 'id_token', tokenResponse.id_token);
+    if (tokenResponse.id_token) {
+      localStorage.setItem(STORAGE_KEY + 'id_token', tokenResponse.id_token);
+    }
     localStorage.setItem(REFRESH_TOKEN_KEY, tokenResponse.refresh_token);
 
     // Calculate and store expiry timestamp (expires_in is in seconds)
@@ -429,7 +431,10 @@ export class AlienSsoClient {
 
     // Store new tokens
     localStorage.setItem(STORAGE_KEY + 'access_token', tokenResponse.access_token);
-    localStorage.setItem(STORAGE_KEY + 'id_token', tokenResponse.id_token);
+    // Only update id_token if returned (refresh grant usually doesn't return it)
+    if (tokenResponse.id_token) {
+      localStorage.setItem(STORAGE_KEY + 'id_token', tokenResponse.id_token);
+    }
     localStorage.setItem(REFRESH_TOKEN_KEY, tokenResponse.refresh_token);
 
     const expiryTime = Date.now() + (tokenResponse.expires_in * 1000);

@@ -31,7 +31,7 @@ type SsoContextValue = {
   pollAuth: (pollingCode: string) => Promise<import("@alien_org/sso-sdk-core").PollResponse>;
   exchangeToken: (authCode: string) => Promise<TokenResponse>;
   verifyAuth: () => Promise<boolean>;
-  refreshToken: () => Promise<boolean>;
+  refreshToken: () => Promise<string | null>;
   logout: () => void;
   openModal: () => void;
   closeModal: () => void;
@@ -121,7 +121,7 @@ export function AlienSsoProvider({
   );
 
   const refreshToken = useCallback(
-    async () => {
+    async (): Promise<string | null> => {
       try {
         const tokenResponse = await client.refreshAccessToken();
         const tokenInfo = client.getAuthData();
@@ -131,7 +131,7 @@ export function AlienSsoProvider({
           token: tokenResponse.access_token,
           tokenInfo,
         });
-        return true;
+        return tokenResponse.access_token;
       } catch {
         // Refresh failed, client.refreshAccessToken already calls logout
         setAuth({
@@ -139,7 +139,7 @@ export function AlienSsoProvider({
           token: null,
           tokenInfo: null,
         });
-        return false;
+        return null;
       }
     },
     [client],
