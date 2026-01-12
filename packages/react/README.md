@@ -40,7 +40,7 @@ The SDK handles the complete flow automatically:
 
 1. User clicks **Sign In** button
 2. Modal opens with **QR code** and deep link
-3. User scans QR or opens deep link in **Alien app**
+3. User scans QR or opens deep link in **Alien App**
 4. SDK **polls** for authentication completion
 5. On success, **exchanges code** for access token
 6. Auth state updates, modal closes

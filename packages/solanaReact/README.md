@@ -41,7 +41,7 @@ The SDK handles the complete Solana authentication flow automatically:
 1. User **connects wallet** via Solana wallet adapter
 2. User clicks **Sign In** button
 3. Modal opens with **QR code** and deep link
-4. User scans QR or opens deep link in **Alien app**
+4. User scans QR or opens deep link in **Alien App**
 5. SDK **polls** for authentication completion
 6. On success, builds **attestation transaction**
 7. User **signs transaction** via wallet

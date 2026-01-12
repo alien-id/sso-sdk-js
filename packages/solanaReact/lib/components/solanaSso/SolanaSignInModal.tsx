@@ -366,7 +366,7 @@ export const SolanaSignInModal = () => {
 
             <div className={styles.footer}>
               <div>
-                <div className={styles.footerTitle}>Don't have an Alien app yet?</div>
+                <div className={styles.footerTitle}>Don't have an Alien App yet?</div>
                 <div className={styles.footerSubtitle}>Available on iOS and Android.</div>
               </div>
 
@@ -377,7 +377,7 @@ export const SolanaSignInModal = () => {
           <>
             {deeplink && <a href={deeplink} target="_blank" className={styles.mobileOpenButton}><span>Open in Alien App</span> <RightIcon /></a>}
             <div className={styles.mobileFooter}>
-              <div className={styles.mobileFooterTitle}>Don't have an Alien app yet?</div>
+              <div className={styles.mobileFooterTitle}>Don't have an Alien App yet?</div>
               <div className={styles.mobileFooterSubtitle}>
                 Available on iOS and Android.{' '}
                 <a className={styles.mobileFooterButton} target='_blank' href="https://alien.org">Download</a>

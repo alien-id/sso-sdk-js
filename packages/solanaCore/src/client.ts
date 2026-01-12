@@ -29,8 +29,6 @@ import {
   deriveSessionEntryPda,
   deriveSolanaEntryPda,
   deriveAttestationPda,
-  deriveCredentialPda,
-  deriveSchemaPda,
 } from './pda';
 
 const SSO_BASE_URL = 'https://sso.alien.com';
@@ -40,12 +38,6 @@ const POLLING_INTERVAL = 5000;
 const DEFAULT_CREDENTIAL_SIGNER_PROGRAM_ID = '9cstDz8WWRAFaq1vVpTjfHz6tjgh6SJaqYFeZWi1pFHG';
 const DEFAULT_SESSION_REGISTRY_PROGRAM_ID = 'DeHa6pyZ2CFSbQQiNMm7FgoCXqmkX6tXG77C4Qycpta6';
 const DEFAULT_SAS_PROGRAM_ID = '22zoJMtdu4tQc2PzL74ZUT7FrwgB1Udec8DdW4yw4BdG'; // Solana Attestation Service
-
-// Default credential and schema parameters
-const DEFAULT_CREDENTIAL_AUTHORITY = '11111111111111111111111111111111';
-const DEFAULT_CREDENTIAL_NAME = 'default_credential';
-const DEFAULT_SCHEMA_NAME = 'default_schema';
-const DEFAULT_SCHEMA_VERSION = 1;
 
 const joinUrl = (base: string, path: string): string => {
   return new URL(path, base).toString();
@@ -58,10 +50,6 @@ export const AlienSolanaSsoClientSchema = z.object({
   credentialSignerProgramId: z.optional(z.string()),
   sasProgramId: z.optional(z.string()),
   sessionRegistryProgramId: z.optional(z.string()),
-  credentialAuthority: z.optional(z.string()),
-  credentialName: z.optional(z.string()),
-  schemaName: z.optional(z.string()),
-  schemaVersion: z.optional(z.number()),
 });
 
 export type AlienSolanaSsoClientConfig = z.infer<typeof AlienSolanaSsoClientSchema>;
