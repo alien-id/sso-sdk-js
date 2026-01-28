@@ -1,5 +1,4 @@
 import { Options } from 'qr-code-styling';
-import { logoUri } from "./logoUri.ts";
 
 export const qrOptions: Partial<Options> = {
   data: 'sample',
@@ -24,7 +23,7 @@ export const qrOptions: Partial<Options> = {
     color: '#ffffff',
     type: 'extra-rounded',
   },
-  image: logoUri,
+  // image is set dynamically in SolanaSignInModal to use blob URL (CSP-friendly)
   imageOptions: {
     imageSize: 0.6,
     crossOrigin: 'anonymous',

@@ -13,8 +13,13 @@ import { ErrorIcon } from "../assets/ErrorIcon";
 import { RetryIcon } from "../assets/RetryIcon";
 import QRCodeStyling from "qr-code-styling";
 import { qrOptions } from "../consts/qrConfig";
+import { getLogoUri } from "../consts/logoUri";
 
-const qrCode = new QRCodeStyling(qrOptions)
+// Create QR code instance with blob URL for CSP compatibility
+const qrCode = new QRCodeStyling({
+  ...qrOptions,
+  image: getLogoUri(),
+})
 
 export const SignInModal = () => {
   const { isModalOpen: isOpen, closeModal: onClose, generateDeeplink, pollAuth, exchangeToken, client, queryClient } = useAuth();

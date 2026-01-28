@@ -14,11 +14,16 @@ import { ErrorIcon } from "../assets/ErrorIcon";
 import { RetryIcon } from "../assets/RetryIcon";
 import QRCodeStyling from "qr-code-styling";
 import { qrOptions } from "../consts/qrConfig";
+import { getLogoUri } from "../consts/logoUri";
 import { PublicKey } from '@solana/web3.js';
 import { SolanaIcon } from "../assets/SolanaIcon.tsx";
 import { SolanaColorIcon } from "../assets/SolanaColorIcon.tsx";
 
-const qrCode = new QRCodeStyling(qrOptions)
+// Create QR code instance with blob URL for CSP compatibility
+const qrCode = new QRCodeStyling({
+  ...qrOptions,
+  image: getLogoUri(),
+})
 
 const shortenAddress = (address: string, startChars = 11, endChars = 4): string => {
   return `${address.slice(0, startChars)}...${address.slice(-endChars)}`;
