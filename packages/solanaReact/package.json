@@ -1,5 +1,5 @@
 {
-  "name": "@alien_org/solana-sso-sdk-react",
+  "name": "@alien-id/sso-solana-react",
   "version": "1.0.14",
   "type": "module",
   "main": "dist/main.js",

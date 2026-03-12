@@ -1,0 +1,83 @@
+name: Solana React Package
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/solanaReact/src/**"
+    tags:
+      - "solana-react@*"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "packages/solanaReact/src/**"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Build and Publish Solana React Package
+    if: startsWith(github.ref, 'refs/tags/solana-react@')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate tag matches package.json version
+        working-directory: packages/solanaReact
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          EXPECTED_TAG="solana-react@${PACKAGE_VERSION}"
+          if [ "$TAG_NAME" != "$EXPECTED_TAG" ]; then
+            echo "Error: Tag $TAG_NAME does not match package.json version $PACKAGE_VERSION"
+            exit 1
+          fi
+          echo "Tag matches package.json version"
+
+      - name: Build package
+        working-directory: packages/solanaReact
+        run: npm run build
+
+      - name: Determine npm tag
+        id: npm-tag
+        working-directory: packages/solanaReact
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$VERSION" == *"-alpha"* ]]; then
+            echo "tag=alpha" >> "$GITHUB_OUTPUT"
+          elif [[ "$VERSION" == *"-beta"* ]]; then
+            echo "tag=beta" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to npm
+        working-directory: packages/solanaReact
+        run: npm publish --access public --provenance --tag ${{ steps.npm-tag.outputs.tag }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          append_body: true
+          prerelease: ${{ steps.npm-tag.outputs.tag != 'latest' }}
+          make_latest: ${{ steps.npm-tag.outputs.tag == 'latest' }}
+          body: |
+            ## npm
+            https://www.npmjs.com/package/@alien-id/sso-solana-react
