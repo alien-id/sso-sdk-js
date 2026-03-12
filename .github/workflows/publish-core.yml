@@ -54,6 +54,10 @@ jobs:
         working-directory: packages/core
         run: npm run build
 
+      - name: Pack
+        working-directory: packages/core
+        run: npm pack
+
       - name: Determine npm tag
         id: npm-tag
         working-directory: packages/core
@@ -69,7 +73,7 @@ jobs:
 
       - name: Publish to npm
         working-directory: packages/core
-        run: npm publish --access public --provenance --tag ${{ steps.npm-tag.outputs.tag }}
+        run: npm publish ./alien-id-sso-*.tgz --access public --provenance --tag ${{ steps.npm-tag.outputs.tag }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
