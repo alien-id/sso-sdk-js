@@ -10,7 +10,7 @@ import type { ReactNode } from "react";
 import {
   AlienSolanaSsoClient,
   type AlienSolanaSsoClientConfig,
-} from "@alien_org/solana-sso-sdk-core";
+} from "@alien-id/sso-solana";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SolanaSignInModal } from "../components";
 import type { PublicKey, Transaction, VersionedTransaction, Connection } from "@solana/web3.js";
@@ -43,8 +43,8 @@ type SolanaSsoContextValue = {
   queryClient: QueryClient;
   generateDeeplink: (
     solanaAddress: string
-  ) => Promise<import("@alien_org/solana-sso-sdk-core").SolanaLinkResponse>;
-  pollAuth: (pollingCode: string) => Promise<import("@alien_org/solana-sso-sdk-core").SolanaPollResponse>;
+  ) => Promise<import("@alien-id/sso-solana").SolanaLinkResponse>;
+  pollAuth: (pollingCode: string) => Promise<import("@alien-id/sso-solana").SolanaPollResponse>;
   verifyAttestation: (solanaAddress: string) => Promise<string | null>;
   logout: () => void;
   openModal: () => void;

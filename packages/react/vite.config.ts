@@ -24,7 +24,7 @@ export default defineConfig({
         'react',
         'react-dom',
         'react/jsx-runtime',
-        '@alien_org/sso-sdk-core',
+        '@alien-id/sso',
         'clsx',
         'qr-code-styling',
         'framer-motion',

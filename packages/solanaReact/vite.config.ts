@@ -24,7 +24,7 @@ export default defineConfig({
         'react',
         'react-dom',
         'react/jsx-runtime',
-        '@alien_org/solana-sso-sdk-core',
+        '@alien-id/sso-solana',
         'clsx',
         'qr-code-styling',
         'framer-motion',

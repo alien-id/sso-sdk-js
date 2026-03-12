@@ -11,7 +11,7 @@ import {
   AlienSsoClient,
   type AlienSsoClientConfig,
   type TokenResponse,
-} from "@alien_org/sso-sdk-core";
+} from "@alien-id/sso";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SignInModal } from "../components";
 
@@ -26,9 +26,9 @@ type SsoContextValue = {
   auth: AuthState;
   queryClient: QueryClient;
   generateDeeplink: () => Promise<
-    import("@alien_org/sso-sdk-core").AuthorizeResponse
+    import("@alien-id/sso").AuthorizeResponse
   >;
-  pollAuth: (pollingCode: string) => Promise<import("@alien_org/sso-sdk-core").PollResponse>;
+  pollAuth: (pollingCode: string) => Promise<import("@alien-id/sso").PollResponse>;
   exchangeToken: (authCode: string) => Promise<TokenResponse>;
   verifyAuth: () => Promise<boolean>;
   refreshToken: () => Promise<string | null>;
