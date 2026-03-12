@@ -1,5 +1,5 @@
 {
-  "name": "@alien_org/sso-sdk-core",
+  "name": "@alien-id/sso",
   "version": "1.0.23",
   "repository": {
     "type": "git",
