@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { AlienSsoProvider, useAuth } from '@alien_org/sso-sdk-react';
-import { SignInButton } from '@alien_org/sso-sdk-react';
+import { AlienSsoProvider, useAuth } from '@alien-id/sso-react';
+import { SignInButton } from '@alien-id/sso-react';
 import './App.css';
 
 const ssoConfig = {

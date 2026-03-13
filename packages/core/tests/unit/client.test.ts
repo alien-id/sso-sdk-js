@@ -31,15 +31,15 @@ describe('AlienSsoSdkClient', () => {
   });
 
   describe('generateCodeChallenge', () => {
-    it('should return a hex string of SHA-256 hash', async () => {
+    it('should return a base64url-encoded SHA-256 hash', async () => {
       const codeVerifier = 'test-verifier';
       const challenge = await (client as any).generateCodeChallenge(
         codeVerifier,
       );
 
       expect(typeof challenge).toBe('string');
-      expect(challenge).toMatch(/^[a-f0-9]+$/); // hex only
-      expect(challenge.length).toBe(64); // SHA-256 = 32 bytes = 64 hex chars
+      expect(challenge).toMatch(/^[A-Za-z0-9\-_]+$/); // base64url only
+      expect(challenge.length).toBe(43); // SHA-256 = 32 bytes = 43 base64url chars
     });
 
     it('should return consistent hash for same verifier', async () => {

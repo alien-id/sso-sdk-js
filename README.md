@@ -13,13 +13,13 @@ This monorepo provides two authentication approaches:
 
 ### Standard SSO
 
-- **[@alien_org/sso-sdk-core](./packages/core)** - Core TypeScript client for OIDC-style authentication
-- **[@alien_org/sso-sdk-react](./packages/react)** - React hooks and components for Standard SSO
+- **[@alien-id/sso](./packages/core)** - Core TypeScript client for OIDC-style authentication
+- **[@alien-id/sso-react](./packages/react)** - React hooks and components for Standard SSO
 
 ### Solana SSO
 
-- **[@alien_org/solana-sso-sdk-core](./packages/solanaCore)** - Solana-specific authentication client with on-chain attestation support
-- **[@alien_org/solana-sso-sdk-react](./packages/solanaReact)** - React hooks and components for Solana SSO
+- **[@alien-id/sso-solana](./packages/solanaCore)** - Solana-specific authentication client with on-chain attestation support
+- **[@alien-id/sso-solana-react](./packages/solanaReact)** - React hooks and components for Solana SSO
 
 ## Documentation
 
@@ -37,10 +37,10 @@ This monorepo provides two authentication approaches:
 
 ### API Reference
 
-- [Standard SSO Core API](https://dev.alien.org/docs/sso-api-reference/api-reference-core) - `@alien_org/sso-sdk-core`
-- [Standard SSO React API](https://dev.alien.org/docs/sso-api-reference/api-reference-react) - `@alien_org/sso-sdk-react`
-- [Solana SSO Core API](https://dev.alien.org/docs/solana-sso-api-reference/api-reference-core) - `@alien_org/solana-sso-sdk-core`
-- [Solana SSO React API](https://dev.alien.org/docs/solana-sso-api-reference/api-reference-react) - `@alien_org/solana-sso-sdk-react`
+- [Standard SSO Core API](https://dev.alien.org/docs/sso-api-reference/api-reference-core) - `@alien-id/sso`
+- [Standard SSO React API](https://dev.alien.org/docs/sso-api-reference/api-reference-react) - `@alien-id/sso-react`
+- [Solana SSO Core API](https://dev.alien.org/docs/solana-sso-api-reference/api-reference-core) - `@alien-id/sso-solana`
+- [Solana SSO React API](https://dev.alien.org/docs/solana-sso-api-reference/api-reference-react) - `@alien-id/sso-solana-react`
 
 ### Core Concepts
 
@@ -50,7 +50,7 @@ This monorepo provides two authentication approaches:
 ### Demo Applications
 
 - [Standard SSO Demo App](https://dev.alien.org/docs/sso-demo-app) - Example React application
-- [Solana SSO Demo dApp](https://dev.alien.org/docs/solana-sso-demo-dapp) - Example Solana dApp
+- [Solana SSO Demo App](https://dev.alien.org/docs/solana-sso-demo-app) - Example Solana dApp
 
 ## Development
 
@@ -97,5 +97,5 @@ To use the SDK, you need a provider address. Register your application at the [D
 ## Support
 
 - 📖 [Documentation](https://dev.alien.org/docs)
-- 🐛 [Report Issues](https://github.com/alien-org/sso-sdk-js/issues)
+- 🐛 [Report Issues](https://github.com/alien-id/sso-sdk-js/issues)
 - 💬 [Discord Community](https://discord.gg/alien)

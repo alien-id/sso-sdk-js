@@ -22,14 +22,14 @@ export const initializeSsoMock = (baseUrl) => {
 
   // Create OIDC-compliant JWT tokens
   const tokenHeader = JSON.stringify({
-    alg: 'EdDSA',
+    alg: 'RS256',
     typ: 'JWT',
   });
   const now = Math.floor(Date.now() / 1000);
   const tokenPayload = JSON.stringify({
     iss: 'https://sso.alien.com',
     sub: 'session-address-test',
-    aud: 'provider-address-test',
+    aud: '00000001000000000000000000000000',
     exp: now + 3600,
     iat: now,
   });
@@ -53,6 +53,7 @@ export const initializeSsoMock = (baseUrl) => {
       token_type: 'Bearer',
       expires_in: 3600,
       id_token: idToken,
+      refresh_token: 'refresh-token-test-1234-5678',
     });
 
   // OAuth2 userinfo endpoint

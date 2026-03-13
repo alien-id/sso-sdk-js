@@ -1,6 +1,6 @@
-# @alien_org/sso-sdk-react
+# @alien-id/sso-react
 
-React hooks and components for [Alien SSO](https://alien.org) authentication. Built on top of [@alien_org/sso-sdk-core](https://www.npmjs.com/package/@alien_org/sso-sdk-core).
+React hooks and components for [Alien SSO](https://alien.org) authentication. Built on top of [@alien-id/sso](https://www.npmjs.com/package/@alien-id/sso).
 
 ## ⚠️ Alpha Version Notice
 
@@ -9,7 +9,7 @@ React hooks and components for [Alien SSO](https://alien.org) authentication. Bu
 ## Installation
 
 ```bash
-npm install @alien_org/sso-sdk-react
+npm install @alien-id/sso-react
 ```
 
 ## Features
@@ -32,7 +32,7 @@ npm install @alien_org/sso-sdk-react
 
 ### Core SDK
 
-For vanilla JavaScript/TypeScript usage or custom implementations, see [@alien_org/sso-sdk-core](https://www.npmjs.com/package/@alien_org/sso-sdk-core).
+For vanilla JavaScript/TypeScript usage or custom implementations, see [@alien-id/sso](https://www.npmjs.com/package/@alien-id/sso).
 
 ## Authentication Flow
 
@@ -50,7 +50,7 @@ The SDK handles the complete flow automatically:
 The SDK includes default styles, but you can customize them:
 
 ```tsx
-import '@alien_org/sso-sdk-react/dist/style.css'; // Optional: Import default styles
+import '@alien-id/sso-react/dist/style.css'; // Optional: Import default styles
 
 // Override with your own CSS
 .alien-sso-button {
@@ -66,9 +66,8 @@ Includes full TypeScript declarations:
 ```typescript
 import type {
   AlienSsoClientConfig,
-  AuthState,
   TokenInfo
-} from '@alien_org/sso-sdk-react';
+} from '@alien-id/sso';
 ```
 
 ## Peer Dependencies
@@ -92,6 +91,6 @@ MIT
 ## Links
 
 - [Documentation](https://dev.alien.org/docs)
-- [GitHub Repository](https://github.com/alien-org/sso-sdk-js)
-- [NPM Package](https://www.npmjs.com/package/@alien_org/sso-sdk-react)
-- [Core SDK](https://www.npmjs.com/package/@alien_org/sso-sdk-core)
+- [GitHub Repository](https://github.com/alien-id/sso-sdk-js)
+- [NPM Package](https://www.npmjs.com/package/@alien-id/sso-react)
+- [Core SDK](https://www.npmjs.com/package/@alien-id/sso)

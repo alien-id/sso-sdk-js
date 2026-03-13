@@ -49,6 +49,7 @@ describe('SSO Integration', () => {
       token_type: 'Bearer',
       expires_in: expect.any(Number),
       id_token: expect.any(String),
+      refresh_token: expect.any(String),
     });
 
     // Step 4: Verify auth via userinfo endpoint
