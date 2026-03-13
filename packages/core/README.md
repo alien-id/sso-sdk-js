@@ -1,4 +1,4 @@
-# @alien_org/sso-sdk-core
+# @alien-id/sso
 
 Core TypeScript client for [Alien SSO](https://alien.org) authentication. Provides OIDC-compatible authentication with blockchain and TEE backing.
 
@@ -9,7 +9,7 @@ Core TypeScript client for [Alien SSO](https://alien.org) authentication. Provid
 ## Installation
 
 ```bash
-npm install @alien_org/sso-sdk-core
+npm install @alien-id/sso
 ```
 
 ## Features
@@ -32,10 +32,10 @@ npm install @alien_org/sso-sdk-core
 
 ### React Integration
 
-If you're using React, check out [@alien_org/sso-sdk-react](https://www.npmjs.com/package/@alien_org/sso-sdk-react) for hooks and pre-built components:
+If you're using React, check out [@alien-id/sso-react](https://www.npmjs.com/package/@alien-id/sso-react) for hooks and pre-built components:
 
 ```bash
-npm install @alien_org/sso-sdk-react
+npm install @alien-id/sso-react
 ```
 
 ## Authentication Flow
@@ -68,7 +68,7 @@ import type {
   PollResponse,
   ExchangeCodeResponse,
   TokenInfo
-} from '@alien_org/sso-sdk-core';
+} from '@alien-id/sso';
 ```
 
 ## Browser Support
@@ -83,5 +83,5 @@ MIT
 ## Links
 
 - [Documentation](https://dev.alien.org/docs)
-- [GitHub Repository](https://github.com/alien-org/sso-sdk-js)
-- [NPM Package](https://www.npmjs.com/package/@alien_org/sso-sdk-core)
+- [GitHub Repository](https://github.com/alien-id/sso-sdk-js)
+- [NPM Package](https://www.npmjs.com/package/@alien-id/sso)

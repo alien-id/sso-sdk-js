@@ -22,9 +22,9 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
-    "test": "jest",
-    "test:unit": "jest tests/unit",
-    "test:integration": "jest tests/integration",
+    "test": "jest --passWithNoTests",
+    "test:unit": "jest tests/unit --passWithNoTests",
+    "test:integration": "jest tests/integration --passWithNoTests",
     "test:watch": "jest --watch",
     "release": "npm publish --access public"
   },

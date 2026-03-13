@@ -1,6 +1,6 @@
-# @alien_org/solana-sso-sdk-react
+# @alien-id/sso-solana-react
 
-React hooks and components for [Alien SSO](https://alien.org) Solana authentication. Built on top of [@alien_org/solana-sso-sdk-core](https://www.npmjs.com/package/@alien_org/solana-sso-sdk-core) with Solana wallet adapter integration.
+React hooks and components for [Alien SSO](https://alien.org) Solana authentication. Built on top of [@alien-id/sso-solana](https://www.npmjs.com/package/@alien-id/sso-solana) with Solana wallet adapter integration.
 
 ## ⚠️ Alpha Version Notice
 
@@ -9,7 +9,7 @@ React hooks and components for [Alien SSO](https://alien.org) Solana authenticat
 ## Installation
 
 ```bash
-npm install @alien_org/solana-sso-sdk-react @solana/web3.js @solana/wallet-adapter-react
+npm install @alien-id/sso-solana-react @solana/web3.js @solana/wallet-adapter-react
 ```
 
 ## Features
@@ -28,11 +28,11 @@ npm install @alien_org/solana-sso-sdk-react @solana/web3.js @solana/wallet-adapt
 
 - **[Solana React Integration Guide](https://dev.alien.org/docs/solana-sso-guide/react-integration)** - Complete integration walkthrough
 - **[API Reference](https://dev.alien.org/docs/solana-sso-api-reference/api-reference-react)** - Detailed API documentation
-- **[Demo dApp](https://dev.alien.org/docs/solana-sso-demo-dapp)** - Example Solana React application
+- **[Demo App](https://dev.alien.org/docs/solana-sso-demo-app)** - Example Solana React application
 
 ### Core SDK
 
-For vanilla JavaScript/TypeScript usage or custom implementations, see [@alien_org/solana-sso-sdk-core](https://www.npmjs.com/package/@alien_org/solana-sso-sdk-core).
+For vanilla JavaScript/TypeScript usage or custom implementations, see [@alien-id/sso-solana](https://www.npmjs.com/package/@alien-id/sso-solana).
 
 ## Authentication Flow
 
@@ -69,7 +69,7 @@ The SDK implements a 60-second grace period after attestation creation to handle
 The SDK includes default styles, but you can customize them:
 
 ```tsx
-import '@alien_org/solana-sso-sdk-react/dist/style.css'; // Optional: Import default styles
+import '@alien-id/sso-solana-react/dist/style.css'; // Optional: Import default styles
 
 // Override with your own CSS
 .alien-solana-sso-button {
@@ -85,10 +85,9 @@ Includes full TypeScript declarations:
 ```typescript
 import type {
   AlienSolanaSsoClientConfig,
-  SolanaAuthState,
   SolanaLinkResponse,
   SolanaPollResponse
-} from '@alien_org/solana-sso-sdk-react';
+} from '@alien-id/sso-solana';
 ```
 
 ## Peer Dependencies
@@ -114,6 +113,6 @@ MIT
 ## Links
 
 - [Documentation](https://dev.alien.org/docs)
-- [GitHub Repository](https://github.com/alien-org/sso-sdk-js)
-- [NPM Package](https://www.npmjs.com/package/@alien_org/solana-sso-sdk-react)
-- [Core SDK](https://www.npmjs.com/package/@alien_org/solana-sso-sdk-core)
+- [GitHub Repository](https://github.com/alien-id/sso-sdk-js)
+- [NPM Package](https://www.npmjs.com/package/@alien-id/sso-solana-react)
+- [Core SDK](https://www.npmjs.com/package/@alien-id/sso-solana)

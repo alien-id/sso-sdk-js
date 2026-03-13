@@ -1,4 +1,4 @@
-# @alien_org/solana-sso-sdk-core
+# @alien-id/sso-solana
 
 Solana-specific authentication client for [Alien SSO](https://alien.org) with on-chain attestation support. Enables blockchain-native authentication with session verification on Solana.
 
@@ -9,7 +9,7 @@ Solana-specific authentication client for [Alien SSO](https://alien.org) with on
 ## Installation
 
 ```bash
-npm install @alien_org/solana-sso-sdk-core @solana/web3.js
+npm install @alien-id/sso-solana @solana/web3.js
 ```
 
 ## Features
@@ -28,14 +28,14 @@ npm install @alien_org/solana-sso-sdk-core @solana/web3.js
 - **[Solana Integration Guide](https://dev.alien.org/docs/solana-sso-guide/core-integration)** - Complete integration walkthrough
 - **[API Reference](https://dev.alien.org/docs/solana-sso-api-reference/api-reference-core)** - Detailed API documentation
 - **[What is Alien Session?](https://dev.alien.org/docs/what-is-alien-session)** - Session architecture explained
-- **[Demo dApp](https://dev.alien.org/docs/solana-sso-demo-dapp)** - Example Solana application
+- **[Demo App](https://dev.alien.org/docs/solana-sso-demo-app)** - Example Solana application
 
 ### React Integration
 
-For React applications with Solana wallet adapters, check out [@alien_org/solana-sso-sdk-react](https://www.npmjs.com/package/@alien_org/solana-sso-sdk-react):
+For React applications with Solana wallet adapters, check out [@alien-id/sso-solana-react](https://www.npmjs.com/package/@alien-id/sso-solana-react):
 
 ```bash
-npm install @alien_org/solana-sso-sdk-react
+npm install @alien-id/sso-solana-react
 ```
 
 ## Authentication Flow
@@ -72,7 +72,7 @@ import type {
   SolanaLinkResponse,
   SolanaPollResponse,
   SolanaAttestationResponse
-} from '@alien_org/solana-sso-sdk-core';
+} from '@alien-id/sso-solana';
 ```
 
 ## Peer Dependencies
@@ -86,6 +86,6 @@ MIT
 ## Links
 
 - [Documentation](https://dev.alien.org/docs)
-- [GitHub Repository](https://github.com/alien-org/sso-sdk-js)
-- [NPM Package](https://www.npmjs.com/package/@alien_org/solana-sso-sdk-core)
-- [React Integration](https://www.npmjs.com/package/@alien_org/solana-sso-sdk-react)
+- [GitHub Repository](https://github.com/alien-id/sso-sdk-js)
+- [NPM Package](https://www.npmjs.com/package/@alien-id/sso-solana)
+- [React Integration](https://www.npmjs.com/package/@alien-id/sso-solana-react)

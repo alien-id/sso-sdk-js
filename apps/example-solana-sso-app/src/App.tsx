@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { AlienSolanaSsoProvider, useSolanaAuth } from '@alien_org/solana-sso-sdk-react';
+import { AlienSolanaSsoProvider, useSolanaAuth } from '@alien-id/sso-solana-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { ConnectionProvider, WalletProvider, useWallet } from '@solana/wallet-adapter-react';
 import { WalletModalProvider, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
@@ -7,7 +7,7 @@ import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { clusterApiUrl } from '@solana/web3.js';
 import './App.css';
 import '@solana/wallet-adapter-react-ui/styles.css';
-import { SolanaSignInButton } from "@alien_org/solana-sso-sdk-react";
+import { SolanaSignInButton } from "@alien-id/sso-solana-react";
 
 const ssoConfig = {
   ssoBaseUrl: import.meta.env.VITE_ALIEN_SSO_BASE_URL,

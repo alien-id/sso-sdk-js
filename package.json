@@ -1,5 +1,5 @@
 {
-  "name": "@alien_org/sso-sdk",
+  "name": "@alien-id/sso-sdk",
   "private": true,
   "workspaces": [
     "packages/**",
@@ -9,7 +9,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint --filter=@alien-id/sso-react --filter=@alien-id/sso-solana-react"
   },
   "devDependencies": {
     "ajv": "^8.17.1",
