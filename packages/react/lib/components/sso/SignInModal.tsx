@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import styles from './SignInModal.module.css';
 import { useAuth } from "../../providers";
@@ -11,18 +11,18 @@ import { SpinIcon } from "../assets/SpinIcon";
 import { SuccessIcon } from "../assets/SuccessIcon";
 import { ErrorIcon } from "../assets/ErrorIcon";
 import { RetryIcon } from "../assets/RetryIcon";
+import { CopyIcon } from "../assets/CopyIcon";
+import { CheckIcon } from "../assets/CheckIcon";
 import QRCodeStyling from "qr-code-styling";
 import { qrOptions } from "../consts/qrConfig";
 import { getLogoUri } from "../consts/logoUri";
 
-// Create QR code instance with blob URL for CSP compatibility
-const qrCode = new QRCodeStyling({
-  ...qrOptions,
-  image: getLogoUri(),
-})
+const AGENT_INSTALL_COMMAND = 'npx skills add alien-id/agent-id';
 
 export const SignInModal = () => {
-  const { isModalOpen: isOpen, closeModal: onClose, generateDeeplink, pollAuth, exchangeToken, client, queryClient } = useAuth();
+  const { isModalOpen: isOpen, closeModal: onClose, generateDeeplink, pollAuth, exchangeToken, client, queryClient, agentIdEnabled } = useAuth();
+  const [authMode, setAuthMode] = useState<'human' | 'agent'>('human');
+  const [copied, setCopied] = useState(false);
   const isMobile = useIsMobile();
 
   const [isSuccess, setIsSuccess] = useState(false);
@@ -31,7 +31,16 @@ export const SignInModal = () => {
   const [pollingCode, setPollingCode] = useState<string>('');
   const [deeplink, setDeeplink] = useState<string>('');
 
-  const qrInstanceRef = useRef<QRCodeStyling>(qrCode);
+  // Create QR code instance inside component to avoid `window is not defined` during SSR
+  const qrCode = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    return new QRCodeStyling({
+      ...qrOptions,
+      image: getLogoUri(),
+    });
+  }, []);
+
+  const qrInstanceRef = useRef<QRCodeStyling | null>(qrCode);
   const [qrElement, setQrElement] = useState<HTMLDivElement | null>(null);
 
   const [isLoadingQr, setIsLoadingQr] = useState<boolean>(true);
@@ -46,7 +55,7 @@ export const SignInModal = () => {
         setDeeplink(response.deep_link);
         setPollingCode(response.polling_code);
 
-        qrInstanceRef.current.update({
+        qrInstanceRef.current?.update({
           data: response.deep_link,
         });
         return response;
@@ -83,7 +92,7 @@ export const SignInModal = () => {
 
   useEffect(() => {
     if (qrElement) {
-      qrInstanceRef.current.append(qrElement);
+      qrInstanceRef.current?.append(qrElement);
     }
   }, [qrElement]);
 
@@ -160,46 +169,104 @@ export const SignInModal = () => {
   return (
     <ModalBase onClose={handleClose} isOpen={isOpen}>
       <div className={styles.container}>
-        <div className={styles.title}>Sign in with Alien App</div>
+        <div className={styles.title}>{authMode === 'agent' ? 'Sign in with Alien Agent ID' : 'Sign in with Alien App'}</div>
 
-        <div className={styles.subtitle}>Scan this QR code with an Alien App!</div>
-        <div className={styles.qrCodeContainer}>
-          {isLoadingQr ? (
-            <div className={styles.qrCodeSpinContainer}>
-              <div className={styles.qrCodeSpin}><SpinIcon /></div>
-            </div>
-          ) : null}
-          <div className={clsx(styles.qrCode, isLoadingQr && styles.qrCodeLoading)} ref={setQrElement} />
-        </div>
+        {agentIdEnabled && (
+          <div className={styles.modeSwitcher}>
+            <div className={clsx(styles.modeSwitcherSlider, authMode === 'agent' && styles.modeSwitcherSliderAgent)} />
+            <button type="button" className={styles.modeSwitcherButton} onClick={() => setAuthMode('human')}>Human</button>
+            <button type="button" className={styles.modeSwitcherButton} onClick={() => setAuthMode('agent')}>Agent</button>
+          </div>
+        )}
 
-        <div className={styles.description}>
-          Open Alien App and tap <br /> the scan button
-          <div className={styles.descriptionIcon}><QrIcon /></div>
-        </div>
-
-        {!isMobile ? (
+        {authMode === 'agent' ? (
           <>
-            <div className={styles.line} />
-
-            <div className={styles.footer}>
-              <div>
-                <div className={styles.footerTitle}>Don't have an Alien App yet?</div>
-                <div className={styles.footerSubtitle}>Available on iOS and Android.</div>
+            <div className={styles.agentContent}>
+              <div className={styles.agentCommandBox}>
+                <div className={styles.agentCommandInner}>
+                  <div className={styles.agentCommandLabel}>Register your agent</div>
+                  <div className={styles.agentCommandText}>{AGENT_INSTALL_COMMAND}</div>
+                </div>
+                <button
+                  type="button"
+                  className={styles.agentCopyButton}
+                  onClick={() => {
+                    navigator.clipboard.writeText(AGENT_INSTALL_COMMAND);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                >
+                  {copied ? <CheckIcon /> : <CopyIcon />}
+                </button>
               </div>
-
-              <a href="https://alien.org" target="_blank" className={styles.footerButton}>Download</a>
+              <ol className={styles.agentSteps}>
+                <li>Run the command above to get started</li>
+                <li>Register & send your human the claim link</li>
+                <li>Once claimed, start posting!</li>
+              </ol>
             </div>
+
+            {!isMobile ? (
+              <>
+                <div className={styles.line} />
+                <div className={styles.footer}>
+                  <div>
+                    <div className={styles.footerTitle}>Don't have an Alien App yet?</div>
+                    <div className={styles.footerSubtitle}>Available on iOS and Android.</div>
+                  </div>
+                  <a href="https://alien.org" target="_blank" className={styles.footerButton}>Download</a>
+                </div>
+              </>
+            ) : (
+              <div className={styles.mobileFooter}>
+                <div className={styles.mobileFooterTitle}>Don't have an Alien App yet?</div>
+                <div className={styles.mobileFooterSubtitle}>
+                  Available on iOS and Android.{' '}
+                  <a className={styles.mobileFooterButton} target='_blank' href="https://alien.org">Download</a>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <>
-            {deeplink && <a href={deeplink} target="_blank" className={styles.mobileOpenButton}><span>Open in Alien App</span> <RightIcon /></a>}
-            <div className={styles.mobileFooter}>
-              <div className={styles.mobileFooterTitle}>Don't have an Alien App yet?</div>
-              <div className={styles.mobileFooterSubtitle}>
-                Available on iOS and Android.{' '}
-                <a className={styles.mobileFooterButton} target='_blank' href="https://alien.org">Download</a>
-              </div>
+            <div className={styles.subtitle}>Scan this QR code with an Alien App!</div>
+            <div className={styles.qrCodeContainer}>
+              {isLoadingQr ? (
+                <div className={styles.qrCodeSpinContainer}>
+                  <div className={styles.qrCodeSpin}><SpinIcon /></div>
+                </div>
+              ) : null}
+              <div className={clsx(styles.qrCode, isLoadingQr && styles.qrCodeLoading)} ref={setQrElement} />
             </div>
+
+            <div className={styles.description}>
+              Open Alien App and tap <br /> the scan button
+              <div className={styles.descriptionIcon}><QrIcon /></div>
+            </div>
+
+            {!isMobile ? (
+              <>
+                <div className={styles.line} />
+                <div className={styles.footer}>
+                  <div>
+                    <div className={styles.footerTitle}>Don't have an Alien App yet?</div>
+                    <div className={styles.footerSubtitle}>Available on iOS and Android.</div>
+                  </div>
+                  <a href="https://alien.org" target="_blank" className={styles.footerButton}>Download</a>
+                </div>
+              </>
+            ) : (
+              <>
+                {deeplink && <a href={deeplink} target="_blank" className={styles.mobileOpenButton}><span>Open in Alien App</span> <RightIcon /></a>}
+                <div className={styles.mobileFooter}>
+                  <div className={styles.mobileFooterTitle}>Don't have an Alien App yet?</div>
+                  <div className={styles.mobileFooterSubtitle}>
+                    Available on iOS and Android.{' '}
+                    <a className={styles.mobileFooterButton} target='_blank' href="https://alien.org">Download</a>
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

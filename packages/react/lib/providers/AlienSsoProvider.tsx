@@ -1,34 +1,43 @@
-"use client";
+'use client';
 import {
   createContext,
   useContext,
   useMemo,
   useState,
   useCallback,
-} from "react";
-import type { ReactNode } from "react";
+} from 'react';
+import type { ReactNode } from 'react';
 import {
   AlienSsoClient,
   type AlienSsoClientConfig,
   type TokenResponse,
-} from "@alien-id/sso";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { SignInModal } from "../components";
+} from '@alien-id/sso';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SignInModal } from '../components';
+
+export type AgentIdConfig = {
+  enabled: boolean;
+  skillUrl?: string;
+};
+
+export type AlienSsoProviderConfig = AlienSsoClientConfig & {
+  agentId?: AgentIdConfig;
+};
 
 type AuthState = {
   isAuthenticated: boolean;
   token?: string | null;
-  tokenInfo?: ReturnType<AlienSsoClient["getAuthData"]> | null;
+  tokenInfo?: ReturnType<AlienSsoClient['getAuthData']> | null;
 };
 
 type SsoContextValue = {
   client: AlienSsoClient;
   auth: AuthState;
   queryClient: QueryClient;
-  generateDeeplink: () => Promise<
-    import("@alien-id/sso").AuthorizeResponse
-  >;
-  pollAuth: (pollingCode: string) => Promise<import("@alien-id/sso").PollResponse>;
+  generateDeeplink: () => Promise<import('@alien-id/sso').AuthorizeResponse>;
+  pollAuth: (
+    pollingCode: string,
+  ) => Promise<import('@alien-id/sso').PollResponse>;
   exchangeToken: (authCode: string) => Promise<TokenResponse>;
   verifyAuth: () => Promise<boolean>;
   refreshToken: () => Promise<string | null>;
@@ -36,6 +45,8 @@ type SsoContextValue = {
   openModal: () => void;
   closeModal: () => void;
   isModalOpen: boolean;
+  agentIdEnabled: boolean;
+  agentIdSkillUrl?: string;
 };
 
 const SsoContext = createContext<SsoContextValue | null>(null);
@@ -71,9 +82,11 @@ export function AlienSsoProvider({
   config,
   children,
 }: {
-  config: AlienSsoClientConfig;
+  config: AlienSsoProviderConfig;
   children: ReactNode;
 }) {
+  const agentIdEnabled = config.agentId?.enabled ?? false;
+  const agentIdSkillUrl = config.agentId?.skillUrl;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const client = useMemo(() => new AlienSsoClient(config), [config]);
   const [auth, setAuth] = useState<AuthState>(() => getInitialAuth(client));
@@ -104,46 +117,40 @@ export function AlienSsoProvider({
     [client],
   );
 
-  const verifyAuth = useCallback(
-    async () => {
-      const userInfo = await client.verifyAuth();
-      const valid = userInfo !== null;
-      const token = client.getAccessToken();
+  const verifyAuth = useCallback(async () => {
+    const userInfo = await client.verifyAuth();
+    const valid = userInfo !== null;
+    const token = client.getAccessToken();
+    const tokenInfo = client.getAuthData();
+    setAuth({
+      isAuthenticated: valid,
+      token,
+      tokenInfo,
+    });
+    return valid;
+  }, [client]);
+
+  const refreshToken = useCallback(async (): Promise<string | null> => {
+    try {
+      const tokenResponse = await client.refreshAccessToken();
       const tokenInfo = client.getAuthData();
+      const isAuthenticated = Boolean(tokenResponse.access_token && tokenInfo);
       setAuth({
-        isAuthenticated: valid,
-        token,
+        isAuthenticated,
+        token: tokenResponse.access_token,
         tokenInfo,
       });
-      return valid;
-    },
-    [client],
-  );
-
-  const refreshToken = useCallback(
-    async (): Promise<string | null> => {
-      try {
-        const tokenResponse = await client.refreshAccessToken();
-        const tokenInfo = client.getAuthData();
-        const isAuthenticated = Boolean(tokenResponse.access_token && tokenInfo);
-        setAuth({
-          isAuthenticated,
-          token: tokenResponse.access_token,
-          tokenInfo,
-        });
-        return tokenResponse.access_token;
-      } catch {
-        // Refresh failed, client.refreshAccessToken already calls logout
-        setAuth({
-          isAuthenticated: false,
-          token: null,
-          tokenInfo: null,
-        });
-        return null;
-      }
-    },
-    [client],
-  );
+      return tokenResponse.access_token;
+    } catch {
+      // Refresh failed, client.refreshAccessToken already calls logout
+      setAuth({
+        isAuthenticated: false,
+        token: null,
+        tokenInfo: null,
+      });
+      return null;
+    }
+  }, [client]);
 
   const logout = useCallback(() => {
     client.logout();
@@ -153,7 +160,6 @@ export function AlienSsoProvider({
       tokenInfo: null,
     });
   }, [client]);
-
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
@@ -171,7 +177,9 @@ export function AlienSsoProvider({
       logout,
       openModal,
       closeModal,
-      isModalOpen
+      isModalOpen,
+      agentIdEnabled,
+      agentIdSkillUrl,
     }),
     [
       client,
@@ -184,7 +192,9 @@ export function AlienSsoProvider({
       logout,
       openModal,
       closeModal,
-      isModalOpen
+      isModalOpen,
+      agentIdEnabled,
+      agentIdSkillUrl,
     ],
   );
 
@@ -200,6 +210,6 @@ export function AlienSsoProvider({
 
 export function useAuth() {
   const ctx = useContext(SsoContext);
-  if (!ctx) throw new Error("useSso must be used within <SsoProvider>");
+  if (!ctx) throw new Error('useSso must be used within <SsoProvider>');
   return ctx;
 }

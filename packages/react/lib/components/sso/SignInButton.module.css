@@ -39,9 +39,24 @@
 .buttonText {
     flex: 1;
     text-align: center;
+    line-height: 24px;
     word-wrap: break-word;
     overflow-wrap: break-word;
     hyphens: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.buttonWithAgent {
+    padding: 8px 20px;
+}
+
+.agentIdText {
+    color: rgba(255, 255, 255, 0.50);
+    font-size: 12px;
+    font-weight: 469;
+    line-height: 16px;
 }
 
 .buttonLight {
