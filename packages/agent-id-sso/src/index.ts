@@ -151,7 +151,16 @@ export function verifyAgentToken(
     return { ok: false, error: 'Fingerprint does not match public key' };
   }
 
-  const { sig: _, ...payloadFields } = parsed;
+  const payloadFields: Record<string, unknown> = {
+    v: parsed.v,
+    fingerprint,
+    publicKeyPem,
+    timestamp,
+    nonce,
+  };
+  if (owner !== undefined) {
+    payloadFields.owner = owner;
+  }
   const canonical = canonicalJSONString(payloadFields);
   let sigOk: boolean;
   try {
@@ -187,6 +196,9 @@ export function verifyAgentRequest(
   opts?: VerifyOptions,
 ): VerifyResult {
   const auth = req.headers.authorization;
+  if (Array.isArray(auth)) {
+    return { ok: false, error: 'Multiple Authorization headers' };
+  }
   if (typeof auth !== 'string' || !auth.startsWith('AgentID ')) {
     return {
       ok: false,
