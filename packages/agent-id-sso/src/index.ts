@@ -27,13 +27,6 @@ function canonicalJSONString(value: unknown): string {
 
 // ─── Crypto helpers ────────────────────────────────────────────────────────
 
-function fromB64url(value: string): Buffer {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-  const pad = normalized.length % 4;
-  const padded = pad === 0 ? normalized : normalized + '='.repeat(4 - pad);
-  return Buffer.from(padded, 'base64');
-}
-
 function fingerprintPublicKeyPem(publicKeyPem: string): string {
   const der = createPublicKey(publicKeyPem).export({
     format: 'der',
@@ -47,7 +40,7 @@ function verifyEd25519Base64Url(
   signatureB64url: string,
   publicKeyPem: string,
 ): boolean {
-  const signature = fromB64url(signatureB64url);
+  const signature = Buffer.from(signatureB64url, 'base64url');
   return verify(
     null,
     Buffer.from(payload),
@@ -109,7 +102,7 @@ export function verifyAgentToken(
 
   let parsed: Record<string, unknown>;
   try {
-    const json = fromB64url(tokenB64).toString('utf8');
+    const json = Buffer.from(tokenB64, 'base64url').toString('utf8');
     parsed = JSON.parse(json);
   } catch {
     return { ok: false, error: 'Invalid token encoding' };
