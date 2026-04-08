@@ -1,0 +1,45 @@
+{
+  "name": "@alien-id/agent-id-sso",
+  "version": "1.0.0",
+  "description": "Verify Alien Agent ID tokens — Ed25519 token verification for Node.js services",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alien-id/sso-sdk-js.git"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "release": "npm publish --access public"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.3.0",
+    "jest": "^30.1.2",
+    "ts-jest": "^29.4.1",
+    "tsdown": "^0.18.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
