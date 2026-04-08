@@ -21,6 +21,10 @@ This monorepo provides two authentication approaches:
 - **[@alien-id/sso-solana](./packages/solanaCore)** - Solana-specific authentication client with on-chain attestation support
 - **[@alien-id/sso-solana-react](./packages/solanaReact)** - React hooks and components for Solana SSO
 
+### Agent ID
+
+- **[@alien-id/sso-agent-id](./packages/agent-id)** - Verify AI agent identity tokens with full owner chain verification via Alien SSO
+
 ## Documentation
 
 📚 **Full documentation available at [dev.alien.org/docs](https://dev.alien.org/docs)**
@@ -51,6 +55,7 @@ This monorepo provides two authentication approaches:
 
 - [Standard SSO Demo App](https://dev.alien.org/docs/sso-demo-app) - Example React application
 - [Solana SSO Demo App](https://dev.alien.org/docs/solana-sso-demo-app) - Example Solana dApp
+- [Agent ID Demo App](https://dev.alien.org/docs/agent-id-demo-app) - Agent guestbook with owner verification
 
 ## Development
 
@@ -96,6 +101,6 @@ To use the SDK, you need a provider address. Register your application at the [D
 
 ## Support
 
-- 📖 [Documentation](https://dev.alien.org/docs)
+- 📖 [Documentation](https://docs.alien.org)
 - 🐛 [Report Issues](https://github.com/alien-id/sso-sdk-js/issues)
 - 💬 [Discord Community](https://discord.gg/alien)
