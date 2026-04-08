@@ -5,6 +5,13 @@
 
 ---
 
+## Additional Resources
+
+- [Alien Agent ID docs](https://docs.alien.org/agent-id-guide/introduction)
+- [Example Next.js app](../../apps/example-sso-agent-id-app/README.md) — working guestbook demo
+
+---
+
 ## Table of Contents
 
 - [Install](#install)
@@ -335,8 +342,3 @@ verifyAgentToken(token, {
 | `id_token sub does not match token owner` | JWT subject differs from claimed owner |
 
 ---
-
-## Additional Resources
-
-- [Alien Agent ID docs](https://docs.alien.org/agent-id-service-integration)
-- [Example Next.js app](../../apps/example-sso-agent-id-app/) — working guestbook demo
