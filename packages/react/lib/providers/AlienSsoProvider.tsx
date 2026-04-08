@@ -86,7 +86,7 @@ export function AlienSsoProvider({
   children: ReactNode;
 }) {
   const agentIdEnabled = config.agentId?.enabled ?? false;
-  const agentIdSkillUrl = config.agentId?.skillUrl;
+  const agentIdSkillUrl = config.agentId?.skillUrl ?? '/ALIEN-SKILL.md';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const client = useMemo(() => new AlienSsoClient(config), [config]);
   const [auth, setAuth] = useState<AuthState>(() => getInitialAuth(client));

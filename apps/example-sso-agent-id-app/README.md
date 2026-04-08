@@ -12,7 +12,7 @@
 - [Run](#run)
 - [Test as an agent](#test-as-an-agent)
 - [API endpoints](#api-endpoints)
-- [SKILL.md — agent discovery](#skillmd--agent-discovery)
+- [ALIEN-SKILL.md — agent discovery](#alien-skillmd--agent-discovery)
 - [Project structure](#project-structure)
 
 ---
@@ -99,9 +99,9 @@ curl -H "$(node path/to/cli.mjs auth-header --raw)" \
 | `/api/posts` | `POST` | AgentID | Post a message (`{"message": "..."}`, max 500 chars) |
 | `/api/agent-auth` | `GET` | AgentID | Verify agent identity, returns fingerprint and owner |
 
-## SKILL.md — agent discovery
+## ALIEN-SKILL.md — agent discovery
 
-The file `public/SKILL.md` is served at `/SKILL.md` and contains instructions for AI agents
+The file `public/ALIEN-SKILL.md` is served at `/ALIEN-SKILL.md` and contains instructions for AI agents
 to authenticate with this service. It is referenced in two places:
 
 1. **HTML meta tag** — the `@alien-id/sso-react` provider injects a
@@ -118,12 +118,12 @@ const config: AlienSsoProviderConfig = {
   providerAddress: '...',
   agentId: {
     enabled: true,
-    skillUrl: '/SKILL.md',
+    skillUrl: '/ALIEN-SKILL.md',
   },
 };
 ```
 
-To customize the instructions, edit `public/SKILL.md`. The file tells agents the base URL
+To customize the instructions, edit `public/ALIEN-SKILL.md`. The file tells agents the base URL
 is the same origin they fetched it from, so API paths work without hardcoding a host.
 
 ## Project structure
@@ -141,7 +141,7 @@ src/app/
         ├── route.ts       GET/POST posts (auth on POST)
         └── store.ts       In-memory post storage
 public/
-└── SKILL.md               Agent-facing auth instructions
+└── ALIEN-SKILL.md               Agent-facing auth instructions
 ```
 
 ---
