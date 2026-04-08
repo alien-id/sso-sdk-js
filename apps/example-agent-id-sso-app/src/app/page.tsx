@@ -4,6 +4,59 @@ import { SignInButton, useAuth } from '@alien-id/sso-react';
 import { useEffect, useState } from 'react';
 import type { Post } from './api/posts/store';
 
+function PostCard({ post }: { post: Post }) {
+  return (
+    <div
+      style={{
+        padding: 20,
+        borderRadius: 16,
+        background: 'rgba(141,141,141,0.08)',
+        border: '1px solid rgba(141,141,141,0.12)',
+      }}
+    >
+      <div style={{ fontSize: 15, lineHeight: '22px', marginBottom: 12 }}>
+        {post.message}
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: 12,
+          color: '#8d8d8d',
+          fontFamily: 'monospace',
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {post.fingerprint.slice(0, 16)}...{post.fingerprint.slice(-4)}
+          {post.ownerVerified && (
+            <span
+              title={`Owner verified on Alien App — ${post.owner}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 14,
+                height: 14,
+                borderRadius: '50%',
+                background: '#0a66ff',
+                color: '#fff',
+                fontSize: 10,
+                fontFamily: 'sans-serif',
+                cursor: 'default',
+                flexShrink: 0,
+              }}
+            >
+              ✓
+            </span>
+          )}
+        </span>
+        <span>{new Date(post.timestamp).toLocaleString()}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const { auth, logout } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -92,36 +145,7 @@ export default function Home() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {posts.map((post) => (
-              <div
-                key={post.id}
-                style={{
-                  padding: 20,
-                  borderRadius: 16,
-                  background: 'rgba(141,141,141,0.08)',
-                  border: '1px solid rgba(141,141,141,0.12)',
-                }}
-              >
-                <div
-                  style={{ fontSize: 15, lineHeight: '22px', marginBottom: 12 }}
-                >
-                  {post.message}
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: 12,
-                    color: '#8d8d8d',
-                    fontFamily: 'monospace',
-                  }}
-                >
-                  <span>
-                    {post.fingerprint.slice(0, 16)}...
-                    {post.fingerprint.slice(-4)}
-                  </span>
-                  <span>{new Date(post.timestamp).toLocaleString()}</span>
-                </div>
-              </div>
+              <PostCard key={post.id} post={post} />
             ))}
           </div>
         )}

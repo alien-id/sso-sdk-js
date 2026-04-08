@@ -1,86 +1,32 @@
-import { createHash, createPublicKey, verify } from 'node:crypto';
+import {
+  fingerprintPublicKeyPem,
+  sha256Hex,
+  verifyEd25519Base64Url,
+  verifyEd25519Hex,
+  verifyRS256,
+} from './crypto';
+import { canonicalJSONString } from './json';
+export { fetchAlienJWKS } from './jwt';
+import { parseJwt } from './jwt';
+import type {
+  OwnerBinding,
+  VerifyOptions,
+  VerifyOwnerOptions,
+  VerifyOwnerSuccess,
+  VerifyResult,
+} from './types';
 
-// ─── Canonical JSON ────────────────────────────────────────────────────────
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function sortValue(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(sortValue);
-  }
-  if (!isRecord(value)) {
-    return value;
-  }
-  const out: Record<string, unknown> = {};
-  const keys = Object.keys(value).sort();
-  for (const key of keys) {
-    out[key] = sortValue(value[key]);
-  }
-  return out;
-}
-
-function canonicalJSONString(value: unknown): string {
-  return JSON.stringify(sortValue(value));
-}
-
-// ─── Crypto helpers ────────────────────────────────────────────────────────
-
-function fingerprintPublicKeyPem(publicKeyPem: string): string {
-  const der = createPublicKey(publicKeyPem).export({
-    format: 'der',
-    type: 'spki',
-  });
-  return createHash('sha256').update(der).digest('hex');
-}
-
-function verifyEd25519Base64Url(
-  payload: string,
-  signatureB64url: string,
-  publicKeyPem: string,
-): boolean {
-  const signature = Buffer.from(signatureB64url, 'base64url');
-  return verify(
-    null,
-    Buffer.from(payload),
-    createPublicKey(publicKeyPem),
-    signature,
-  );
-}
-
-// ─── Types ─────────────────────────────────────────────────────────────────
-
-export interface VerifyOptions {
-  /** Maximum token age in milliseconds. Default: 300000 (5 minutes). */
-  maxAgeMs?: number;
-  /** Allowed clock skew in milliseconds (for future-dated tokens). Default: 30000 (30 seconds). */
-  clockSkewMs?: number;
-}
-
-export interface VerifySuccess {
-  ok: true;
-  /** SHA-256 hex fingerprint of the agent's public key (stable across sessions). */
-  fingerprint: string;
-  /** Agent's Ed25519 public key in SPKI PEM format. */
-  publicKeyPem: string;
-  /** Human owner's AlienID address, or null if unbound. */
-  owner: string | null;
-  /** Token creation timestamp in milliseconds. */
-  timestamp: number;
-  /** Random 128-bit hex nonce (unique per token). */
-  nonce: string;
-}
-
-export interface VerifyFailure {
-  ok: false;
-  /** Human-readable error message. */
-  error: string;
-}
-
-export type VerifyResult = VerifySuccess | VerifyFailure;
-
-// ─── Token verification ────────────────────────────────────────────────────
+export type {
+  JWK,
+  JWKS,
+  OwnerBinding,
+  VerifyFailure,
+  VerifyOptions,
+  VerifyOwnerOptions,
+  VerifyOwnerSuccess,
+  VerifyResult,
+  VerifySuccess,
+} from './types';
 
 /**
  * Verify an Alien Agent ID token.
@@ -177,9 +123,204 @@ export function verifyAgentToken(
     fingerprint,
     publicKeyPem,
     owner: owner ?? null,
+    ownerVerified: false,
     timestamp,
     nonce,
   };
+}
+
+// ─── Full chain verification ──────────────────────────────────────────────
+
+/**
+ * Verify an Alien Agent ID token with full owner chain verification.
+ *
+ * In addition to the basic token checks, this verifies:
+ * 1. The owner binding was signed by the agent's key
+ * 2. The binding references the correct agent fingerprint
+ * 3. The id_token RS256 signature is valid against the provided JWKS
+ * 4. The id_token sub matches the claimed owner
+ * 5. The id_token hash matches the binding
+ * 6. The owner session proof signature (if present)
+ *
+ * @param tokenB64 - The base64url-encoded token.
+ * @param opts - Options including pre-fetched JWKS.
+ */
+export function verifyAgentTokenWithOwner(
+  tokenB64: string,
+  opts: VerifyOwnerOptions,
+): VerifyResult {
+  // Step 1: Run basic verification
+  const basic = verifyAgentToken(tokenB64, opts);
+  if (!basic.ok) return basic;
+
+  // Re-parse to get the full-chain fields
+  const parsed: Record<string, unknown> = JSON.parse(
+    Buffer.from(tokenB64, 'base64url').toString('utf8'),
+  );
+
+  const ownerBinding = parsed.ownerBinding as OwnerBinding | undefined;
+  const idToken = parsed.idToken as string | undefined;
+
+  if (!ownerBinding || typeof ownerBinding !== 'object') {
+    return { ok: false, error: 'Missing field: ownerBinding' };
+  }
+  if (typeof idToken !== 'string') {
+    return { ok: false, error: 'Missing field: idToken' };
+  }
+  if (!basic.owner) {
+    return { ok: false, error: 'Token has no owner to verify' };
+  }
+
+  const { payload, payloadHash, signature } = ownerBinding;
+  if (!payload || typeof payload !== 'object') {
+    return { ok: false, error: 'Invalid ownerBinding.payload' };
+  }
+  if (typeof payloadHash !== 'string') {
+    return { ok: false, error: 'Invalid ownerBinding.payloadHash' };
+  }
+  if (typeof signature !== 'string') {
+    return { ok: false, error: 'Invalid ownerBinding.signature' };
+  }
+
+  // Step 2: Verify owner binding signature with agent's key
+  const bindingCanonical = canonicalJSONString(payload);
+  const computedHash = sha256Hex(bindingCanonical);
+  if (computedHash !== payloadHash) {
+    return { ok: false, error: 'Owner binding payload hash mismatch' };
+  }
+
+  let bindingSigOk: boolean;
+  try {
+    bindingSigOk = verifyEd25519Base64Url(
+      bindingCanonical,
+      signature,
+      basic.publicKeyPem,
+    );
+  } catch {
+    return { ok: false, error: 'Owner binding signature verification error' };
+  }
+  if (!bindingSigOk) {
+    return { ok: false, error: 'Owner binding signature verification failed' };
+  }
+
+  // Step 3: Verify binding references this agent's key
+  const agentInstance = payload.agentInstance as
+    | Record<string, unknown>
+    | undefined;
+  if (
+    !agentInstance ||
+    agentInstance.publicKeyFingerprint !== basic.fingerprint
+  ) {
+    return { ok: false, error: 'Owner binding agent fingerprint mismatch' };
+  }
+
+  // Step 4: Verify binding owner matches token owner
+  if (payload.ownerSessionSub !== basic.owner) {
+    return { ok: false, error: 'Owner binding ownerSessionSub mismatch' };
+  }
+
+  // Step 5: Verify id_token hash matches binding
+  const idTokenHash = sha256Hex(idToken);
+  if (payload.idTokenHash !== idTokenHash) {
+    return { ok: false, error: 'id_token hash does not match owner binding' };
+  }
+
+  // Step 6: Verify id_token RS256 signature against JWKS
+  let jwt: ReturnType<typeof parseJwt>;
+  try {
+    jwt = parseJwt(idToken);
+  } catch {
+    return { ok: false, error: 'Invalid id_token encoding' };
+  }
+
+  if (jwt.header.alg !== 'RS256') {
+    return { ok: false, error: `Unsupported id_token alg: ${jwt.header.alg}` };
+  }
+
+  const kid = jwt.header.kid as string | undefined;
+  const jwk = opts.jwks.keys.find(
+    (k) => k.kid === kid && k.kty === 'RSA' && (k.use === 'sig' || !k.use),
+  );
+  if (!jwk) {
+    return { ok: false, error: `No matching JWKS key for kid: ${kid}` };
+  }
+  if (!jwk.n || !jwk.e) {
+    return { ok: false, error: 'Invalid JWKS key: missing required RSA fields (n, e)' };
+  }
+
+  let rsaOk: boolean;
+  try {
+    rsaOk = verifyRS256(
+      jwt.headerB64url,
+      jwt.payloadB64url,
+      jwt.signatureB64url,
+      jwk,
+    );
+  } catch {
+    return { ok: false, error: 'id_token signature verification error' };
+  }
+  if (!rsaOk) {
+    return { ok: false, error: 'id_token signature verification failed' };
+  }
+
+  // Step 7: Verify id_token sub matches owner
+  if (jwt.payload.sub !== basic.owner) {
+    return { ok: false, error: 'id_token sub does not match token owner' };
+  }
+
+  // Step 8: Verify owner session proof (optional)
+  let ownerProofVerified = false;
+  const proof = payload.ownerSessionProof as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  if (proof && typeof proof === 'object') {
+    const {
+      sessionAddress,
+      sessionSignature,
+      sessionSignatureSeed,
+      sessionPublicKey,
+    } = proof;
+
+    if (
+      typeof sessionAddress !== 'string' ||
+      typeof sessionSignature !== 'string' ||
+      typeof sessionSignatureSeed !== 'string' ||
+      typeof sessionPublicKey !== 'string'
+    ) {
+      return { ok: false, error: 'Incomplete owner session proof fields' };
+    }
+
+    if (sessionAddress !== basic.owner) {
+      return { ok: false, error: 'Owner session proof address mismatch' };
+    }
+
+    const message = `${sessionAddress}${sessionSignatureSeed}`;
+    let proofOk: boolean;
+    try {
+      proofOk = verifyEd25519Hex(message, sessionSignature, sessionPublicKey);
+    } catch {
+      return { ok: false, error: 'Owner session proof signature error' };
+    }
+    if (!proofOk) {
+      return { ok: false, error: 'Owner session proof signature failed' };
+    }
+
+    ownerProofVerified = true;
+  }
+
+  const result: VerifyOwnerSuccess = {
+    ok: true,
+    fingerprint: basic.fingerprint,
+    publicKeyPem: basic.publicKeyPem,
+    owner: basic.owner,
+    ownerVerified: true,
+    ownerProofVerified,
+    issuer: typeof jwt.payload.iss === 'string' ? jwt.payload.iss : '',
+    timestamp: basic.timestamp,
+    nonce: basic.nonce,
+  };
+  return result;
 }
 
 // ─── Express/Connect middleware ────────────────────────────────────────────
@@ -206,4 +347,28 @@ export function verifyAgentRequest(
     };
   }
   return verifyAgentToken(auth.slice(8).trim(), opts);
+}
+
+/**
+ * Extract and verify a full-chain Agent ID token from a request's Authorization header.
+ *
+ * @param req - Any object with a `headers` property.
+ * @param opts - Options including pre-fetched JWKS.
+ * @returns Verification result with verified owner on success.
+ */
+export function verifyAgentRequestWithOwner(
+  req: { headers: Record<string, string | string[] | undefined> },
+  opts: VerifyOwnerOptions,
+): VerifyResult {
+  const auth = req.headers.authorization;
+  if (Array.isArray(auth)) {
+    return { ok: false, error: 'Multiple Authorization headers' };
+  }
+  if (typeof auth !== 'string' || !auth.startsWith('AgentID ')) {
+    return {
+      ok: false,
+      error: 'Missing header: Authorization: AgentID <token>',
+    };
+  }
+  return verifyAgentTokenWithOwner(auth.slice(8).trim(), opts);
 }

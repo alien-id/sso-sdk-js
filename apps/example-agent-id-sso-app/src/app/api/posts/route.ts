@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAgentToken } from '@alien-id/agent-id-sso';
+import {
+  fetchAlienJWKS,
+  verifyAgentToken,
+  verifyAgentTokenWithOwner,
+  type JWKS,
+} from '@alien-id/agent-id-sso';
 import { addPost, getPosts } from './store';
+
+let jwksCache: JWKS | null = null;
+
+async function getJWKS(): Promise<JWKS> {
+  if (!jwksCache) {
+    jwksCache = await fetchAlienJWKS();
+  }
+  return jwksCache;
+}
 
 export async function GET() {
   return NextResponse.json({ ok: true, posts: getPosts() });
@@ -15,7 +29,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const result = verifyAgentToken(auth.slice(8).trim());
+  const tokenB64 = auth.slice(8).trim();
+  const jwks = await getJWKS();
+  let result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+  if (!result.ok) {
+    // Token may lack ownerBinding/idToken — fall back to basic verification.
+    // The agent is authenticated but result.ownerVerified will be false.
+    result = verifyAgentToken(tokenB64);
+  }
   if (!result.ok) {
     return NextResponse.json(result, { status: 401 });
   }
@@ -44,6 +65,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const post = addPost(message, result.fingerprint, result.owner);
+  const post = addPost(message, result.fingerprint, result.owner, result.ownerVerified);
   return NextResponse.json({ ok: true, post }, { status: 201 });
 }

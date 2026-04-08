@@ -3,6 +3,7 @@ export interface Post {
   message: string;
   fingerprint: string;
   owner: string | null;
+  ownerVerified: boolean;
   timestamp: string;
 }
 
@@ -13,12 +14,14 @@ export function addPost(
   message: string,
   fingerprint: string,
   owner: string | null,
+  ownerVerified: boolean,
 ): Post {
   const post: Post = {
     id: nextId++,
     message,
     fingerprint,
     owner,
+    ownerVerified,
     timestamp: new Date().toISOString(),
   };
   posts.unshift(post);
