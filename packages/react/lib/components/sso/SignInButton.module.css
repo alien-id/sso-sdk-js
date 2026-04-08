@@ -4,7 +4,8 @@
     font-weight: 500;
     box-sizing: border-box;
 
-    padding: 16px 20px;
+    padding: 15px 20px;
+    height: 56px;
     background-color: var(--alien-brand-button-background-color-light);
     border: 1px solid var(--alien-brand-button-border-color-light);
     border-radius: 24px;
@@ -39,17 +40,17 @@
 .buttonText {
     flex: 1;
     text-align: center;
-    line-height: 24px;
+    line-height: 20px;
     word-wrap: break-word;
     overflow-wrap: break-word;
     hyphens: auto;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 0px;
 }
 
 .buttonWithAgent {
-    padding: 8px 20px;
+    padding: 6px 20px;
 }
 
 .agentIdText {
