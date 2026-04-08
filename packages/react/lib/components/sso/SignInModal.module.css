@@ -125,6 +125,16 @@
   list-style-position: inside;
 }
 
+.agentSteps pre {
+  display: inline;
+  margin: 0;
+  padding: 2px 6px;
+  background: rgba(141, 141, 141, 0.16);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: monospace;
+}
+
 .subtitle {
   font-size: 14px;
   margin-top: 8px;
