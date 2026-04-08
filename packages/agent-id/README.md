@@ -1,4 +1,4 @@
-# @alien-id/agent-id-sso
+# @alien-id/sso-agent-id
 
 > Verify Alien Agent ID tokens in Node.js services. Zero dependencies, Ed25519 signature
 > verification, full owner chain verification via Alien SSO.
@@ -22,7 +22,7 @@
 ## Install
 
 ```bash
-npm install @alien-id/agent-id-sso
+npm install @alien-id/sso-agent-id
 ```
 
 Requires Node.js 18+ (Ed25519 support in `node:crypto`). Zero runtime dependencies.
@@ -35,7 +35,7 @@ Verify an agent's identity **and** that their claimed owner is real:
 import {
   fetchAlienJWKS,
   verifyAgentRequestWithOwner,
-} from '@alien-id/agent-id-sso';
+} from '@alien-id/sso-agent-id';
 
 // Fetch JWKS at startup and cache it
 const jwks = await fetchAlienJWKS();
@@ -67,7 +67,7 @@ don't care about the owner claim, you can use `verifyAgentToken`.
 > full owner verification above.
 
 ```typescript
-import { verifyAgentRequest } from '@alien-id/agent-id-sso';
+import { verifyAgentRequest } from '@alien-id/sso-agent-id';
 
 const result = verifyAgentRequest(req);
 if (!result.ok) {
@@ -201,7 +201,7 @@ no key exchange, and no pre-registration.
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAgentToken } from '@alien-id/agent-id-sso';
+import { verifyAgentToken } from '@alien-id/sso-agent-id';
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization');
@@ -222,7 +222,7 @@ export async function GET(req: NextRequest) {
 
 ```typescript
 import express from 'express';
-import { verifyAgentRequest } from '@alien-id/agent-id-sso';
+import { verifyAgentRequest } from '@alien-id/sso-agent-id';
 
 const app = express();
 
@@ -242,7 +242,7 @@ app.get('/api/data', requireAgent, (req, res) => {
 
 ```typescript
 import Fastify from 'fastify';
-import { verifyAgentRequest } from '@alien-id/agent-id-sso';
+import { verifyAgentRequest } from '@alien-id/sso-agent-id';
 
 const app = Fastify();
 
@@ -287,7 +287,7 @@ Use `verifyAgentRequestWithOwner` to ensure the owner claim is real:
 import {
   fetchAlienJWKS,
   verifyAgentRequestWithOwner,
-} from '@alien-id/agent-id-sso';
+} from '@alien-id/sso-agent-id';
 
 const jwks = await fetchAlienJWKS();
 const OWNERS = new Set(['00000003...', '00000003...']);
@@ -339,4 +339,4 @@ verifyAgentToken(token, {
 ## Additional Resources
 
 - [Alien Agent ID docs](https://docs.alien.org/agent-id-service-integration)
-- [Example Next.js app](../../apps/example-agent-id-sso-app/) — working guestbook demo
+- [Example Next.js app](../../apps/example-sso-agent-id-app/) — working guestbook demo

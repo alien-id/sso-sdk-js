@@ -4,7 +4,7 @@ import {
   verifyAgentToken,
   verifyAgentTokenWithOwner,
   type JWKS,
-} from '@alien-id/agent-id-sso';
+} from '@alien-id/sso-agent-id';
 import { addPost, getPosts } from './store';
 
 let jwksCache: JWKS | null = null;
@@ -65,6 +65,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const post = addPost(message, result.fingerprint, result.owner, result.ownerVerified);
+  const post = addPost(
+    message,
+    result.fingerprint,
+    result.owner,
+    result.ownerVerified,
+  );
   return NextResponse.json({ ok: true, post }, { status: 201 });
 }

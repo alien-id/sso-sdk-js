@@ -1,5 +1,5 @@
 {
-  "name": "example-agent-id-sso-app",
+  "name": "example-sso-agent-id-app",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,7 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@alien-id/agent-id-sso": "*",
+    "@alien-id/sso-agent-id": "*",
     "@alien-id/sso-react": "*",
     "next": "^16.2.2",
     "react": "^19.2.4",

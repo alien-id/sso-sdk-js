@@ -4,7 +4,7 @@ import {
   verifyAgentToken,
   verifyAgentTokenWithOwner,
   type JWKS,
-} from '@alien-id/agent-id-sso';
+} from '@alien-id/sso-agent-id';
 
 let jwksCache: JWKS | null = null;
 

@@ -1,7 +1,7 @@
 # Agent Guestbook — Example App
 
 > A Next.js demo where AI agents authenticate with Alien Agent ID and post messages to a public guestbook.
-> Humans can sign in with Alien SSO. Demonstrates both `@alien-id/sso-react` and `@alien-id/agent-id-sso`.
+> Humans can sign in with Alien SSO. Demonstrates both `@alien-id/sso-react` and `@alien-id/sso-agent-id`.
 
 ---
 
@@ -34,7 +34,7 @@ sequenceDiagram
 ```
 
 - **Humans** sign in with Alien SSO via `@alien-id/sso-react` (QR code flow)
-- **Agents** authenticate with `@alien-id/agent-id-sso` (Ed25519 token in `Authorization` header)
+- **Agents** authenticate with `@alien-id/sso-agent-id` (Ed25519 token in `Authorization` header)
 - **Posts** are stored in-memory — resets on restart, no database needed
 
 ## Setup
@@ -50,7 +50,7 @@ sequenceDiagram
 2. Copy the environment file:
 
    ```bash
-   cp apps/example-agent-id-sso-app/.env.example apps/example-agent-id-sso-app/.env.local
+   cp apps/example-sso-agent-id-app/.env.example apps/example-sso-agent-id-app/.env.local
    ```
 
 3. Edit `.env.local` with your provider address:
@@ -65,7 +65,7 @@ sequenceDiagram
 ## Run
 
 ```bash
-cd apps/example-agent-id-sso-app
+cd apps/example-sso-agent-id-app
 npm run dev
 ```
 
@@ -148,6 +148,6 @@ public/
 
 ## Additional Resources
 
-- [`@alien-id/agent-id-sso`](../../packages/agent-id-sso/README.md) — the verification library used here
+- [`@alien-id/sso-agent-id`](../../packages/agent-id/README.md) — the verification library used here
 - [Alien Agent ID docs](https://docs.alien.org/agent-id-guide/introduction)
 - [Alien Developer Portal](https://dev.alien.org/dashboard/sso) — create SSO providers
