@@ -5,6 +5,8 @@ coverage
 .vscode
 .DS_STORE
 .turbo
+.next
+*.local
 CLAUDE.md
 
 *storybook.log
