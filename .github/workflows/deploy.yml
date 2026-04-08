@@ -34,7 +34,7 @@ jobs:
         run: npm ci
 
       - name: Build all packages and apps
-        run: npm run build
+        run: npx turbo run build --filter='!example-sso-agent-id-app'
         env:
           VITE_GITHUB_PAGES: true
           VITE_ALIEN_SSO_BASE_URL: ${{ vars.VITE_ALIEN_SSO_BASE_URL }}
