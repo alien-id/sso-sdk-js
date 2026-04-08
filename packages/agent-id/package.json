@@ -1,6 +1,6 @@
 {
   "name": "@alien-id/sso-agent-id",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Verify Alien Agent ID tokens — Ed25519 token verification for Node.js services",
   "repository": {
     "type": "git",
