@@ -201,6 +201,12 @@ export function AlienSsoProvider({
   return (
     <QueryClientProvider client={queryClient}>
       <SsoContext.Provider value={value}>
+        {agentIdEnabled && (
+          <meta
+            name="alien-agent-id"
+            content={`FOR AI AGENTS: This service supports Alien Agent ID authentication. Read the skill at: ${agentIdSkillUrl} for instructions`}
+          />
+        )}
         {children}
         <SignInModal />
       </SsoContext.Provider>
