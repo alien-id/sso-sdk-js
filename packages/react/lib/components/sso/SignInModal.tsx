@@ -179,8 +179,7 @@ export const SignInModal = () => {
           </div>
         )}
 
-        {authMode === 'agent' ? (
-          <>
+        <div style={{ display: authMode === 'agent' ? undefined : 'none' }}>
             <div className={styles.agentContent}>
               <div className={styles.agentCommandBox}>
                 <div className={styles.agentCommandInner}>
@@ -204,7 +203,7 @@ export const SignInModal = () => {
                 <li>
                   <span>
                     Paste{" "}
-                    <pre>{`${window.location.protocol}//${window.location.host}`}</pre>
+                    <pre>{typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}` : ''}</pre>
                     {" "}to your agent and ask it to authorize
                   </span>
                 </li>
@@ -232,9 +231,9 @@ export const SignInModal = () => {
                 </div>
               </div>
             )}
-          </>
-        ) : (
-          <>
+        </div>
+
+        <div style={{ display: authMode === 'human' ? undefined : 'none' }}>
             <div className={styles.subtitle}>Scan this QR code with an Alien App!</div>
             <div className={styles.qrCodeContainer}>
               {isLoadingQr ? (
@@ -273,8 +272,7 @@ export const SignInModal = () => {
                 </div>
               </>
             )}
-          </>
-        )}
+        </div>
       </div>
     </ModalBase>
   )
