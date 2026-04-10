@@ -8,7 +8,7 @@
 ## Additional Resources
 
 - [Alien Agent ID docs](https://docs.alien.org/agent-id-guide/introduction)
-- [Example Next.js app](https://github.com/alien-id/sso-sdk-js/tree/main/apps/example-sso-agent-id-app/README.md) — working guestbook demo. Live demo [here](https://example-sso-agent-id-app.vercel.app)
+- [Example Next.js app](https://github.com/alien-id/sso-sdk-js/tree/main/apps/example-sso-agent-id-app/README.md) — working guestbook demo. Live demo [here](https://agent-sso.alien.org)
 
 ---
 

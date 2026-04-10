@@ -27,35 +27,35 @@ This monorepo provides two authentication approaches:
 
 ## Documentation
 
-📚 **Full documentation available at [dev.alien.org/docs](https://dev.alien.org/docs)**
+📚 **Full documentation available at [docs.alien.org](https://docs.alien.org)**
 
 ### Guides
 
-- [Standard SSO Integration Guide](https://dev.alien.org/docs/sso-guide/introduction)
-  - [Core Integration](https://dev.alien.org/docs/sso-guide/core-integration) - Vanilla JS/TS
-  - [React Integration](https://dev.alien.org/docs/sso-guide/react-integration) - React hooks and components
+- [Standard SSO Integration Guide](https://docs.alien.org/sso-guide/introduction)
+  - [Core Integration](https://docs.alien.org/sso-guide/core-integration) - Vanilla JS/TS
+  - [React Integration](https://docs.alien.org/sso-guide/react-integration) - React hooks and components
 
-- [Solana SSO Integration Guide](https://dev.alien.org/docs/solana-sso-guide/introduction)
-  - [Core Integration](https://dev.alien.org/docs/solana-sso-guide/core-integration) - Vanilla JS/TS with Solana
-  - [React Integration](https://dev.alien.org/docs/solana-sso-guide/react-integration) - React with wallet adapters
+- [Solana SSO Integration Guide](https://docs.alien.org/solana-sso-guide/introduction)
+  - [Core Integration](https://docs.alien.org/solana-sso-guide/core-integration) - Vanilla JS/TS with Solana
+  - [React Integration](https://docs.alien.org/solana-sso-guide/react-integration) - React with wallet adapters
 
 ### API Reference
 
-- [Standard SSO Core API](https://dev.alien.org/docs/sso-api-reference/api-reference-core) - `@alien-id/sso`
-- [Standard SSO React API](https://dev.alien.org/docs/sso-api-reference/api-reference-react) - `@alien-id/sso-react`
-- [Solana SSO Core API](https://dev.alien.org/docs/solana-sso-api-reference/api-reference-core) - `@alien-id/sso-solana`
-- [Solana SSO React API](https://dev.alien.org/docs/solana-sso-api-reference/api-reference-react) - `@alien-id/sso-solana-react`
+- [Standard SSO Core API](https://docs.alien.org/sso-api-reference/api-reference-core) - `@alien-id/sso`
+- [Standard SSO React API](https://docs.alien.org/sso-api-reference/api-reference-react) - `@alien-id/sso-react`
+- [Solana SSO Core API](https://docs.alien.org/solana-sso-api-reference/api-reference-core) - `@alien-id/sso-solana`
+- [Solana SSO React API](https://docs.alien.org/solana-sso-api-reference/api-reference-react) - `@alien-id/sso-solana-react`
 
 ### Core Concepts
 
-- [What is Alien Session?](https://dev.alien.org/docs/what-is-alien-session) - Session architecture and lifecycle
-- [What is Alien Provider?](https://dev.alien.org/docs/what-is-alien-provider) - Provider registration and management
+- [What is Alien Session?](https://docs.alien.org/what-is-alien-session) - Session architecture and lifecycle
+- [What is Alien Provider?](https://docs.alien.org/what-is-alien-provider) - Provider registration and management
 
 ### Demo Applications
 
-- [Standard SSO Demo App](https://dev.alien.org/docs/sso-demo-app) - Example React application
-- [Solana SSO Demo App](https://dev.alien.org/docs/solana-sso-demo-app) - Example Solana dApp
-- [Agent ID Demo App](https://dev.alien.org/docs/agent-id-demo-app) - Agent guestbook with owner verification
+- [Standard SSO Demo App](https://docs.alien.org/sso-demo-app) - Example React application
+- [Solana SSO Demo App](https://docs.alien.org/solana-sso-demo-app) - Example Solana dApp
+- [Agent ID Demo App](https://docs.alien.org/agent-id-demo-app) - Agent guestbook with owner verification
 
 ## Development
 
