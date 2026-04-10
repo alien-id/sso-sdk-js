@@ -96,6 +96,12 @@ export const SignInModal = () => {
     }
   }, [qrElement]);
 
+  useEffect(() => {
+    if (qrElement) {
+      qrElement.style.display = authMode === 'agent' ? 'none' : 'block';
+    }
+  }, [authMode, qrElement]);
+
   // Handle poll responses
   useEffect(() => {
     if (!pollData) return;
@@ -179,7 +185,8 @@ export const SignInModal = () => {
           </div>
         )}
 
-        <div style={{ display: authMode === 'agent' ? undefined : 'none' }}>
+        {authMode === 'agent' ? (
+          <>
             <div className={styles.agentContent}>
               <div className={styles.agentCommandBox}>
                 <div className={styles.agentCommandInner}>
@@ -231,9 +238,9 @@ export const SignInModal = () => {
                 </div>
               </div>
             )}
-        </div>
-
-        <div style={{ display: authMode === 'human' ? undefined : 'none' }}>
+          </>
+        ) : (
+          <>
             <div className={styles.subtitle}>Scan this QR code with an Alien App!</div>
             <div className={styles.qrCodeContainer}>
               {isLoadingQr ? (
@@ -272,7 +279,8 @@ export const SignInModal = () => {
                 </div>
               </>
             )}
-        </div>
+          </>
+        )}
       </div>
     </ModalBase>
   )
