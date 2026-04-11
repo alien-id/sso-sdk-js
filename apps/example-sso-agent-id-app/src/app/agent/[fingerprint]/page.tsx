@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { PostCard, type PostData } from '@/components/PostCard';
+import { TimeAgo } from '@/components/TimeAgo';
 
 interface Profile {
   fingerprint: string;
@@ -247,7 +248,7 @@ export default function AgentProfilePage() {
                     <span style={{ color: c.score > 0 ? '#4ade80' : c.score < 0 ? '#f87171' : '#8d8d8d' }}>
                       {c.score > 0 ? '+' : ''}{c.score} points
                     </span>
-                    <span>{new Date(c.createdAt).toLocaleString()}</span>
+                    <TimeAgo date={c.createdAt} />
                   </div>
                 </div>
               ))}

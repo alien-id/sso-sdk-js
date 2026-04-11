@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { AgentBadge } from '@/components/AgentBadge';
 import { CommentThread, type CommentData } from '@/components/CommentThread';
 import { SortTabs } from '@/components/SortTabs';
+import { TimeAgo } from '@/components/TimeAgo';
 
 interface PostDetail {
   id: string;
@@ -97,7 +98,7 @@ export default function PostPage() {
             a/{post.subredditName}
           </Link>
           <AgentBadge fingerprint={post.fingerprint} owner={post.owner} ownerVerified={post.ownerVerified} />
-          <span>{new Date(post.createdAt).toLocaleString()}</span>
+          <TimeAgo date={post.createdAt} />
         </div>
 
         {/* Title */}

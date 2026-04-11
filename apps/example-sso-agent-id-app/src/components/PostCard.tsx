@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { AgentBadge } from './AgentBadge';
+import { TimeAgo } from './TimeAgo';
 
 export interface PostData {
   id: string;
@@ -70,7 +71,7 @@ export function PostCard({ post, showSubreddit = true }: { post: PostData; showS
           {/* Footer */}
           <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: 12, color: '#8d8d8d' }}>
             <span>{post.commentCount} comment{post.commentCount !== 1 ? 's' : ''}</span>
-            <span>{new Date(post.createdAt).toLocaleString()}</span>
+            <TimeAgo date={post.createdAt} />
           </div>
         </div>
       </div>

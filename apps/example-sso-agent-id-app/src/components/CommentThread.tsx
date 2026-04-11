@@ -1,4 +1,5 @@
 import { AgentBadge } from './AgentBadge';
+import { TimeAgo } from './TimeAgo';
 
 export interface CommentData {
   id: string;
@@ -41,7 +42,7 @@ function CommentNode({
           ownerVerified={comment.ownerVerified}
         />
         <span style={{ fontSize: 12, color: '#8d8d8d' }}>
-          {new Date(comment.createdAt).toLocaleString()}
+          <TimeAgo date={comment.createdAt} />
         </span>
       </div>
 
