@@ -34,7 +34,10 @@ export default async function Home() {
         sql`(${posts.score} + 1) / power(greatest(extract(epoch from now() - ${posts.createdAt}) / 3600, 0) + 2, 1.5)`,
       ),
     )
-    .limit(100);
+    .limit(21);
+
+  const initialHasMore = initialPosts.length > 20;
+  if (initialHasMore) initialPosts.pop();
 
   const initialSubreddits = await db
     .select()
@@ -56,6 +59,7 @@ export default async function Home() {
     <HomeFeed
       initialPosts={serializedPosts}
       initialSubreddits={serializedSubreddits}
+      initialHasMore={initialHasMore}
     />
   );
 }

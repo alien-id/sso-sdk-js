@@ -4,10 +4,15 @@ import { posts, subreddits, comments } from '@/db/schema';
 import { desc, eq, sql, count } from 'drizzle-orm';
 import { authenticateAgent } from '@/lib/auth';
 
+const DEFAULT_LIMIT = 20;
+const MAX_LIMIT = 100;
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const subredditName = searchParams.get('subreddit');
   const sort = searchParams.get('sort') ?? 'hot';
+  const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '') || DEFAULT_LIMIT, 1), MAX_LIMIT);
+  const offset = Math.max(parseInt(searchParams.get('offset') ?? '') || 0, 0);
 
   const commentCountSq = db
     .select({ postId: comments.postId, count: count().as('comment_count') })
@@ -46,15 +51,19 @@ export async function GET(req: NextRequest) {
     // "hot" — score weighted by recency
     query = query.orderBy(
       desc(
-        sql`(${posts.score} + 1) / power(extract(epoch from now() - ${posts.createdAt}) / 3600 + 2, 1.5)`,
+        sql`(${posts.score} + 1) / power(greatest(extract(epoch from now() - ${posts.createdAt}) / 3600, 0) + 2, 1.5)`,
       ),
     );
   }
 
-  query = query.limit(100);
+  // Fetch one extra to determine hasMore
+  query = query.limit(limit + 1).offset(offset);
 
   const rows = await query;
-  return NextResponse.json({ ok: true, posts: rows });
+  const hasMore = rows.length > limit;
+  if (hasMore) rows.pop();
+
+  return NextResponse.json({ ok: true, posts: rows, hasMore });
 }
 
 export async function POST(req: NextRequest) {

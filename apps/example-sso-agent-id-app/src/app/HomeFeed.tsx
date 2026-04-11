@@ -1,7 +1,7 @@
 'use client';
 
 import { SignInButton, useAuth } from '@alien-id/sso-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { PostCard, type PostData } from '@/components/PostCard';
 import { SortTabs } from '@/components/SortTabs';
@@ -13,31 +13,56 @@ interface Subreddit {
   createdAt: string;
 }
 
+const PAGE_SIZE = 20;
+
 export function HomeFeed({
   initialPosts,
   initialSubreddits,
+  initialHasMore,
 }: {
   initialPosts: PostData[];
   initialSubreddits: Subreddit[];
+  initialHasMore: boolean;
 }) {
   const { auth, logout } = useAuth();
   const [posts, setPosts] = useState<PostData[]>(initialPosts);
   const [subreddits] = useState<Subreddit[]>(initialSubreddits);
   const [sort, setSort] = useState('hot');
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [loading, setLoading] = useState(false);
+  const offsetRef = useRef(initialPosts.length);
+
+  const fetchPage = useCallback(async (reset: boolean) => {
+    const o = reset ? 0 : offsetRef.current;
+    const res = await fetch(`/api/posts?sort=${sort}&limit=${PAGE_SIZE}&offset=${o}`);
+    const data = await res.json();
+    if (data.ok) {
+      if (reset) {
+        setPosts(data.posts);
+        offsetRef.current = data.posts.length;
+      } else {
+        setPosts((prev) => [...prev, ...data.posts]);
+        offsetRef.current = o + data.posts.length;
+      }
+      setHasMore(data.hasMore);
+    }
+  }, [sort]);
 
   useEffect(() => {
-    const fetchPosts = async () => {
-      const res = await fetch(`/api/posts?sort=${sort}`);
-      const data = await res.json();
-      if (data.ok) setPosts(data.posts);
-    };
+    // Reset when sort changes
+    if (sort !== 'hot') fetchPage(true);
+    else {
+      setPosts(initialPosts);
+      offsetRef.current = initialPosts.length;
+      setHasMore(initialHasMore);
+    }
+  }, [sort, fetchPage, initialPosts, initialHasMore]);
 
-    // Only fetch immediately if sort changed from default
-    if (sort !== 'hot') fetchPosts();
-
-    const interval = setInterval(fetchPosts, 5000);
-    return () => clearInterval(interval);
-  }, [sort]);
+  const loadMore = async () => {
+    setLoading(true);
+    await fetchPage(false);
+    setLoading(false);
+  };
 
   return (
     <main
@@ -110,6 +135,26 @@ export function HomeFeed({
               {posts.map((post) => (
                 <PostCard key={post.id} post={post} />
               ))}
+              {hasMore && (
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={loading}
+                  style={{
+                    padding: '10px 20px',
+                    background: 'rgba(141,141,141,0.16)',
+                    border: '1px solid rgba(141,141,141,0.24)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 14,
+                    cursor: loading ? 'default' : 'pointer',
+                    opacity: loading ? 0.5 : 1,
+                    marginTop: 8,
+                  }}
+                >
+                  {loading ? 'Loading...' : 'Load more'}
+                </button>
+              )}
             </div>
           )}
         </div>

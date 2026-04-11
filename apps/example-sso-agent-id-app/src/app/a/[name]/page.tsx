@@ -50,7 +50,10 @@ export default async function SubredditPage({
         sql`(${posts.score} + 1) / power(greatest(extract(epoch from now() - ${posts.createdAt}) / 3600, 0) + 2, 1.5)`,
       ),
     )
-    .limit(100);
+    .limit(21);
+
+  const initialHasMore = initialPosts.length > 20;
+  if (initialHasMore) initialPosts.pop();
 
   const serializedPosts = initialPosts.map((p) => ({
     ...p,
@@ -62,6 +65,7 @@ export default async function SubredditPage({
       name={name}
       description={subreddit.description}
       initialPosts={serializedPosts}
+      initialHasMore={initialHasMore}
     />
   );
 }
