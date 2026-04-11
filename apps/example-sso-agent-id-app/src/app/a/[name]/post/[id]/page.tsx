@@ -1,135 +1,59 @@
-'use client';
+import { notFound } from 'next/navigation';
+import { db } from '@/db';
+import { posts, subreddits, comments } from '@/db/schema';
+import { eq, desc } from 'drizzle-orm';
+import { PostDetail } from './PostDetail';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import { AgentBadge } from '@/components/AgentBadge';
-import { CommentThread, type CommentData } from '@/components/CommentThread';
-import { SortTabs } from '@/components/SortTabs';
-import { TimeAgo } from '@/components/TimeAgo';
+export const dynamic = 'force-dynamic';
 
-interface PostDetail {
-  id: string;
-  title: string;
-  body: string;
-  subredditName: string;
-  fingerprint: string;
-  owner: string | null;
-  ownerVerified: boolean;
-  score: number;
-  createdAt: string;
-}
+export default async function PostPage({
+  params,
+}: {
+  params: Promise<{ name: string; id: string }>;
+}) {
+  const { name, id } = await params;
 
-export default function PostPage() {
-  const { name, id } = useParams<{ name: string; id: string }>();
-  const [post, setPost] = useState<PostDetail | null>(null);
-  const [comments, setComments] = useState<CommentData[]>([]);
-  const [sort, setSort] = useState('top');
-  const [error, setError] = useState('');
+  const [post] = await db
+    .select({
+      id: posts.id,
+      title: posts.title,
+      body: posts.body,
+      subredditId: posts.subredditId,
+      subredditName: subreddits.name,
+      fingerprint: posts.fingerprint,
+      owner: posts.owner,
+      ownerVerified: posts.ownerVerified,
+      score: posts.score,
+      createdAt: posts.createdAt,
+    })
+    .from(posts)
+    .innerJoin(subreddits, eq(posts.subredditId, subreddits.id))
+    .where(eq(posts.id, id))
+    .limit(1);
 
-  useEffect(() => {
-    const fetchPost = async () => {
-      const res = await fetch(`/api/posts/${id}?sort=${sort}`);
-      const data = await res.json();
-      if (data.ok) {
-        setPost(data.post);
-        setComments(data.comments);
-      } else {
-        setError(data.error ?? 'Post not found');
-      }
-    };
+  if (!post) notFound();
 
-    fetchPost();
-    const interval = setInterval(fetchPost, 5000);
-    return () => clearInterval(interval);
-  }, [id, sort]);
+  const postComments = await db
+    .select()
+    .from(comments)
+    .where(eq(comments.postId, id))
+    .orderBy(desc(comments.score), desc(comments.createdAt));
 
-  if (error) {
-    return (
-      <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#f87171' }}>{error}</p>
-      </main>
-    );
-  }
+  const serializedPost = {
+    ...post,
+    createdAt: post.createdAt.toISOString(),
+  };
 
-  if (!post) {
-    return (
-      <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#8d8d8d' }}>Loading...</p>
-      </main>
-    );
-  }
+  const serializedComments = postComments.map((c) => ({
+    ...c,
+    createdAt: c.createdAt.toISOString(),
+  }));
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '48px 16px',
-        gap: 24,
-      }}
-    >
-      {/* Navigation */}
-      <div style={{ width: '100%', maxWidth: 640, display: 'flex', gap: 12, fontSize: 13 }}>
-        <Link href="/" style={{ color: '#6b9bff', textDecoration: 'none' }}>Home</Link>
-        <span style={{ color: '#4d4d4d' }}>/</span>
-        <Link href={`/a/${name}`} style={{ color: '#6b9bff', textDecoration: 'none' }}>a/{name}</Link>
-      </div>
-
-      {/* Post */}
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 640,
-          padding: 20,
-          borderRadius: 12,
-          background: 'rgba(141,141,141,0.08)',
-          border: '1px solid rgba(141,141,141,0.12)',
-        }}
-      >
-        {/* Meta */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 12, color: '#8d8d8d' }}>
-          <Link
-            href={`/a/${post.subredditName}`}
-            style={{ color: '#6b9bff', textDecoration: 'none', fontWeight: 500 }}
-          >
-            a/{post.subredditName}
-          </Link>
-          <AgentBadge fingerprint={post.fingerprint} owner={post.owner} ownerVerified={post.ownerVerified} />
-          <TimeAgo date={post.createdAt} />
-        </div>
-
-        {/* Title */}
-        <h1 style={{ fontSize: 22, fontWeight: 600, marginBottom: 12, lineHeight: '28px' }}>
-          {post.title}
-        </h1>
-
-        {/* Score */}
-        <div style={{ fontSize: 13, marginBottom: 12 }}>
-          <span style={{ color: post.score > 0 ? '#4ade80' : post.score < 0 ? '#f87171' : '#8d8d8d', fontWeight: 600 }}>
-            {post.score > 0 ? '+' : ''}{post.score}
-          </span>
-          <span style={{ color: '#8d8d8d' }}> points</span>
-        </div>
-
-        {/* Body */}
-        <div style={{ fontSize: 15, lineHeight: '22px', whiteSpace: 'pre-wrap' }}>
-          {post.body}
-        </div>
-      </div>
-
-      {/* Comments */}
-      <div style={{ width: '100%', maxWidth: 640 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 600 }}>
-            {comments.length} Comment{comments.length !== 1 ? 's' : ''}
-          </h2>
-          <SortTabs active={sort} onChange={setSort} />
-        </div>
-        <CommentThread comments={comments} />
-      </div>
-    </main>
+    <PostDetail
+      name={name}
+      initialPost={serializedPost}
+      initialComments={serializedComments}
+    />
   );
 }

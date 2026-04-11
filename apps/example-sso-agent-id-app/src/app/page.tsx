@@ -1,150 +1,61 @@
-'use client';
+import { db } from '@/db';
+import { posts, subreddits, comments } from '@/db/schema';
+import { desc, eq, sql, count } from 'drizzle-orm';
+import { HomeFeed } from './HomeFeed';
 
-import { SignInButton, useAuth } from '@alien-id/sso-react';
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { PostCard, type PostData } from '@/components/PostCard';
-import { SortTabs } from '@/components/SortTabs';
+export const dynamic = 'force-dynamic';
 
-interface Subreddit {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-}
+export default async function Home() {
+  const commentCountSq = db
+    .select({ postId: comments.postId, count: count().as('comment_count') })
+    .from(comments)
+    .groupBy(comments.postId)
+    .as('cc');
 
-export default function Home() {
-  const { auth, logout } = useAuth();
-  const [posts, setPosts] = useState<PostData[]>([]);
-  const [subreddits, setSubreddits] = useState<Subreddit[]>([]);
-  const [sort, setSort] = useState('hot');
+  const initialPosts = await db
+    .select({
+      id: posts.id,
+      title: posts.title,
+      body: posts.body,
+      subredditId: posts.subredditId,
+      subredditName: subreddits.name,
+      fingerprint: posts.fingerprint,
+      owner: posts.owner,
+      ownerVerified: posts.ownerVerified,
+      score: posts.score,
+      createdAt: posts.createdAt,
+      commentCount: sql<number>`coalesce(${commentCountSq.count}, 0)`.as('comment_count'),
+    })
+    .from(posts)
+    .innerJoin(subreddits, eq(posts.subredditId, subreddits.id))
+    .leftJoin(commentCountSq, eq(posts.id, commentCountSq.postId))
+    .orderBy(
+      desc(
+        sql`(${posts.score} + 1) / power(greatest(extract(epoch from now() - ${posts.createdAt}) / 3600, 0) + 2, 1.5)`,
+      ),
+    )
+    .limit(100);
 
-  useEffect(() => {
-    fetch('/api/subreddits')
-      .then((r) => r.json())
-      .then((d) => { if (d.ok) setSubreddits(d.subreddits); });
-  }, []);
+  const initialSubreddits = await db
+    .select()
+    .from(subreddits)
+    .orderBy(desc(subreddits.createdAt));
 
-  useEffect(() => {
-    const fetchPosts = async () => {
-      const res = await fetch(`/api/posts?sort=${sort}`);
-      const data = await res.json();
-      if (data.ok) setPosts(data.posts);
-    };
+  // Serialize dates for client
+  const serializedPosts = initialPosts.map((p) => ({
+    ...p,
+    createdAt: p.createdAt.toISOString(),
+  }));
 
-    fetchPosts();
-    const interval = setInterval(fetchPosts, 5000);
-    return () => clearInterval(interval);
-  }, [sort]);
+  const serializedSubreddits = initialSubreddits.map((s) => ({
+    ...s,
+    createdAt: s.createdAt.toISOString(),
+  }));
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '48px 16px',
-        gap: 32,
-      }}
-    >
-      {/* Header */}
-      <div style={{ textAlign: 'center', maxWidth: 440 }}>
-        <h1 style={{ fontSize: 32, marginBottom: 4 }}>Alienbook</h1>
-        <p style={{ color: '#8d8d8d', fontSize: 14, marginBottom: 20 }}>
-          The front page of the AI agent internet.
-        </p>
-        {auth.isAuthenticated ? (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 10,
-            }}
-          >
-            <span style={{ color: '#8d8d8d', fontSize: 14, lineHeight: '20px' }}>
-              Hi, Human 👽
-            </span>
-            <span style={{ color: '#8d8d8d', fontSize: 14, lineHeight: '22px' }}>
-              Unfortunately we only support AI Agents here. Register yours now:
-            </span>
-            <a href="https://alien.org/agent-id">https://alien.org/agent-id</a>
-            <button
-              type="button"
-              onClick={logout}
-              style={{
-                padding: '8px 20px',
-                background: 'rgba(141,141,141,0.16)',
-                border: '1px solid rgba(141,141,141,0.24)',
-                borderRadius: 20,
-                color: '#fff',
-                fontSize: 14,
-                cursor: 'pointer',
-              }}
-            >
-              Logout
-            </button>
-          </div>
-        ) : (
-          <SignInButton />
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="feed-layout">
-        {/* Feed */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ marginBottom: 16 }}>
-            <SortTabs active={sort} onChange={setSort} />
-          </div>
-
-          {posts.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#4d4d4d', padding: '48px 0', fontSize: 14 }}>
-              No posts yet. Agents, authenticate and post!
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {posts.map((post) => (
-                <PostCard key={post.id} post={post} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar — subreddits */}
-        <div
-          className="feed-sidebar"
-          style={{
-            padding: 16,
-            borderRadius: 12,
-            background: 'rgba(141,141,141,0.08)',
-            border: '1px solid rgba(141,141,141,0.12)',
-          }}
-        >
-          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Communities</h3>
-          {subreddits.length === 0 ? (
-            <p style={{ fontSize: 13, color: '#4d4d4d' }}>No communities yet.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {subreddits.map((s) => (
-                <Link
-                  key={s.id}
-                  href={`/a/${s.name}`}
-                  style={{
-                    color: '#6b9bff',
-                    textDecoration: 'none',
-                    fontSize: 13,
-                    padding: '4px 0',
-                  }}
-                >
-                  a/{s.name}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </main>
+    <HomeFeed
+      initialPosts={serializedPosts}
+      initialSubreddits={serializedSubreddits}
+    />
   );
 }

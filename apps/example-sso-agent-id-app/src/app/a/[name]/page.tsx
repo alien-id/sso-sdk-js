@@ -1,92 +1,67 @@
-'use client';
+import { notFound } from 'next/navigation';
+import { db } from '@/db';
+import { posts, subreddits, comments } from '@/db/schema';
+import { desc, eq, sql, count } from 'drizzle-orm';
+import { SubredditFeed } from './SubredditFeed';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import { PostCard, type PostData } from '@/components/PostCard';
-import { SortTabs } from '@/components/SortTabs';
+export const dynamic = 'force-dynamic';
 
-interface Subreddit {
-  id: string;
-  name: string;
-  description: string;
-  fingerprint: string;
-  createdAt: string;
-}
+export default async function SubredditPage({
+  params,
+}: {
+  params: Promise<{ name: string }>;
+}) {
+  const { name } = await params;
 
-export default function SubredditPage() {
-  const { name } = useParams<{ name: string }>();
-  const [posts, setPosts] = useState<PostData[]>([]);
-  const [subreddit, setSubreddit] = useState<Subreddit | null>(null);
-  const [sort, setSort] = useState('hot');
+  const [subreddit] = await db
+    .select()
+    .from(subreddits)
+    .where(eq(subreddits.name, name))
+    .limit(1);
 
-  useEffect(() => {
-    fetch('/api/subreddits')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.ok) {
-          const found = d.subreddits.find((s: Subreddit) => s.name === name);
-          if (found) setSubreddit(found);
-        }
-      });
-  }, [name]);
+  if (!subreddit) notFound();
 
-  useEffect(() => {
-    const fetchPosts = async () => {
-      const res = await fetch(`/api/posts?subreddit=${name}&sort=${sort}`);
-      const data = await res.json();
-      if (data.ok) setPosts(data.posts);
-    };
+  const commentCountSq = db
+    .select({ postId: comments.postId, count: count().as('comment_count') })
+    .from(comments)
+    .groupBy(comments.postId)
+    .as('cc');
 
-    fetchPosts();
-    const interval = setInterval(fetchPosts, 5000);
-    return () => clearInterval(interval);
-  }, [name, sort]);
+  const initialPosts = await db
+    .select({
+      id: posts.id,
+      title: posts.title,
+      body: posts.body,
+      subredditId: posts.subredditId,
+      subredditName: subreddits.name,
+      fingerprint: posts.fingerprint,
+      owner: posts.owner,
+      ownerVerified: posts.ownerVerified,
+      score: posts.score,
+      createdAt: posts.createdAt,
+      commentCount: sql<number>`coalesce(${commentCountSq.count}, 0)`.as('comment_count'),
+    })
+    .from(posts)
+    .innerJoin(subreddits, eq(posts.subredditId, subreddits.id))
+    .leftJoin(commentCountSq, eq(posts.id, commentCountSq.postId))
+    .where(eq(posts.subredditId, subreddit.id))
+    .orderBy(
+      desc(
+        sql`(${posts.score} + 1) / power(greatest(extract(epoch from now() - ${posts.createdAt}) / 3600, 0) + 2, 1.5)`,
+      ),
+    )
+    .limit(100);
+
+  const serializedPosts = initialPosts.map((p) => ({
+    ...p,
+    createdAt: p.createdAt.toISOString(),
+  }));
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '48px 16px',
-        gap: 24,
-      }}
-    >
-      {/* Back link */}
-      <div style={{ width: '100%', maxWidth: 640 }}>
-        <Link href="/" style={{ color: '#6b9bff', textDecoration: 'none', fontSize: 13 }}>
-          ← Back to feed
-        </Link>
-      </div>
-
-      {/* Subreddit header */}
-      <div style={{ width: '100%', maxWidth: 640 }}>
-        <h1 style={{ fontSize: 28, marginBottom: 4 }}>a/{name}</h1>
-        {subreddit && (
-          <p style={{ color: '#8d8d8d', fontSize: 14 }}>{subreddit.description}</p>
-        )}
-      </div>
-
-      {/* Sort + posts */}
-      <div style={{ width: '100%', maxWidth: 640 }}>
-        <div style={{ marginBottom: 16 }}>
-          <SortTabs active={sort} onChange={setSort} />
-        </div>
-
-        {posts.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#4d4d4d', padding: '48px 0', fontSize: 14 }}>
-            No posts in a/{name} yet.
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {posts.map((post) => (
-              <PostCard key={post.id} post={post} showSubreddit={false} />
-            ))}
-          </div>
-        )}
-      </div>
-    </main>
+    <SubredditFeed
+      name={name}
+      description={subreddit.description}
+      initialPosts={serializedPosts}
+    />
   );
 }
