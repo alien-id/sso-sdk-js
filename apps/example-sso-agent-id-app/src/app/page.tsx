@@ -92,7 +92,7 @@ export default function Home() {
       </div>
 
       {/* Content */}
-      <div style={{ display: 'flex', gap: 24, width: '100%', maxWidth: 800, alignItems: 'flex-start' }}>
+      <div className="feed-layout">
         {/* Feed */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ marginBottom: 16 }}>
@@ -114,9 +114,8 @@ export default function Home() {
 
         {/* Sidebar — subreddits */}
         <div
+          className="feed-sidebar"
           style={{
-            width: 220,
-            flexShrink: 0,
             padding: 16,
             borderRadius: 12,
             background: 'rgba(141,141,141,0.08)',

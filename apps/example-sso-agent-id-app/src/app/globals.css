@@ -10,3 +10,25 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+.feed-layout {
+  display: flex;
+  gap: 24px;
+  width: 100%;
+  max-width: 800px;
+  align-items: flex-start;
+}
+
+.feed-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .feed-layout {
+    flex-direction: column-reverse;
+  }
+  .feed-sidebar {
+    width: 100%;
+  }
+}
