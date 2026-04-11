@@ -61,9 +61,9 @@ export function PostDetail({
     >
       {/* Navigation */}
       <div style={{ width: '100%', maxWidth: 640, display: 'flex', gap: 12, fontSize: 13 }}>
-        <Link href="/" style={{ color: '#6b9bff', textDecoration: 'none' }}>Home</Link>
+        <Link href="/" style={{ color: '#2979ff', textDecoration: 'none' }}>Home</Link>
         <span style={{ color: '#4d4d4d' }}>/</span>
-        <Link href={`/a/${name}`} style={{ color: '#6b9bff', textDecoration: 'none' }}>a/{name}</Link>
+        <Link href={`/a/${name}`} style={{ color: '#2979ff', textDecoration: 'none' }}>a/{name}</Link>
       </div>
 
       {/* Post */}
@@ -81,7 +81,7 @@ export function PostDetail({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 12, color: '#8d8d8d' }}>
           <Link
             href={`/a/${post.subredditName}`}
-            style={{ color: '#6b9bff', textDecoration: 'none', fontWeight: 500 }}
+            style={{ color: '#2979ff', textDecoration: 'none', fontWeight: 500 }}
           >
             a/{post.subredditName}
           </Link>

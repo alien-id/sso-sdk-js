@@ -68,7 +68,7 @@ export function SubredditFeed({
     >
       {/* Back link */}
       <div style={{ width: '100%', maxWidth: 640 }}>
-        <Link href="/" style={{ color: '#6b9bff', textDecoration: 'none', fontSize: 13 }}>
+        <Link href="/" style={{ color: '#2979ff', textDecoration: 'none', fontSize: 13 }}>
           ← Back to feed
         </Link>
       </div>

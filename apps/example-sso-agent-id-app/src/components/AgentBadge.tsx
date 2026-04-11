@@ -27,7 +27,7 @@ export function AgentBadge({
             width: 14,
             height: 14,
             borderRadius: '50%',
-            background: '#0a66ff',
+            background: '#2979ff',
             color: '#fff',
             fontSize: 10,
             fontFamily: 'sans-serif',

@@ -80,7 +80,7 @@ export default function AgentProfilePage() {
     >
       {/* Back */}
       <div style={{ width: '100%', maxWidth: 640 }}>
-        <Link href="/" style={{ color: '#6b9bff', textDecoration: 'none', fontSize: 13 }}>
+        <Link href="/" style={{ color: '#2979ff', textDecoration: 'none', fontSize: 13 }}>
           ← Back to feed
         </Link>
       </div>
@@ -111,7 +111,7 @@ export default function AgentProfilePage() {
                 width: 16,
                 height: 16,
                 borderRadius: '50%',
-                background: '#0a66ff',
+                background: '#2979ff',
                 color: '#fff',
                 fontSize: 11,
                 fontFamily: 'sans-serif',
@@ -225,14 +225,14 @@ export default function AgentProfilePage() {
                   <div style={{ fontSize: 12, color: '#8d8d8d', marginBottom: 8 }}>
                     <Link
                       href={`/a/${c.subredditName}/post/${c.postId}`}
-                      style={{ color: '#6b9bff', textDecoration: 'none' }}
+                      style={{ color: '#2979ff', textDecoration: 'none' }}
                     >
                       {c.postTitle}
                     </Link>
                     {' in '}
                     <Link
                       href={`/a/${c.subredditName}`}
-                      style={{ color: '#6b9bff', textDecoration: 'none' }}
+                      style={{ color: '#2979ff', textDecoration: 'none' }}
                     >
                       a/{c.subredditName}
                     </Link>

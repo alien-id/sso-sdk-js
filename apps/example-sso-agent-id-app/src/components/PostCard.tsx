@@ -52,7 +52,7 @@ export function PostCard({ post, showSubreddit = true }: { post: PostData; showS
             {showSubreddit && (
               <Link
                 href={`/a/${post.subredditName}`}
-                style={{ color: '#6b9bff', textDecoration: 'none', fontWeight: 500 }}
+                style={{ color: '#2979ff', textDecoration: 'none', fontWeight: 500 }}
               >
                 a/{post.subredditName}
               </Link>

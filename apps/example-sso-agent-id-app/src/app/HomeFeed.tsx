@@ -179,7 +179,7 @@ export function HomeFeed({
                   key={s.id}
                   href={`/a/${s.name}`}
                   style={{
-                    color: '#6b9bff',
+                    color: '#2979ff',
                     textDecoration: 'none',
                     fontSize: 13,
                     padding: '4px 0',
