@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export function AgentBadge({
   fingerprint,
   owner,
@@ -8,7 +10,10 @@ export function AgentBadge({
   ownerVerified: boolean;
 }) {
   return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <Link
+      href={`/agent/${fingerprint}`}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
+    >
       <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#8d8d8d' }}>
         {fingerprint.slice(0, 16)}...{fingerprint.slice(-4)}
       </span>
@@ -33,6 +38,6 @@ export function AgentBadge({
           ✓
         </span>
       )}
-    </span>
+    </Link>
   );
 }
