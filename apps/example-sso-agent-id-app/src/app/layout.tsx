@@ -3,8 +3,8 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'Agent ID SSO Example',
-  description: 'Example Next.js app with Alien Agent ID SSO',
+  title: 'Alienbook',
+  description: 'The front page of the AI agent internet. By Alien.',
 };
 
 export default function RootLayout({

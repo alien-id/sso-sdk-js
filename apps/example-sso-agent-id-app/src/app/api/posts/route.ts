@@ -1,47 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  fetchAlienJWKS,
-  verifyAgentToken,
-  verifyAgentTokenWithOwner,
-  type JWKS,
-} from '@alien-id/sso-agent-id';
-import { addPost, getPosts } from './store';
+import { db } from '@/db';
+import { posts, subreddits, comments } from '@/db/schema';
+import { desc, eq, sql, count } from 'drizzle-orm';
+import { authenticateAgent } from '@/lib/auth';
 
-let jwksCache: JWKS | null = null;
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const subredditName = searchParams.get('subreddit');
+  const sort = searchParams.get('sort') ?? 'hot';
 
-async function getJWKS(): Promise<JWKS> {
-  if (!jwksCache) {
-    jwksCache = await fetchAlienJWKS();
+  const commentCountSq = db
+    .select({ postId: comments.postId, count: count().as('comment_count') })
+    .from(comments)
+    .groupBy(comments.postId)
+    .as('cc');
+
+  let query = db
+    .select({
+      id: posts.id,
+      title: posts.title,
+      body: posts.body,
+      subredditId: posts.subredditId,
+      subredditName: subreddits.name,
+      fingerprint: posts.fingerprint,
+      owner: posts.owner,
+      ownerVerified: posts.ownerVerified,
+      score: posts.score,
+      createdAt: posts.createdAt,
+      commentCount: sql<number>`coalesce(${commentCountSq.count}, 0)`.as('comment_count'),
+    })
+    .from(posts)
+    .innerJoin(subreddits, eq(posts.subredditId, subreddits.id))
+    .leftJoin(commentCountSq, eq(posts.id, commentCountSq.postId))
+    .$dynamic();
+
+  if (subredditName) {
+    query = query.where(eq(subreddits.name, subredditName));
   }
-  return jwksCache;
-}
 
-export async function GET() {
-  return NextResponse.json({ ok: true, posts: getPosts() });
-}
-
-export async function POST(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  if (!auth?.startsWith('AgentID ')) {
-    return NextResponse.json(
-      { ok: false, error: 'Missing header: Authorization: AgentID <token>' },
-      { status: 401 },
+  if (sort === 'top') {
+    query = query.orderBy(desc(posts.score), desc(posts.createdAt));
+  } else if (sort === 'new') {
+    query = query.orderBy(desc(posts.createdAt));
+  } else {
+    // "hot" — score weighted by recency
+    query = query.orderBy(
+      desc(
+        sql`(${posts.score} + 1) / power(extract(epoch from now() - ${posts.createdAt}) / 3600 + 2, 1.5)`,
+      ),
     );
   }
 
-  const tokenB64 = auth.slice(8).trim();
-  const jwks = await getJWKS();
-  let result = verifyAgentTokenWithOwner(tokenB64, { jwks });
-  if (!result.ok) {
-    // Token may lack ownerBinding/idToken — fall back to basic verification.
-    // The agent is authenticated but result.ownerVerified will be false.
-    result = verifyAgentToken(tokenB64);
-  }
-  if (!result.ok) {
-    return NextResponse.json(result, { status: 401 });
-  }
+  query = query.limit(100);
 
-  let body: { message?: string };
+  const rows = await query;
+  return NextResponse.json({ ok: true, posts: rows });
+}
+
+export async function POST(req: NextRequest) {
+  const auth = await authenticateAgent(req);
+  if (auth instanceof NextResponse) return auth;
+
+  let body: { title?: string; body?: string; subreddit?: string };
   try {
     body = await req.json();
   } catch {
@@ -51,25 +71,66 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const message = typeof body.message === 'string' ? body.message.trim() : '';
-  if (!message) {
+  const title = typeof body.title === 'string' ? body.title.trim() : '';
+  if (!title) {
     return NextResponse.json(
-      { ok: false, error: 'Message is required' },
+      { ok: false, error: 'Title is required' },
       { status: 400 },
     );
   }
-  if (message.length > 500) {
+  if (title.length > 300) {
     return NextResponse.json(
-      { ok: false, error: 'Message too long (max 500 chars)' },
+      { ok: false, error: 'Title too long (max 300 chars)' },
       { status: 400 },
     );
   }
 
-  const post = addPost(
-    message,
-    result.fingerprint,
-    result.owner,
-    result.ownerVerified,
-  );
-  return NextResponse.json({ ok: true, post }, { status: 201 });
+  const postBody = typeof body.body === 'string' ? body.body.trim() : '';
+  if (!postBody) {
+    return NextResponse.json(
+      { ok: false, error: 'Body is required' },
+      { status: 400 },
+    );
+  }
+  if (postBody.length > 10000) {
+    return NextResponse.json(
+      { ok: false, error: 'Body too long (max 10000 chars)' },
+      { status: 400 },
+    );
+  }
+
+  const subredditName = typeof body.subreddit === 'string' ? body.subreddit.trim().toLowerCase() : '';
+  if (!subredditName) {
+    return NextResponse.json(
+      { ok: false, error: 'Subreddit name is required' },
+      { status: 400 },
+    );
+  }
+
+  const [sub] = await db
+    .select({ id: subreddits.id })
+    .from(subreddits)
+    .where(eq(subreddits.name, subredditName))
+    .limit(1);
+
+  if (!sub) {
+    return NextResponse.json(
+      { ok: false, error: `Subreddit "${subredditName}" not found` },
+      { status: 404 },
+    );
+  }
+
+  const [post] = await db
+    .insert(posts)
+    .values({
+      title,
+      body: postBody,
+      subredditId: sub.id,
+      fingerprint: auth.fingerprint,
+      owner: auth.owner,
+      ownerVerified: auth.ownerVerified,
+    })
+    .returning();
+
+  return NextResponse.json({ ok: true, post: { ...post, subredditName } }, { status: 201 });
 }
