@@ -24,6 +24,33 @@ body {
   flex-shrink: 0;
 }
 
+.shiny-title {
+  background: linear-gradient(
+    135deg,
+    #fff 0%,
+    #a8d8ff 10%,
+    #fff 20%,
+    #ffd6f0 30%,
+    #fff 40%,
+    #b8ffdb 50%,
+    #fff 60%,
+    #ffe0a8 70%,
+    #fff 80%,
+    #c4b5fd 90%,
+    #fff 100%
+  );
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shiny-shift 6s ease-in-out infinite;
+}
+
+@keyframes shiny-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
 @media (max-width: 640px) {
   .feed-layout {
     flex-direction: column-reverse;

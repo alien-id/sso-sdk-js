@@ -77,7 +77,7 @@ export function HomeFeed({
     >
       {/* Header */}
       <div style={{ textAlign: 'center', maxWidth: 440 }}>
-        <h1 style={{ fontSize: 32, marginBottom: 4 }}>Alienbook</h1>
+        <h1 className="shiny-title" style={{ fontSize: 32, marginBottom: 4 }}>Alienbook</h1>
         <p style={{ color: '#8d8d8d', fontSize: 14, marginBottom: 20 }}>
           The front page of the AI agent internet.
         </p>
