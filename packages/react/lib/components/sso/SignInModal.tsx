@@ -186,59 +186,36 @@ export const SignInModal = () => {
         )}
 
         {authMode === 'agent' ? (
-          <>
-            <div className={styles.agentContent}>
-              <div className={styles.agentCommandBox}>
-                <div className={styles.agentCommandInner}>
-                  <div className={styles.agentCommandLabel}>Register your agent</div>
-                  <div className={styles.agentCommandText}>{AGENT_INSTALL_COMMAND}</div>
-                </div>
-                <button
-                  type="button"
-                  className={styles.agentCopyButton}
-                  onClick={() => {
-                    navigator.clipboard.writeText(AGENT_INSTALL_COMMAND);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                >
-                  {copied ? <CheckIcon /> : <CopyIcon />}
-                </button>
+          <div className={styles.agentContent}>
+            <div className={styles.agentCommandBox}>
+              <div className={styles.agentCommandInner}>
+                <div className={styles.agentCommandLabel}>Register your agent</div>
+                <div className={styles.agentCommandText}>{AGENT_INSTALL_COMMAND}</div>
               </div>
-              <ol className={styles.agentSteps}>
-                <li>Install and set up Agent ID using command above</li>
-                <li>
-                  <span>
-                    Paste{" "}
-                    <pre>{typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}` : ''}</pre>
-                    {" "}to your agent and ask it to authorize
-                  </span>
-                </li>
-                <li>Once authenticated, your agent is set</li>
-              </ol>
+              <button
+                type="button"
+                className={styles.agentCopyButton}
+                onClick={() => {
+                  navigator.clipboard.writeText(AGENT_INSTALL_COMMAND);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+              >
+                {copied ? <CheckIcon /> : <CopyIcon />}
+              </button>
             </div>
-
-            {!isMobile ? (
-              <>
-                <div className={styles.line} />
-                <div className={styles.footer}>
-                  <div>
-                    <div className={styles.footerTitle}>Don't have an Alien App yet?</div>
-                    <div className={styles.footerSubtitle}>Available on iOS and Android.</div>
-                  </div>
-                  <a href="https://alien.org" target="_blank" className={styles.footerButton}>Download</a>
-                </div>
-              </>
-            ) : (
-              <div className={styles.mobileFooter}>
-                <div className={styles.mobileFooterTitle}>Don't have an Alien App yet?</div>
-                <div className={styles.mobileFooterSubtitle}>
-                  Available on iOS and Android.{' '}
-                  <a className={styles.mobileFooterButton} target='_blank' href="https://alien.org">Download</a>
-                </div>
-              </div>
-            )}
-          </>
+            <ol className={styles.agentSteps}>
+              <li>Install and set up Agent ID using command above</li>
+              <li>
+                <span>
+                  Paste{" "}
+                  <pre>{typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}` : ''}</pre>
+                  {" "}to your agent and ask it to authorize
+                </span>
+              </li>
+              <li>Once authenticated, your agent is set</li>
+            </ol>
+          </div>
         ) : (
           <>
             <div className={styles.subtitle}>Scan this QR code with an Alien App!</div>
@@ -256,30 +233,31 @@ export const SignInModal = () => {
               <div className={styles.descriptionIcon}><QrIcon /></div>
             </div>
 
-            {!isMobile ? (
-              <>
-                <div className={styles.line} />
-                <div className={styles.footer}>
-                  <div>
-                    <div className={styles.footerTitle}>Don't have an Alien App yet?</div>
-                    <div className={styles.footerSubtitle}>Available on iOS and Android.</div>
-                  </div>
-                  <a href="https://alien.org" target="_blank" className={styles.footerButton}>Download</a>
-                </div>
-              </>
-            ) : (
-              <>
-                {deeplink && <a href={deeplink} target="_blank" className={styles.mobileOpenButton}><span>Open in Alien App</span> <RightIcon /></a>}
-                <div className={styles.mobileFooter}>
-                  <div className={styles.mobileFooterTitle}>Don't have an Alien App yet?</div>
-                  <div className={styles.mobileFooterSubtitle}>
-                    Available on iOS and Android.{' '}
-                    <a className={styles.mobileFooterButton} target='_blank' href="https://alien.org">Download</a>
-                  </div>
-                </div>
-              </>
+            {isMobile && deeplink && (
+              <a href={deeplink} target="_blank" className={styles.mobileOpenButton}><span>Open in Alien App</span> <RightIcon /></a>
             )}
           </>
+        )}
+
+        {!isMobile ? (
+          <>
+            <div className={styles.line} />
+            <div className={styles.footer}>
+              <div>
+                <div className={styles.footerTitle}>Don't have an Alien App yet?</div>
+                <div className={styles.footerSubtitle}>Available on iOS and Android.</div>
+              </div>
+              <a href="https://alien.org" target="_blank" className={styles.footerButton}>Download</a>
+            </div>
+          </>
+        ) : (
+          <div className={styles.mobileFooter}>
+            <div className={styles.mobileFooterTitle}>Don't have an Alien App yet?</div>
+            <div className={styles.mobileFooterSubtitle}>
+              Available on iOS and Android.{' '}
+              <a className={styles.mobileFooterButton} target='_blank' href="https://alien.org">Download</a>
+            </div>
+          </div>
         )}
       </div>
     </ModalBase>
