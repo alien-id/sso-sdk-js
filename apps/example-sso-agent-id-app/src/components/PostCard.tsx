@@ -6,7 +6,7 @@ export interface PostData {
   id: string;
   title: string;
   body: string;
-  subredditName: string;
+  subalienName: string;
   fingerprint: string;
   owner: string | null;
   ownerVerified: boolean;
@@ -15,7 +15,13 @@ export interface PostData {
   commentCount: number;
 }
 
-export function PostCard({ post, showSubreddit = true }: { post: PostData; showSubreddit?: boolean }) {
+export function PostCard({
+  post,
+  showSubalien = true,
+}: {
+  post: PostData;
+  showSubalien?: boolean;
+}) {
   return (
     <div
       style={{
@@ -39,7 +45,17 @@ export function PostCard({ post, showSubreddit = true }: { post: PostData; showS
           }}
         >
           <span style={{ fontSize: 10 }}>▲</span>
-          <span style={{ fontWeight: 600, color: post.score > 0 ? '#4ade80' : post.score < 0 ? '#f87171' : '#8d8d8d' }}>
+          <span
+            style={{
+              fontWeight: 600,
+              color:
+                post.score > 0
+                  ? '#4ade80'
+                  : post.score < 0
+                    ? '#f87171'
+                    : '#8d8d8d',
+            }}
+          >
             {post.score}
           </span>
           <span style={{ fontSize: 10 }}>▼</span>
@@ -48,29 +64,62 @@ export function PostCard({ post, showSubreddit = true }: { post: PostData; showS
         {/* Content */}
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Meta line */}
-          <div style={{ fontSize: 12, color: '#8d8d8d', marginBottom: 4, display: 'flex', gap: 8, alignItems: 'center' }}>
-            {showSubreddit && (
+          <div
+            style={{
+              fontSize: 12,
+              color: '#8d8d8d',
+              marginBottom: 4,
+              display: 'flex',
+              gap: 8,
+              alignItems: 'center',
+            }}
+          >
+            {showSubalien && (
               <Link
-                href={`/a/${post.subredditName}`}
-                style={{ color: '#2979ff', textDecoration: 'none', fontWeight: 500 }}
+                href={`/a/${post.subalienName}`}
+                style={{
+                  color: '#2979ff',
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                }}
               >
-                a/{post.subredditName}
+                a/{post.subalienName}
               </Link>
             )}
-            <AgentBadge fingerprint={post.fingerprint} owner={post.owner} ownerVerified={post.ownerVerified} />
+            <AgentBadge
+              fingerprint={post.fingerprint}
+              owner={post.owner}
+              ownerVerified={post.ownerVerified}
+            />
           </div>
 
           {/* Title */}
           <Link
-            href={`/a/${post.subredditName}/post/${post.id}`}
-            style={{ color: '#fff', textDecoration: 'none', fontSize: 16, fontWeight: 500, lineHeight: '22px' }}
+            href={`/a/${post.subalienName}/post/${post.id}`}
+            style={{
+              color: '#fff',
+              textDecoration: 'none',
+              fontSize: 16,
+              fontWeight: 500,
+              lineHeight: '22px',
+            }}
           >
             {post.title}
           </Link>
 
           {/* Footer */}
-          <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: 12, color: '#8d8d8d' }}>
-            <span>{post.commentCount} comment{post.commentCount !== 1 ? 's' : ''}</span>
+          <div
+            style={{
+              display: 'flex',
+              gap: 16,
+              marginTop: 8,
+              fontSize: 12,
+              color: '#8d8d8d',
+            }}
+          >
+            <span>
+              {post.commentCount} comment{post.commentCount !== 1 ? 's' : ''}
+            </span>
             <TimeAgo date={post.createdAt} />
           </div>
         </div>

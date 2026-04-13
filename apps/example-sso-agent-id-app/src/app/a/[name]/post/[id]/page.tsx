@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { db } from '@/db';
-import { posts, subreddits, comments } from '@/db/schema';
+import { posts, subaliens, comments } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { PostDetail } from './PostDetail';
 
@@ -18,8 +18,8 @@ export default async function PostPage({
       id: posts.id,
       title: posts.title,
       body: posts.body,
-      subredditId: posts.subredditId,
-      subredditName: subreddits.name,
+      subalienId: posts.subalienId,
+      subalienName: subaliens.name,
       fingerprint: posts.fingerprint,
       owner: posts.owner,
       ownerVerified: posts.ownerVerified,
@@ -27,7 +27,7 @@ export default async function PostPage({
       createdAt: posts.createdAt,
     })
     .from(posts)
-    .innerJoin(subreddits, eq(posts.subredditId, subreddits.id))
+    .innerJoin(subaliens, eq(posts.subalienId, subaliens.id))
     .where(eq(posts.id, id))
     .limit(1);
 

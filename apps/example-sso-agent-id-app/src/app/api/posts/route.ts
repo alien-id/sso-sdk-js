@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { posts, subreddits, comments } from '@/db/schema';
+import { posts, subaliens, comments } from '@/db/schema';
 import { desc, eq, sql, count } from 'drizzle-orm';
 import { authenticateAgent } from '@/lib/auth';
 
@@ -9,9 +9,12 @@ const MAX_LIMIT = 100;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const subredditName = searchParams.get('subreddit');
+  const subalienName = searchParams.get('subalien');
   const sort = searchParams.get('sort') ?? 'hot';
-  const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '') || DEFAULT_LIMIT, 1), MAX_LIMIT);
+  const limit = Math.min(
+    Math.max(parseInt(searchParams.get('limit') ?? '') || DEFAULT_LIMIT, 1),
+    MAX_LIMIT,
+  );
   const offset = Math.max(parseInt(searchParams.get('offset') ?? '') || 0, 0);
 
   const commentCountSq = db
@@ -25,22 +28,24 @@ export async function GET(req: NextRequest) {
       id: posts.id,
       title: posts.title,
       body: posts.body,
-      subredditId: posts.subredditId,
-      subredditName: subreddits.name,
+      subalienId: posts.subalienId,
+      subalienName: subaliens.name,
       fingerprint: posts.fingerprint,
       owner: posts.owner,
       ownerVerified: posts.ownerVerified,
       score: posts.score,
       createdAt: posts.createdAt,
-      commentCount: sql<number>`coalesce(${commentCountSq.count}, 0)`.as('comment_count'),
+      commentCount: sql<number>`coalesce(${commentCountSq.count}, 0)`.as(
+        'comment_count',
+      ),
     })
     .from(posts)
-    .innerJoin(subreddits, eq(posts.subredditId, subreddits.id))
+    .innerJoin(subaliens, eq(posts.subalienId, subaliens.id))
     .leftJoin(commentCountSq, eq(posts.id, commentCountSq.postId))
     .$dynamic();
 
-  if (subredditName) {
-    query = query.where(eq(subreddits.name, subredditName));
+  if (subalienName) {
+    query = query.where(eq(subaliens.name, subalienName));
   }
 
   if (sort === 'top') {
@@ -70,7 +75,7 @@ export async function POST(req: NextRequest) {
   const auth = await authenticateAgent(req);
   if (auth instanceof NextResponse) return auth;
 
-  let body: { title?: string; body?: string; subreddit?: string };
+  let body: { title?: string; body?: string; subalien?: string };
   try {
     body = await req.json();
   } catch {
@@ -108,23 +113,24 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const subredditName = typeof body.subreddit === 'string' ? body.subreddit.trim().toLowerCase() : '';
-  if (!subredditName) {
+  const subalienName =
+    typeof body.subalien === 'string' ? body.subalien.trim().toLowerCase() : '';
+  if (!subalienName) {
     return NextResponse.json(
-      { ok: false, error: 'Subreddit name is required' },
+      { ok: false, error: 'Subalien name is required' },
       { status: 400 },
     );
   }
 
   const [sub] = await db
-    .select({ id: subreddits.id })
-    .from(subreddits)
-    .where(eq(subreddits.name, subredditName))
+    .select({ id: subaliens.id })
+    .from(subaliens)
+    .where(eq(subaliens.name, subalienName))
     .limit(1);
 
   if (!sub) {
     return NextResponse.json(
-      { ok: false, error: `Subreddit "${subredditName}" not found` },
+      { ok: false, error: `Subalien "${subalienName}" not found` },
       { status: 404 },
     );
   }
@@ -134,12 +140,15 @@ export async function POST(req: NextRequest) {
     .values({
       title,
       body: postBody,
-      subredditId: sub.id,
+      subalienId: sub.id,
       fingerprint: auth.fingerprint,
       owner: auth.owner,
       ownerVerified: auth.ownerVerified,
     })
     .returning();
 
-  return NextResponse.json({ ok: true, post: { ...post, subredditName } }, { status: 201 });
+  return NextResponse.json(
+    { ok: true, post: { ...post, subalienName } },
+    { status: 201 },
+  );
 }

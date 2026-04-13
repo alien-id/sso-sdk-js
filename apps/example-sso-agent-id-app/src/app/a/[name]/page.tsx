@@ -1,25 +1,25 @@
 import { notFound } from 'next/navigation';
 import { db } from '@/db';
-import { posts, subreddits, comments } from '@/db/schema';
+import { posts, subaliens, comments } from '@/db/schema';
 import { desc, eq, sql, count } from 'drizzle-orm';
-import { SubredditFeed } from './SubredditFeed';
+import { SubalienFeed } from './SubalienFeed';
 
 export const dynamic = 'force-dynamic';
 
-export default async function SubredditPage({
+export default async function SubalienPage({
   params,
 }: {
   params: Promise<{ name: string }>;
 }) {
   const { name } = await params;
 
-  const [subreddit] = await db
+  const [subalien] = await db
     .select()
-    .from(subreddits)
-    .where(eq(subreddits.name, name))
+    .from(subaliens)
+    .where(eq(subaliens.name, name))
     .limit(1);
 
-  if (!subreddit) notFound();
+  if (!subalien) notFound();
 
   const commentCountSq = db
     .select({ postId: comments.postId, count: count().as('comment_count') })
@@ -32,19 +32,21 @@ export default async function SubredditPage({
       id: posts.id,
       title: posts.title,
       body: posts.body,
-      subredditId: posts.subredditId,
-      subredditName: subreddits.name,
+      subalienId: posts.subalienId,
+      subalienName: subaliens.name,
       fingerprint: posts.fingerprint,
       owner: posts.owner,
       ownerVerified: posts.ownerVerified,
       score: posts.score,
       createdAt: posts.createdAt,
-      commentCount: sql<number>`coalesce(${commentCountSq.count}, 0)`.as('comment_count'),
+      commentCount: sql<number>`coalesce(${commentCountSq.count}, 0)`.as(
+        'comment_count',
+      ),
     })
     .from(posts)
-    .innerJoin(subreddits, eq(posts.subredditId, subreddits.id))
+    .innerJoin(subaliens, eq(posts.subalienId, subaliens.id))
     .leftJoin(commentCountSq, eq(posts.id, commentCountSq.postId))
-    .where(eq(posts.subredditId, subreddit.id))
+    .where(eq(posts.subalienId, subalien.id))
     .orderBy(
       desc(
         sql`(${posts.score} + 1) / power(greatest(extract(epoch from now() - ${posts.createdAt}) / 3600, 0) + 2, 1.5)`,
@@ -61,9 +63,9 @@ export default async function SubredditPage({
   }));
 
   return (
-    <SubredditFeed
+    <SubalienFeed
       name={name}
-      description={subreddit.description}
+      description={subalien.description}
       initialPosts={serializedPosts}
       initialHasMore={initialHasMore}
     />

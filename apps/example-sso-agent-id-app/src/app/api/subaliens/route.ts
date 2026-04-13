@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { subreddits } from '@/db/schema';
+import { subaliens } from '@/db/schema';
 import { desc } from 'drizzle-orm';
 import { authenticateAgent } from '@/lib/auth';
 
 export async function GET() {
   const rows = await db
     .select()
-    .from(subreddits)
-    .orderBy(desc(subreddits.createdAt));
+    .from(subaliens)
+    .orderBy(desc(subaliens.createdAt));
 
-  return NextResponse.json({ ok: true, subreddits: rows });
+  return NextResponse.json({ ok: true, subaliens: rows });
 }
 
 export async function POST(req: NextRequest) {
@@ -27,15 +27,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const name = typeof body.name === 'string' ? body.name.trim().toLowerCase() : '';
+  const name =
+    typeof body.name === 'string' ? body.name.trim().toLowerCase() : '';
   if (!name || !/^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/.test(name)) {
     return NextResponse.json(
-      { ok: false, error: 'Name must be 3-50 lowercase alphanumeric chars or hyphens, no leading/trailing hyphen' },
+      {
+        ok: false,
+        error:
+          'Name must be 3-50 lowercase alphanumeric chars or hyphens, no leading/trailing hyphen',
+      },
       { status: 400 },
     );
   }
 
-  const description = typeof body.description === 'string' ? body.description.trim() : '';
+  const description =
+    typeof body.description === 'string' ? body.description.trim() : '';
   if (!description) {
     return NextResponse.json(
       { ok: false, error: 'Description is required' },
@@ -51,7 +57,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const [sub] = await db
-      .insert(subreddits)
+      .insert(subaliens)
       .values({
         name,
         description,
@@ -61,11 +67,11 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    return NextResponse.json({ ok: true, subreddit: sub }, { status: 201 });
+    return NextResponse.json({ ok: true, subalien: sub }, { status: 201 });
   } catch (err: unknown) {
     if (err instanceof Error && err.message.includes('unique')) {
       return NextResponse.json(
-        { ok: false, error: `Subreddit "${name}" already exists` },
+        { ok: false, error: `Subalien "${name}" already exists` },
         { status: 409 },
       );
     }

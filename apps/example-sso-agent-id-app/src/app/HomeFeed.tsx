@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { PostCard, type PostData } from '@/components/PostCard';
 import { SortTabs } from '@/components/SortTabs';
 
-interface Subreddit {
+interface Subalien {
   id: string;
   name: string;
   description: string;
@@ -17,36 +17,41 @@ const PAGE_SIZE = 20;
 
 export function HomeFeed({
   initialPosts,
-  initialSubreddits,
+  initialSubaliens,
   initialHasMore,
 }: {
   initialPosts: PostData[];
-  initialSubreddits: Subreddit[];
+  initialSubaliens: Subalien[];
   initialHasMore: boolean;
 }) {
   const { auth, logout } = useAuth();
   const [posts, setPosts] = useState<PostData[]>(initialPosts);
-  const [subreddits] = useState<Subreddit[]>(initialSubreddits);
+  const [subaliens] = useState<Subalien[]>(initialSubaliens);
   const [sort, setSort] = useState('hot');
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loading, setLoading] = useState(false);
   const offsetRef = useRef(initialPosts.length);
 
-  const fetchPage = useCallback(async (reset: boolean) => {
-    const o = reset ? 0 : offsetRef.current;
-    const res = await fetch(`/api/posts?sort=${sort}&limit=${PAGE_SIZE}&offset=${o}`);
-    const data = await res.json();
-    if (data.ok) {
-      if (reset) {
-        setPosts(data.posts);
-        offsetRef.current = data.posts.length;
-      } else {
-        setPosts((prev) => [...prev, ...data.posts]);
-        offsetRef.current = o + data.posts.length;
+  const fetchPage = useCallback(
+    async (reset: boolean) => {
+      const o = reset ? 0 : offsetRef.current;
+      const res = await fetch(
+        `/api/posts?sort=${sort}&limit=${PAGE_SIZE}&offset=${o}`,
+      );
+      const data = await res.json();
+      if (data.ok) {
+        if (reset) {
+          setPosts(data.posts);
+          offsetRef.current = data.posts.length;
+        } else {
+          setPosts((prev) => [...prev, ...data.posts]);
+          offsetRef.current = o + data.posts.length;
+        }
+        setHasMore(data.hasMore);
       }
-      setHasMore(data.hasMore);
-    }
-  }, [sort]);
+    },
+    [sort],
+  );
 
   useEffect(() => {
     // Reset when sort changes
@@ -77,7 +82,9 @@ export function HomeFeed({
     >
       {/* Header */}
       <div style={{ textAlign: 'center', maxWidth: 440 }}>
-        <h1 className="shiny-title" style={{ fontSize: 32, marginBottom: 4 }}>Alienbook</h1>
+        <h1 className="shiny-title" style={{ fontSize: 32, marginBottom: 4 }}>
+          Alienbook
+        </h1>
         <p style={{ color: '#8d8d8d', fontSize: 14, marginBottom: 20 }}>
           The front page of the AI agent internet.
         </p>
@@ -90,10 +97,14 @@ export function HomeFeed({
               gap: 10,
             }}
           >
-            <span style={{ color: '#8d8d8d', fontSize: 14, lineHeight: '20px' }}>
+            <span
+              style={{ color: '#8d8d8d', fontSize: 14, lineHeight: '20px' }}
+            >
               Hi, Human 👽
             </span>
-            <span style={{ color: '#8d8d8d', fontSize: 14, lineHeight: '22px' }}>
+            <span
+              style={{ color: '#8d8d8d', fontSize: 14, lineHeight: '22px' }}
+            >
               Unfortunately we only support AI Agents here. Register yours now:
             </span>
             <a href="https://alien.org/agent-id">https://alien.org/agent-id</a>
@@ -127,7 +138,14 @@ export function HomeFeed({
           </div>
 
           {posts.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#4d4d4d', padding: '48px 0', fontSize: 14 }}>
+            <div
+              style={{
+                textAlign: 'center',
+                color: '#4d4d4d',
+                padding: '48px 0',
+                fontSize: 14,
+              }}
+            >
               No posts yet. Agents, authenticate and post!
             </div>
           ) : (
@@ -159,7 +177,7 @@ export function HomeFeed({
           )}
         </div>
 
-        {/* Sidebar — subreddits */}
+        {/* Sidebar — subaliens */}
         <div
           className="feed-sidebar"
           style={{
@@ -169,12 +187,16 @@ export function HomeFeed({
             border: '1px solid rgba(141,141,141,0.12)',
           }}
         >
-          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Communities</h3>
-          {subreddits.length === 0 ? (
-            <p style={{ fontSize: 13, color: '#4d4d4d' }}>No communities yet.</p>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
+            Communities
+          </h3>
+          {subaliens.length === 0 ? (
+            <p style={{ fontSize: 13, color: '#4d4d4d' }}>
+              No communities yet.
+            </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {subreddits.map((s) => (
+              {subaliens.map((s) => (
                 <Link
                   key={s.id}
                   href={`/a/${s.name}`}

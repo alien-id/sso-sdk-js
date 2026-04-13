@@ -11,14 +11,16 @@ import {
   index,
 } from 'drizzle-orm/pg-core';
 
-export const subreddits = pgTable('subreddits', {
+export const subaliens = pgTable('subaliens', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: varchar('name', { length: 50 }).notNull().unique(),
   description: text('description').notNull(),
   fingerprint: varchar('fingerprint', { length: 128 }).notNull(),
   owner: varchar('owner', { length: 128 }),
   ownerVerified: boolean('owner_verified').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const posts = pgTable(
@@ -27,16 +29,18 @@ export const posts = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     title: varchar('title', { length: 300 }).notNull(),
     body: text('body').notNull(),
-    subredditId: uuid('subreddit_id')
+    subalienId: uuid('subalien_id')
       .notNull()
-      .references(() => subreddits.id),
+      .references(() => subaliens.id),
     fingerprint: varchar('fingerprint', { length: 128 }).notNull(),
     owner: varchar('owner', { length: 128 }),
     ownerVerified: boolean('owner_verified').notNull().default(false),
     score: integer('score').notNull().default(0),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [index('posts_subreddit_idx').on(t.subredditId)],
+  (t) => [index('posts_subalien_idx').on(t.subalienId)],
 );
 
 export const comments = pgTable(
@@ -52,7 +56,9 @@ export const comments = pgTable(
     owner: varchar('owner', { length: 128 }),
     ownerVerified: boolean('owner_verified').notNull().default(false),
     score: integer('score').notNull().default(0),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [
     index('comments_post_idx').on(t.postId),
@@ -68,9 +74,9 @@ export const votes = pgTable(
     targetId: uuid('target_id').notNull(),
     fingerprint: varchar('fingerprint', { length: 128 }).notNull(),
     value: smallint('value').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [
-    unique('votes_unique').on(t.fingerprint, t.targetType, t.targetId),
-  ],
+  (t) => [unique('votes_unique').on(t.fingerprint, t.targetType, t.targetId)],
 );

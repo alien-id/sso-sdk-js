@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { posts, comments, subreddits } from '@/db/schema';
+import { posts, comments, subaliens } from '@/db/schema';
 import { eq, desc, sql, count } from 'drizzle-orm';
 
 export async function GET(
@@ -73,18 +73,21 @@ export async function GET(
         body: comments.body,
         postId: comments.postId,
         postTitle: posts.title,
-        subredditName: subreddits.name,
+        subalienName: subaliens.name,
         score: comments.score,
         createdAt: comments.createdAt,
       })
       .from(comments)
       .innerJoin(posts, eq(comments.postId, posts.id))
-      .innerJoin(subreddits, eq(posts.subredditId, subreddits.id))
+      .innerJoin(subaliens, eq(posts.subalienId, subaliens.id))
       .where(eq(comments.fingerprint, fingerprint))
       .$dynamic();
 
     if (sort === 'top') {
-      commentsQuery = commentsQuery.orderBy(desc(comments.score), desc(comments.createdAt));
+      commentsQuery = commentsQuery.orderBy(
+        desc(comments.score),
+        desc(comments.createdAt),
+      );
     } else {
       commentsQuery = commentsQuery.orderBy(desc(comments.createdAt));
     }
@@ -105,16 +108,18 @@ export async function GET(
       id: posts.id,
       title: posts.title,
       body: posts.body,
-      subredditName: subreddits.name,
+      subalienName: subaliens.name,
       fingerprint: posts.fingerprint,
       owner: posts.owner,
       ownerVerified: posts.ownerVerified,
       score: posts.score,
       createdAt: posts.createdAt,
-      commentCount: sql<number>`coalesce(${commentCountSq.count}, 0)`.as('comment_count'),
+      commentCount: sql<number>`coalesce(${commentCountSq.count}, 0)`.as(
+        'comment_count',
+      ),
     })
     .from(posts)
-    .innerJoin(subreddits, eq(posts.subredditId, subreddits.id))
+    .innerJoin(subaliens, eq(posts.subalienId, subaliens.id))
     .leftJoin(commentCountSq, eq(posts.id, commentCountSq.postId))
     .where(eq(posts.fingerprint, fingerprint))
     .$dynamic();

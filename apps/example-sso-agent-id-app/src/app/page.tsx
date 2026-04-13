@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { posts, subreddits, comments } from '@/db/schema';
+import { posts, subaliens, comments } from '@/db/schema';
 import { desc, eq, sql, count } from 'drizzle-orm';
 import { HomeFeed } from './HomeFeed';
 
@@ -17,17 +17,19 @@ export default async function Home() {
       id: posts.id,
       title: posts.title,
       body: posts.body,
-      subredditId: posts.subredditId,
-      subredditName: subreddits.name,
+      subalienId: posts.subalienId,
+      subalienName: subaliens.name,
       fingerprint: posts.fingerprint,
       owner: posts.owner,
       ownerVerified: posts.ownerVerified,
       score: posts.score,
       createdAt: posts.createdAt,
-      commentCount: sql<number>`coalesce(${commentCountSq.count}, 0)`.as('comment_count'),
+      commentCount: sql<number>`coalesce(${commentCountSq.count}, 0)`.as(
+        'comment_count',
+      ),
     })
     .from(posts)
-    .innerJoin(subreddits, eq(posts.subredditId, subreddits.id))
+    .innerJoin(subaliens, eq(posts.subalienId, subaliens.id))
     .leftJoin(commentCountSq, eq(posts.id, commentCountSq.postId))
     .orderBy(
       desc(
@@ -39,10 +41,10 @@ export default async function Home() {
   const initialHasMore = initialPosts.length > 20;
   if (initialHasMore) initialPosts.pop();
 
-  const initialSubreddits = await db
+  const initialSubaliens = await db
     .select()
-    .from(subreddits)
-    .orderBy(desc(subreddits.createdAt));
+    .from(subaliens)
+    .orderBy(desc(subaliens.createdAt));
 
   // Serialize dates for client
   const serializedPosts = initialPosts.map((p) => ({
@@ -50,7 +52,7 @@ export default async function Home() {
     createdAt: p.createdAt.toISOString(),
   }));
 
-  const serializedSubreddits = initialSubreddits.map((s) => ({
+  const serializedSubaliens = initialSubaliens.map((s) => ({
     ...s,
     createdAt: s.createdAt.toISOString(),
   }));
@@ -58,7 +60,7 @@ export default async function Home() {
   return (
     <HomeFeed
       initialPosts={serializedPosts}
-      initialSubreddits={serializedSubreddits}
+      initialSubaliens={serializedSubaliens}
       initialHasMore={initialHasMore}
     />
   );

@@ -7,7 +7,7 @@ import { SortTabs } from '@/components/SortTabs';
 
 const PAGE_SIZE = 20;
 
-export function SubredditFeed({
+export function SubalienFeed({
   name,
   description,
   initialPosts,
@@ -24,21 +24,26 @@ export function SubredditFeed({
   const [loading, setLoading] = useState(false);
   const offsetRef = useRef(initialPosts.length);
 
-  const fetchPage = useCallback(async (reset: boolean) => {
-    const o = reset ? 0 : offsetRef.current;
-    const res = await fetch(`/api/posts?subreddit=${name}&sort=${sort}&limit=${PAGE_SIZE}&offset=${o}`);
-    const data = await res.json();
-    if (data.ok) {
-      if (reset) {
-        setPosts(data.posts);
-        offsetRef.current = data.posts.length;
-      } else {
-        setPosts((prev) => [...prev, ...data.posts]);
-        offsetRef.current = o + data.posts.length;
+  const fetchPage = useCallback(
+    async (reset: boolean) => {
+      const o = reset ? 0 : offsetRef.current;
+      const res = await fetch(
+        `/api/posts?subalien=${name}&sort=${sort}&limit=${PAGE_SIZE}&offset=${o}`,
+      );
+      const data = await res.json();
+      if (data.ok) {
+        if (reset) {
+          setPosts(data.posts);
+          offsetRef.current = data.posts.length;
+        } else {
+          setPosts((prev) => [...prev, ...data.posts]);
+          offsetRef.current = o + data.posts.length;
+        }
+        setHasMore(data.hasMore);
       }
-      setHasMore(data.hasMore);
-    }
-  }, [name, sort]);
+    },
+    [name, sort],
+  );
 
   useEffect(() => {
     if (sort !== 'hot') fetchPage(true);
@@ -68,12 +73,15 @@ export function SubredditFeed({
     >
       {/* Back link */}
       <div style={{ width: '100%', maxWidth: 640 }}>
-        <Link href="/" style={{ color: '#2979ff', textDecoration: 'none', fontSize: 13 }}>
+        <Link
+          href="/"
+          style={{ color: '#2979ff', textDecoration: 'none', fontSize: 13 }}
+        >
           ← Back to feed
         </Link>
       </div>
 
-      {/* Subreddit header */}
+      {/* Subalien header */}
       <div style={{ width: '100%', maxWidth: 640 }}>
         <h1 style={{ fontSize: 28, marginBottom: 4 }}>a/{name}</h1>
         <p style={{ color: '#8d8d8d', fontSize: 14 }}>{description}</p>
@@ -86,13 +94,20 @@ export function SubredditFeed({
         </div>
 
         {posts.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#4d4d4d', padding: '48px 0', fontSize: 14 }}>
+          <div
+            style={{
+              textAlign: 'center',
+              color: '#4d4d4d',
+              padding: '48px 0',
+              fontSize: 14,
+            }}
+          >
             No posts in a/{name} yet.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {posts.map((post) => (
-              <PostCard key={post.id} post={post} showSubreddit={false} />
+              <PostCard key={post.id} post={post} showSubalien={false} />
             ))}
             {hasMore && (
               <button

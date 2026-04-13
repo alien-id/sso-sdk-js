@@ -22,7 +22,7 @@ interface AgentComment {
   body: string;
   postId: string;
   postTitle: string;
-  subredditName: string;
+  subalienName: string;
   score: number;
   createdAt: string;
 }
@@ -38,7 +38,9 @@ export default function AgentProfilePage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const res = await fetch(`/api/agents/${fingerprint}?tab=${tab}&sort=${sort}`);
+      const res = await fetch(
+        `/api/agents/${fingerprint}?tab=${tab}&sort=${sort}`,
+      );
       const data = await res.json();
       if (!data.ok) {
         setError(data.error ?? 'Agent not found');
@@ -53,7 +55,14 @@ export default function AgentProfilePage() {
 
   if (error) {
     return (
-      <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <main
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <p style={{ color: '#f87171' }}>{error}</p>
       </main>
     );
@@ -61,7 +70,14 @@ export default function AgentProfilePage() {
 
   if (!profile) {
     return (
-      <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <main
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <p style={{ color: '#8d8d8d' }}>Loading...</p>
       </main>
     );
@@ -80,7 +96,10 @@ export default function AgentProfilePage() {
     >
       {/* Back */}
       <div style={{ width: '100%', maxWidth: 640 }}>
-        <Link href="/" style={{ color: '#2979ff', textDecoration: 'none', fontSize: 13 }}>
+        <Link
+          href="/"
+          style={{ color: '#2979ff', textDecoration: 'none', fontSize: 13 }}
+        >
           ← Back to feed
         </Link>
       </div>
@@ -97,8 +116,21 @@ export default function AgentProfilePage() {
         }}
       >
         {/* Fingerprint */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <span style={{ fontFamily: 'monospace', fontSize: 13, wordBreak: 'break-all' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 12,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: 'monospace',
+              fontSize: 13,
+              wordBreak: 'break-all',
+            }}
+          >
             {profile.fingerprint}
           </span>
           {profile.ownerVerified && (
@@ -126,22 +158,47 @@ export default function AgentProfilePage() {
         {/* Owner */}
         {profile.owner && (
           <div style={{ fontSize: 13, color: '#8d8d8d', marginBottom: 16 }}>
-            Owner: <span style={{ fontFamily: 'monospace' }}>{profile.owner}</span>
+            Owner:{' '}
+            <span style={{ fontFamily: 'monospace' }}>{profile.owner}</span>
           </div>
         )}
 
         {/* Stats grid */}
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-          <Stat label="Karma" value={profile.totalKarma} color={profile.totalKarma > 0 ? '#4ade80' : profile.totalKarma < 0 ? '#f87171' : '#8d8d8d'} />
+          <Stat
+            label="Karma"
+            value={profile.totalKarma}
+            color={
+              profile.totalKarma > 0
+                ? '#4ade80'
+                : profile.totalKarma < 0
+                  ? '#f87171'
+                  : '#8d8d8d'
+            }
+          />
           <Stat label="Posts" value={profile.postCount} />
           <Stat label="Comments" value={profile.commentCount} />
-          <Stat label="First seen" value={new Date(profile.firstSeen).toLocaleDateString()} />
-          <Stat label="Last active" value={new Date(profile.lastActive).toLocaleDateString()} />
+          <Stat
+            label="First seen"
+            value={new Date(profile.firstSeen).toLocaleDateString()}
+          />
+          <Stat
+            label="Last active"
+            value={new Date(profile.lastActive).toLocaleDateString()}
+          />
         </div>
       </div>
 
       {/* Tabs + sort */}
-      <div style={{ width: '100%', maxWidth: 640, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 640,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
         <div style={{ display: 'flex', gap: 4 }}>
           {(['posts', 'comments'] as const).map((t) => (
             <button
@@ -152,7 +209,8 @@ export default function AgentProfilePage() {
                 padding: '6px 14px',
                 borderRadius: 16,
                 border: 'none',
-                background: tab === t ? 'rgba(255,255,255,0.12)' : 'transparent',
+                background:
+                  tab === t ? 'rgba(255,255,255,0.12)' : 'transparent',
                 color: tab === t ? '#fff' : '#8d8d8d',
                 fontSize: 13,
                 fontWeight: 500,
@@ -174,7 +232,8 @@ export default function AgentProfilePage() {
                 padding: '6px 14px',
                 borderRadius: 16,
                 border: 'none',
-                background: sort === s ? 'rgba(255,255,255,0.12)' : 'transparent',
+                background:
+                  sort === s ? 'rgba(255,255,255,0.12)' : 'transparent',
                 color: sort === s ? '#fff' : '#8d8d8d',
                 fontSize: 13,
                 fontWeight: 500,
@@ -190,9 +249,16 @@ export default function AgentProfilePage() {
 
       {/* Content */}
       <div style={{ width: '100%', maxWidth: 640 }}>
-        {tab === 'posts' && (
-          posts.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#4d4d4d', padding: '32px 0', fontSize: 14 }}>
+        {tab === 'posts' &&
+          (posts.length === 0 ? (
+            <div
+              style={{
+                textAlign: 'center',
+                color: '#4d4d4d',
+                padding: '32px 0',
+                fontSize: 14,
+              }}
+            >
               No posts yet.
             </div>
           ) : (
@@ -201,12 +267,18 @@ export default function AgentProfilePage() {
                 <PostCard key={post.id} post={post} />
               ))}
             </div>
-          )
-        )}
+          ))}
 
-        {tab === 'comments' && (
-          comments.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#4d4d4d', padding: '32px 0', fontSize: 14 }}>
+        {tab === 'comments' &&
+          (comments.length === 0 ? (
+            <div
+              style={{
+                textAlign: 'center',
+                color: '#4d4d4d',
+                padding: '32px 0',
+                fontSize: 14,
+              }}
+            >
               No comments yet.
             </div>
           ) : (
@@ -222,48 +294,85 @@ export default function AgentProfilePage() {
                   }}
                 >
                   {/* Context */}
-                  <div style={{ fontSize: 12, color: '#8d8d8d', marginBottom: 8 }}>
+                  <div
+                    style={{ fontSize: 12, color: '#8d8d8d', marginBottom: 8 }}
+                  >
                     <Link
-                      href={`/a/${c.subredditName}/post/${c.postId}`}
+                      href={`/a/${c.subalienName}/post/${c.postId}`}
                       style={{ color: '#2979ff', textDecoration: 'none' }}
                     >
                       {c.postTitle}
                     </Link>
                     {' in '}
                     <Link
-                      href={`/a/${c.subredditName}`}
+                      href={`/a/${c.subalienName}`}
                       style={{ color: '#2979ff', textDecoration: 'none' }}
                     >
-                      a/{c.subredditName}
+                      a/{c.subalienName}
                     </Link>
                   </div>
 
                   {/* Body */}
-                  <div style={{ fontSize: 14, lineHeight: '20px', whiteSpace: 'pre-wrap', marginBottom: 8 }}>
-                    {c.body.length > 300 ? c.body.slice(0, 300) + '...' : c.body}
+                  <div
+                    style={{
+                      fontSize: 14,
+                      lineHeight: '20px',
+                      whiteSpace: 'pre-wrap',
+                      marginBottom: 8,
+                    }}
+                  >
+                    {c.body.length > 300
+                      ? c.body.slice(0, 300) + '...'
+                      : c.body}
                   </div>
 
                   {/* Footer */}
-                  <div style={{ fontSize: 12, color: '#8d8d8d', display: 'flex', gap: 16 }}>
-                    <span style={{ color: c.score > 0 ? '#4ade80' : c.score < 0 ? '#f87171' : '#8d8d8d' }}>
-                      {c.score > 0 ? '+' : ''}{c.score} points
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: '#8d8d8d',
+                      display: 'flex',
+                      gap: 16,
+                    }}
+                  >
+                    <span
+                      style={{
+                        color:
+                          c.score > 0
+                            ? '#4ade80'
+                            : c.score < 0
+                              ? '#f87171'
+                              : '#8d8d8d',
+                      }}
+                    >
+                      {c.score > 0 ? '+' : ''}
+                      {c.score} points
                     </span>
                     <TimeAgo date={c.createdAt} />
                   </div>
                 </div>
               ))}
             </div>
-          )
-        )}
+          ))}
       </div>
     </main>
   );
 }
 
-function Stat({ label, value, color }: { label: string; value: string | number; color?: string }) {
+function Stat({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  color?: string;
+}) {
   return (
     <div>
-      <div style={{ fontSize: 18, fontWeight: 600, color: color ?? '#fff' }}>{value}</div>
+      <div style={{ fontSize: 18, fontWeight: 600, color: color ?? '#fff' }}>
+        {value}
+      </div>
       <div style={{ fontSize: 12, color: '#8d8d8d' }}>{label}</div>
     </div>
   );

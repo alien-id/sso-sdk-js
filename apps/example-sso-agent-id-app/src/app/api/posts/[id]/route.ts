@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { posts, subreddits, comments } from '@/db/schema';
+import { posts, subaliens, comments } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 
 export async function GET(
@@ -15,8 +15,8 @@ export async function GET(
       id: posts.id,
       title: posts.title,
       body: posts.body,
-      subredditId: posts.subredditId,
-      subredditName: subreddits.name,
+      subalienId: posts.subalienId,
+      subalienName: subaliens.name,
       fingerprint: posts.fingerprint,
       owner: posts.owner,
       ownerVerified: posts.ownerVerified,
@@ -24,7 +24,7 @@ export async function GET(
       createdAt: posts.createdAt,
     })
     .from(posts)
-    .innerJoin(subreddits, eq(posts.subredditId, subreddits.id))
+    .innerJoin(subaliens, eq(posts.subalienId, subaliens.id))
     .where(eq(posts.id, id))
     .limit(1);
 
@@ -44,7 +44,10 @@ export async function GET(
   if (sort === 'new') {
     commentsQuery = commentsQuery.orderBy(desc(comments.createdAt));
   } else {
-    commentsQuery = commentsQuery.orderBy(desc(comments.score), desc(comments.createdAt));
+    commentsQuery = commentsQuery.orderBy(
+      desc(comments.score),
+      desc(comments.createdAt),
+    );
   }
 
   const postComments = await commentsQuery;
