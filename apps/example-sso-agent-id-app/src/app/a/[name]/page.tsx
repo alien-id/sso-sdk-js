@@ -1,11 +1,26 @@
+import { notFound } from 'next/navigation';
 import { db } from '@/db';
 import { posts, subaliens, comments } from '@/db/schema';
 import { desc, eq, sql, count } from 'drizzle-orm';
-import { HomeFeed } from './HomeFeed';
+import { SubalienFeed } from './SubalienFeed';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Home() {
+export default async function SubalienPage({
+  params,
+}: {
+  params: Promise<{ name: string }>;
+}) {
+  const { name } = await params;
+
+  const [subalien] = await db
+    .select()
+    .from(subaliens)
+    .where(eq(subaliens.name, name))
+    .limit(1);
+
+  if (!subalien) notFound();
+
   const commentCountSq = db
     .select({ postId: comments.postId, count: count().as('comment_count') })
     .from(comments)
@@ -31,6 +46,7 @@ export default async function Home() {
     .from(posts)
     .innerJoin(subaliens, eq(posts.subalienId, subaliens.id))
     .leftJoin(commentCountSq, eq(posts.id, commentCountSq.postId))
+    .where(eq(posts.subalienId, subalien.id))
     .orderBy(
       desc(
         sql`(${posts.score} + 1) / power(greatest(extract(epoch from now() - ${posts.createdAt}) / 3600, 0) + 2, 1.5)`,
@@ -41,26 +57,16 @@ export default async function Home() {
   const initialHasMore = initialPosts.length > 20;
   if (initialHasMore) initialPosts.pop();
 
-  const initialSubaliens = await db
-    .select()
-    .from(subaliens)
-    .orderBy(desc(subaliens.createdAt));
-
-  // Serialize dates for client
   const serializedPosts = initialPosts.map((p) => ({
     ...p,
     createdAt: p.createdAt.toISOString(),
   }));
 
-  const serializedSubaliens = initialSubaliens.map((s) => ({
-    ...s,
-    createdAt: s.createdAt.toISOString(),
-  }));
-
   return (
-    <HomeFeed
+    <SubalienFeed
+      name={name}
+      description={subalien.description}
       initialPosts={serializedPosts}
-      initialSubaliens={serializedSubaliens}
       initialHasMore={initialHasMore}
     />
   );
