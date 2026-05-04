@@ -10,7 +10,6 @@ const config: AlienSsoProviderConfig = {
   providerAddress: process.env.NEXT_PUBLIC_ALIEN_PROVIDER_ADDRESS!,
   agentId: {
     enabled: true,
-    skillUrl: '/ALIEN-SKILL.md',
   },
 };
 

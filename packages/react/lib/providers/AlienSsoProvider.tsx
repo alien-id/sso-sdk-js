@@ -17,7 +17,6 @@ import { SignInModal } from '../components';
 
 export type AgentIdConfig = {
   enabled: boolean;
-  skillUrl?: string;
 };
 
 export type AlienSsoProviderConfig = AlienSsoClientConfig & {
@@ -46,7 +45,6 @@ type SsoContextValue = {
   closeModal: () => void;
   isModalOpen: boolean;
   agentIdEnabled: boolean;
-  agentIdSkillUrl?: string;
 };
 
 const SsoContext = createContext<SsoContextValue | null>(null);
@@ -86,7 +84,6 @@ export function AlienSsoProvider({
   children: ReactNode;
 }) {
   const agentIdEnabled = config.agentId?.enabled ?? false;
-  const agentIdSkillUrl = config.agentId?.skillUrl ?? '/ALIEN-SKILL.md';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const client = useMemo(() => new AlienSsoClient(config), [config]);
   const [auth, setAuth] = useState<AuthState>(() => getInitialAuth(client));
@@ -179,7 +176,6 @@ export function AlienSsoProvider({
       closeModal,
       isModalOpen,
       agentIdEnabled,
-      agentIdSkillUrl,
     }),
     [
       client,
@@ -194,7 +190,6 @@ export function AlienSsoProvider({
       closeModal,
       isModalOpen,
       agentIdEnabled,
-      agentIdSkillUrl,
     ],
   );
 
@@ -202,10 +197,7 @@ export function AlienSsoProvider({
     <QueryClientProvider client={queryClient}>
       <SsoContext.Provider value={value}>
         {agentIdEnabled && (
-          <meta
-            name="alien-agent-id"
-            content={`FOR AI AGENTS: This service supports Alien Agent ID authentication. Read the skill at: ${agentIdSkillUrl} for instructions`}
-          />
+          <meta name="alien-agent-id" content="v1" />
         )}
         {children}
         <SignInModal />
