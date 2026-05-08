@@ -51,9 +51,42 @@ export const AlienSolanaSsoClientSchema = z.object({
   credentialSignerProgramId: z.optional(z.string()),
   sasProgramId: z.optional(z.string()),
   sessionRegistryProgramId: z.optional(z.string()),
+  allowInsecureSsoBaseUrl: z.optional(z.boolean()),
 });
 
 export type AlienSolanaSsoClientConfig = z.infer<typeof AlienSolanaSsoClientSchema>;
+
+// RFC 6749 §10: bearer credentials and refresh tokens MUST be transmitted
+// over TLS. Mirrors `@alien-id/sso/core` so the Solana flow does not become
+// the weak link if an integrator points it at an http:// endpoint.
+function assertSsoBaseUrlSafe(
+  ssoBaseUrl: string,
+  allowInsecure: boolean,
+): void {
+  let url: URL;
+  try {
+    url = new URL(ssoBaseUrl);
+  } catch {
+    throw new Error(`ssoBaseUrl is not a valid URL: ${ssoBaseUrl}`);
+  }
+  if (url.protocol === 'https:') return;
+  if (url.protocol === 'http:') {
+    if (
+      url.hostname === 'localhost' ||
+      url.hostname === '127.0.0.1' ||
+      url.hostname === '[::1]' ||
+      allowInsecure
+    ) {
+      return;
+    }
+    throw new Error(
+      `ssoBaseUrl must use https:// (got ${url.protocol}//${url.host}); set allowInsecureSsoBaseUrl: true to override in dev`,
+    );
+  }
+  throw new Error(
+    `ssoBaseUrl must use https:// (got ${url.protocol}//${url.host})`,
+  );
+}
 
 export class AlienSolanaSsoClient {
   readonly config: AlienSolanaSsoClientConfig;
@@ -68,6 +101,10 @@ export class AlienSolanaSsoClient {
     this.config = AlienSolanaSsoClientSchema.parse(config);
 
     this.ssoBaseUrl = this.config.ssoBaseUrl || SSO_BASE_URL;
+    assertSsoBaseUrlSafe(
+      this.ssoBaseUrl,
+      this.config.allowInsecureSsoBaseUrl === true,
+    );
     this.providerAddress = this.config.providerAddress;
     this.pollingInterval = this.config.pollingInterval || POLLING_INTERVAL;
 
@@ -199,11 +236,40 @@ export class AlienSolanaSsoClient {
       throw new Error('ProgramState account not found');
     }
 
+    // ProgramState layout: 8-byte Anchor discriminator followed by six 32-byte
+    // Pubkeys (oracle_pubkey, credential_pda, schema_pda, event_authority_pda,
+    // authority, session_registry). A malicious or misconfigured RPC could
+    // serve bytes from any account; validating owner and minimum length
+    // before slicing fields prevents transaction assembly from being steered
+    // by attacker-controlled data.
+    if (!programStateAccount.owner.equals(this.credentialSignerProgramId)) {
+      throw new Error(
+        `ProgramState owner mismatch: expected ${this.credentialSignerProgramId.toBase58()}, got ${programStateAccount.owner.toBase58()}`,
+      );
+    }
+    const PROGRAM_STATE_MIN_LEN = 8 + 32 * 6;
+    if (programStateAccount.data.length < PROGRAM_STATE_MIN_LEN) {
+      throw new Error(
+        `ProgramState data too short: ${programStateAccount.data.length} < ${PROGRAM_STATE_MIN_LEN}`,
+      );
+    }
+
     // Deserialize ProgramState (skip 8-byte discriminator)
     // struct ProgramState { oracle_pubkey: Pubkey, credential_pda: Pubkey, schema_pda: Pubkey, event_authority_pda: Pubkey, authority: Pubkey, session_registry: Pubkey }
     const data = programStateAccount.data;
+    const onChainOraclePubkey = new PublicKey(data.slice(8, 8 + 32));
     const credentialAddress = new PublicKey(data.slice(8 + 32, 8 + 64)); // Skip discriminator + oracle_pubkey
     const schemaAddress = new PublicKey(data.slice(8 + 64, 8 + 96)); // Skip discriminator + oracle_pubkey + credential_pda
+
+    // Cross-check: the oracle key the backend handed us in the poll response
+    // MUST equal the oracle key recorded on-chain. Without this gate a
+    // backend-side compromise could swap in an attacker-controlled oracle key
+    // whose Ed25519 signature still passes the in-transaction precompile check.
+    if (!onChainOraclePubkey.equals(oraclePublicKey)) {
+      throw new Error(
+        `Oracle pubkey mismatch: on-chain ${onChainOraclePubkey.toBase58()}, backend-supplied ${oraclePublicKey.toBase58()}`,
+      );
+    }
 
     // Derive other PDAs
     const [credentialSignerAddress] = deriveCredentialSignerPda(this.credentialSignerProgramId);
