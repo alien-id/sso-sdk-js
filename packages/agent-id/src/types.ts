@@ -35,18 +35,19 @@ export interface VerifyOwnerOptions extends VerifyOptions {
   /** Pre-fetched JWKS from the Alien SSO server. */
   jwks: JWKS;
   /**
-   * Expected id_token issuer (RFC 7519 §4.1.1). REQUIRED.
-   *
-   * BREAKING CHANGE: this option was optional in earlier versions; an
-   * unverified `iss` is a spec violation, so callers MUST now supply the
-   * authorization server's issuer URL exactly.
+   * Expected id_token issuer (RFC 7519 §4.1.1). Optional — defaults to
+   * Alien SSO's production endpoint (`DEFAULT_SSO_BASE_URL`). Override
+   * only when verifying tokens from a non-default deployment (staging,
+   * self-hosted, tests).
    */
-  expectedIssuer: string;
+  expectedIssuer?: string;
   /**
    * Expected id_token audience (RFC 7519 §4.1.3 / OIDC §3.1.3.7.4).
-   * REQUIRED. The id_token's `aud` claim must contain this value.
-   *
-   * BREAKING CHANGE: this option was optional in earlier versions.
+   * REQUIRED. Must equal the verifying app's OAuth `client_id`
+   * (`providerAddress`) — the id_token's `aud` claim must contain this
+   * value, and OIDC §3.1.3.7 step 3 requires the recipient to verify the
+   * token was issued for them. The library cannot default this because
+   * each integrating app has its own `client_id`.
    */
   expectedAudience: string;
   /**

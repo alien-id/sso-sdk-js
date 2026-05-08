@@ -7,8 +7,8 @@ import {
   verifyRS256,
 } from './crypto';
 import { canonicalJSONString } from './json';
-export { fetchAlienJWKS } from './jwt';
-import { parseJwt } from './jwt';
+export { fetchAlienJWKS, DEFAULT_SSO_BASE_URL } from './jwt';
+import { DEFAULT_SSO_BASE_URL, parseJwt } from './jwt';
 import type {
   OwnerBinding,
   VerifyOptions,
@@ -309,8 +309,10 @@ export function verifyAgentTokenWithOwner(
   }
 
   // Step 7b: Validate temporal + identity claims (RFC 7519 §4.1.1, §4.1.3,
-  // §4.1.4, §4.1.5). All four checks are unconditional — `expectedIssuer`
-  // and `expectedAudience` are required options on VerifyOwnerOptions.
+  // §4.1.4, §4.1.5). `expectedAudience` is caller-supplied (the app's own
+  // OAuth client_id); `expectedIssuer` defaults to Alien SSO's production
+  // endpoint when omitted.
+  const expectedIssuer = opts.expectedIssuer ?? DEFAULT_SSO_BASE_URL;
   const nowSec = Math.floor(Date.now() / 1000);
   const skewSec = Math.ceil((opts.clockSkewMs ?? 30_000) / 1000);
 
@@ -339,7 +341,7 @@ export function verifyAgentTokenWithOwner(
     return { ok: false, error: 'id_token iat must be NumericDate' };
   }
 
-  if (jwt.payload.iss !== opts.expectedIssuer) {
+  if (jwt.payload.iss !== expectedIssuer) {
     return { ok: false, error: 'id_token issuer mismatch' };
   }
 

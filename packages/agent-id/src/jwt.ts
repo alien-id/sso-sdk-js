@@ -1,6 +1,6 @@
 import type { JWKS } from './types';
 
-const DEFAULT_SSO_BASE_URL = 'https://sso.alien-api.com';
+export const DEFAULT_SSO_BASE_URL = 'https://sso.alien-api.com';
 
 // RFC 4648 §5 / RFC 7515 §2: base64url is [A-Za-z0-9_-] with no padding.
 // Node's Buffer.from(*, 'base64url') silently tolerates whitespace and

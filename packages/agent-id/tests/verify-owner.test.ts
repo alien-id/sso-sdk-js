@@ -11,9 +11,10 @@ import type { JWKS, VerifyOwnerSuccess } from '../src';
 
 // ─── Test helpers ─────────────────────────────────────────────────────────
 
-// `expectedIssuer` and `expectedAudience` are now REQUIRED on
-// VerifyOwnerOptions (see types.ts); `EXPECTED` threads the suite-wide
-// defaults so each call site stays compact.
+// `expectedAudience` is REQUIRED on VerifyOwnerOptions; `expectedIssuer`
+// is optional (defaults to Alien SSO's production endpoint). Tests pin
+// both explicitly via `EXPECTED` so each call site stays compact and the
+// suite is robust to changes in the library default.
 const DEFAULT_EXPECTED_ISSUER = 'https://sso.alien-api.com';
 const DEFAULT_EXPECTED_AUDIENCE = 'test-provider';
 function EXPECTED<T extends { jwks: JWKS }>(opts: T) {
@@ -614,7 +615,7 @@ describe('verifyAgentTokenWithOwner', () => {
     });
 
     // RFC 7519 §4.1.1: When the consumer of a JWT has an expected issuer,
-    // the iss MUST exactly match. expectedIssuer is REQUIRED on options.
+    // the iss MUST exactly match.
     it('rejects id_token with wrong iss', () => {
       const { tokenB64, jwks } = buildFullChainToken({
         idTokenPayloadOverrides: { iss: 'https://attacker.example' },
