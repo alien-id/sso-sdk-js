@@ -58,6 +58,21 @@ function fingerprintPem(pem: string): string {
   return createHash('sha256').update(der).digest('hex');
 }
 
+// RFC 7638 thumbprint for an Ed25519 public key (PEM-encoded SPKI).
+// Mirrors `ed25519JwkThumbprint` in `src/crypto.ts` so the test fixture
+// stays decoupled from the production helper while producing the
+// byte-identical jkt the verifier checks against `cnf.jkt`.
+function ed25519Thumbprint(publicKeyPem: string): string {
+  const der = createPublicKey(publicKeyPem).export({
+    format: 'der',
+    type: 'spki',
+  });
+  // SPKI for Ed25519 is 12 bytes of fixed prefix + 32 raw key bytes.
+  const x = der.subarray(12).toString('base64url');
+  const canonical = `{"crv":"Ed25519","kty":"OKP","x":"${x}"}`;
+  return createHash('sha256').update(canonical).digest('base64url');
+}
+
 function sha256Hex(data: string): string {
   return createHash('sha256').update(data).digest('hex');
 }
@@ -126,6 +141,13 @@ interface FullChainTokenOpts {
   omitOwnerBinding?: boolean;
   omitIdToken?: boolean;
   omitOwner?: boolean;
+  /**
+   * When true, builds an id_token without a `cnf.jkt` claim. Used to
+   * exercise the RFC 7800 §3.1 / RFC 9449 §6.1 PoP-binding check; the
+   * default fixture binds `cnf.jkt` to the agent key so the rest of the
+   * suite reaches the assertions it actually targets.
+   */
+  omitCnf?: boolean;
   timestamp?: number;
 }
 
@@ -136,13 +158,20 @@ function buildFullChainToken(opts: FullChainTokenOpts = {}) {
   const owner = opts.owner ?? '00000003010000000000539c741e0df8';
   const fp = fingerprintPem(agentKeys.publicKeyPem);
 
-  // Build id_token
+  // Build id_token. The default `cnf.jkt` binds the id_token to the
+  // agent key per RFC 7800 §3.1 / RFC 9449 §6.1; the verifier rejects
+  // tokens that lack it. Tests can drop the claim with `omitCnf` or
+  // override via `idTokenPayloadOverrides.cnf` to reach the binding
+  // failure modes.
   const idTokenPayload = {
     iss: 'https://sso.alien-api.com',
     sub: owner,
     aud: 'test-provider',
     exp: Math.floor(Date.now() / 1000) + 3600,
     iat: Math.floor(Date.now() / 1000),
+    ...(opts.omitCnf
+      ? {}
+      : { cnf: { jkt: ed25519Thumbprint(agentKeys.publicKeyPem) } }),
     ...opts.idTokenPayloadOverrides,
   };
   const idToken =
@@ -688,6 +717,34 @@ describe('verifyAgentTokenWithOwner', () => {
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error).toBe('id_token azp mismatch');
+    });
+
+    // RFC 7800 §3.1 / RFC 9449 §6.1: the id_token MUST carry a `cnf.jkt`
+    // PoP confirmation. Without it the id_token is not bound to the
+    // presenting agent — an attacker who steals an id_token could replay
+    // it across a fabricated binding and proof bundle.
+    it('rejects id_token missing cnf.jkt (RFC 7800 §3.1, RFC 9449 §6.1)', () => {
+      const { tokenB64, jwks } = buildFullChainToken({ omitCnf: true });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token missing cnf.jkt');
+    });
+
+    // RFC 7800 §3.1: cnf.jkt MUST be the RFC 7638 thumbprint of the
+    // presenter's key. A non-matching thumbprint is a binding violation
+    // even if every other claim verifies.
+    it('rejects id_token whose cnf.jkt does not bind to the agent key', () => {
+      const otherKeys = generateEd25519();
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenPayloadOverrides: {
+          cnf: { jkt: ed25519Thumbprint(otherKeys.publicKeyPem) },
+        },
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token cnf.jkt does not bind to agent key');
     });
   });
 
