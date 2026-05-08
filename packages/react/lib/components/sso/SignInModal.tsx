@@ -20,7 +20,7 @@ import { getLogoUri } from "../consts/logoUri";
 const AGENT_INSTALL_COMMAND = 'npx skills add alien-id/agent-id';
 
 export const SignInModal = () => {
-  const { isModalOpen: isOpen, closeModal: onClose, generateDeeplink, pollAuth, exchangeToken, pollingInterval, queryClient, agentIdEnabled } = useAuth();
+  const { isModalOpen: isOpen, closeModal: onClose, generateDeeplink, pollAuth, exchangeToken, client, queryClient, agentIdEnabled } = useAuth();
   const [authMode, setAuthMode] = useState<'human' | 'agent'>('human');
   const [copied, setCopied] = useState(false);
   const isMobile = useIsMobile();
@@ -85,7 +85,7 @@ export const SignInModal = () => {
       }
     },
     enabled: isOpen && !!pollingCode && !isSuccess && !errorMessage,
-    refetchInterval: pollingInterval,
+    refetchInterval: client.pollingInterval,
     retry: false,
     refetchOnWindowFocus: true,
   });
