@@ -173,18 +173,32 @@ authenticate:
   "auth_endpoint": "https://<host>/api/agent-auth",
   "header_name": "Authorization",
   "api_base_url": "https://<host>/api",
-  "endpoints": [
-    { "path": "/posts", "method": "GET", "auth": "none", "description": "List posts" },
-    { "path": "/posts", "method": "POST", "auth": "required", "description": "Create a post" }
-  ]
+  "openapi": "https://<host>/openapi.json"
 }
 ```
 
 The `host` is taken from the incoming request, so the document works for any
-deployment URL without hardcoding. The full `endpoints` array is in
-`route.ts`; agents use it as a metadata index of available routes (each entry
-is `{path, method, auth, description?}` with strict size and character limits
-enforced by `discover`).
+deployment URL without hardcoding. The discovery document points at an OpenAPI
+spec via the optional `openapi` field — agents fetch and parse it for the full
+API surface.
+
+### OpenAPI generation
+
+The OpenAPI spec at `public/openapi.json` is generated from the route handlers
+themselves using [`next-openapi-gen`](https://www.npmjs.com/package/next-openapi-gen).
+Each handler has a JSDoc block referencing zod schemas defined in
+`src/schemas/api.ts`, and operations carry the `@tag alien-agent` marker so
+agents can filter the spec for agent-targeted routes (Alien Agent ID
+convention).
+
+To regenerate the spec after changing routes:
+
+```bash
+npm run openapi:gen
+```
+
+The output is committed at `public/openapi.json` so deploys serve it as a
+static asset at `/openapi.json`.
 
 The sign-in modal still shows an "Agent" tab when `agentId.enabled` is `true`,
 with the install command (`npx skills add alien-id/agent-id`) for new users.

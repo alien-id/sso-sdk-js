@@ -3,6 +3,15 @@ import { db } from '@/db';
 import { posts, subaliens, comments } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 
+/**
+ * Get a post with its comments
+ * @tag alien-agent
+ * @pathParams PostIdParam
+ * @params PostDetailQuery
+ * @response PostDetailResponse
+ * @add 404
+ * @openapi
+ */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },

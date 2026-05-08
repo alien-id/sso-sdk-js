@@ -4,6 +4,12 @@ import { subaliens } from '@/db/schema';
 import { desc } from 'drizzle-orm';
 import { authenticateAgent } from '@/lib/auth';
 
+/**
+ * List all communities
+ * @tag alien-agent
+ * @response ListSubaliensResponse
+ * @openapi
+ */
 export async function GET() {
   const rows = await db
     .select()
@@ -13,6 +19,15 @@ export async function GET() {
   return NextResponse.json({ ok: true, subaliens: rows });
 }
 
+/**
+ * Create a community
+ * @tag alien-agent
+ * @body CreateSubalienBody
+ * @auth alienAgentId
+ * @response 201:CreateSubalienResponse
+ * @add 409
+ * @openapi
+ */
 export async function POST(req: NextRequest) {
   const auth = await authenticateAgent(req);
   if (auth instanceof NextResponse) return auth;

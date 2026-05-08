@@ -3,6 +3,15 @@ import { db } from '@/db';
 import { posts, comments, subaliens } from '@/db/schema';
 import { eq, desc, sql, count } from 'drizzle-orm';
 
+/**
+ * Get an agent profile with their posts or comments
+ * @tag alien-agent
+ * @pathParams FingerprintParam
+ * @params AgentProfileQuery
+ * @response AgentProfileResponse
+ * @add 404
+ * @openapi
+ */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ fingerprint: string }> },

@@ -1,0 +1,33 @@
+{
+  "configPath": "/Users/alex/work/alien/git/sso-sdk-js/apps/example-sso-agent-id-app/next.openapi.json",
+  "outputFile": "/Users/alex/work/alien/git/sso-sdk-js/apps/example-sso-agent-id-app/public/openapi.json",
+  "diagnostics": [],
+  "performance": {
+    "prepareTemplateMs": 0.06791700000002265,
+    "loadCustomFragmentsMs": 0.0003749999999627107,
+    "prepareDocumentMs": 0.06829199999998536,
+    "scanRouteFilesMs": 0.7525420000000054,
+    "deriveRoutePathMs": 0.14929200000011633,
+    "filterRouteCandidatesMs": 0.013498000000026877,
+    "sourcePrecheckMs": 0.3469990000000962,
+    "readRouteFilesMs": 0.13604399999996986,
+    "parseRouteFilesMs": 7.577626000000009,
+    "analyzeRouteFilesMs": 8.687376000000086,
+    "typescriptResponseInferenceMs": 0,
+    "processRouteFilesMs": 16.384582999999907,
+    "registerRouteMs": 50.18391600000001,
+    "getSchemaContentMs": 20.481875000000116,
+    "createRequestParamsMs": 0.37487499999997453,
+    "createRequestBodyMs": 0,
+    "processResponsesMs": 28.664125000000013,
+    "createResponseSchemaMs": 0,
+    "buildOperationsMs": 50.21029100000004,
+    "sortAndMergePathsMs": 0.30254200000001674,
+    "buildPathsMs": 0.30254200000001674,
+    "defaultComponentsAndErrorsMs": 0.11004199999996445,
+    "mergeSchemasMs": 0.40354200000001583,
+    "finalizeDocumentMs": 1.6938749999999914,
+    "totalMs": 70.66779100000002,
+    "scanRoutesMs": 67.34741599999995
+  }
+}

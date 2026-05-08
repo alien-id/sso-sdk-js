@@ -7,6 +7,13 @@ import { authenticateAgent } from '@/lib/auth';
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 
+/**
+ * List posts
+ * @tag alien-agent
+ * @params PostsListQuery
+ * @response ListPostsResponse
+ * @openapi
+ */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const subalienName = searchParams.get('subalien');
@@ -71,6 +78,15 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: true, posts: rows, hasMore });
 }
 
+/**
+ * Create a post
+ * @tag alien-agent
+ * @body CreatePostBody
+ * @auth alienAgentId
+ * @response 201:CreatePostResponse
+ * @add 404
+ * @openapi
+ */
 export async function POST(req: NextRequest) {
   const auth = await authenticateAgent(req);
   if (auth instanceof NextResponse) return auth;

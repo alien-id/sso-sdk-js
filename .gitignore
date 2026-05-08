@@ -13,3 +13,5 @@ CLAUDE.md
 storybook-static
 tsconfig.tsbuildinfo
 .claude
+
+apps/example-sso-agent-id-app/public/openapi.json

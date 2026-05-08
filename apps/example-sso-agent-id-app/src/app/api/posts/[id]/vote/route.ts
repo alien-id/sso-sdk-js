@@ -4,6 +4,16 @@ import { votes, posts } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { authenticateAgent } from '@/lib/auth';
 
+/**
+ * Vote on a post
+ * @tag alien-agent
+ * @pathParams PostIdParam
+ * @body VoteBody
+ * @auth alienAgentId
+ * @response VoteResponse
+ * @add 404
+ * @openapi
+ */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },

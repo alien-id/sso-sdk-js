@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
 
+/**
+ * Verify the calling agent identity
+ * @tag alien-agent
+ * @auth alienAgentId
+ * @response AgentAuthResponse
+ * @openapi
+ */
 export async function GET(req: NextRequest) {
   const result = await authenticateAgent(req);
   if (result instanceof NextResponse) return result;
