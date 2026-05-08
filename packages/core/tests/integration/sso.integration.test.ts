@@ -59,7 +59,11 @@ describe('SSO Integration', () => {
       sub: expect.any(String),
     });
 
-    // Step 5: Check parsed token data (OIDC claims)
+    // Step 5: Check parsed token data (OIDC claims). `nonce` is present
+    // because the SDK sent one on /authorize (OIDC §3.1.2.1) and the
+    // mock SSO replays it in the issued id_token (§3.1.3.7.11). Realistic
+    // post-cutover flows always carry nonce — only refresh-grant id_tokens
+    // omit it.
     const tokenInfo = client.getAuthData();
     expect(tokenInfo).toEqual({
       iss: expect.any(String),
@@ -67,6 +71,7 @@ describe('SSO Integration', () => {
       aud: expect.any(String),
       exp: expect.any(Number),
       iat: expect.any(Number),
+      nonce: expect.any(String),
     });
 
     // Step 6: Check helper methods
