@@ -148,6 +148,51 @@ describe('verifyAgentToken', () => {
       const result = verifyAgentToken(token);
       expect(result).toEqual({ ok: false, error: 'Invalid token encoding' });
     });
+
+    // RFC 4648 §5: base64url is strictly [A-Za-z0-9_-] with no padding.
+    // Node's Buffer.from(s, 'base64url') silently drops bytes outside
+    // the alphabet, which would let an attacker smuggle non-canonical
+    // input through to JSON parse. The verifier MUST gate the input
+    // before decode.
+    it("rejects outer envelope containing '+' (standard base64, not URL-safe)", () => {
+      const valid = buildToken({ ...keys });
+      // Splice in a '+' so the regex gate fires before decode.
+      const tampered = `${valid.slice(0, 5)}+${valid.slice(5)}`;
+      const result = verifyAgentToken(tampered);
+      expect(result).toEqual({ ok: false, error: 'Invalid token encoding' });
+    });
+
+    it("rejects outer envelope containing '/' (standard base64, not URL-safe)", () => {
+      const valid = buildToken({ ...keys });
+      const tampered = `${valid.slice(0, 5)}/${valid.slice(5)}`;
+      const result = verifyAgentToken(tampered);
+      expect(result).toEqual({ ok: false, error: 'Invalid token encoding' });
+    });
+
+    it("rejects outer envelope with '=' padding", () => {
+      const valid = buildToken({ ...keys });
+      const tampered = `${valid}==`;
+      const result = verifyAgentToken(tampered);
+      expect(result).toEqual({ ok: false, error: 'Invalid token encoding' });
+    });
+
+    it('rejects outer envelope containing whitespace', () => {
+      const valid = buildToken({ ...keys });
+      const tampered = `${valid.slice(0, 5)}\n${valid.slice(5)}`;
+      const result = verifyAgentToken(tampered);
+      expect(result).toEqual({ ok: false, error: 'Invalid token encoding' });
+    });
+
+    it('rejects empty string', () => {
+      const result = verifyAgentToken('');
+      expect(result).toEqual({ ok: false, error: 'Invalid token encoding' });
+    });
+
+    it('rejects non-string input', () => {
+      // Defense against type-erased call sites
+      const result = verifyAgentToken(undefined as unknown as string);
+      expect(result.ok).toBe(false);
+    });
   });
 
   describe('version check', () => {

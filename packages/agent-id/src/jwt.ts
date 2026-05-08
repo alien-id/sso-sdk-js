@@ -2,6 +2,23 @@ import type { JWKS } from './types';
 
 const DEFAULT_SSO_BASE_URL = 'https://sso.alien-api.com';
 
+// RFC 4648 §5 / RFC 7515 §2: base64url is [A-Za-z0-9_-] with no padding.
+// Node's Buffer.from(*, 'base64url') silently tolerates whitespace and
+// alien chars, so we gate each segment before decoding (RFC 7519 §7.2).
+const BASE64URL_REGEX = /^[A-Za-z0-9_-]*$/;
+
+function decodeJwtSegment(seg: string): Buffer {
+  if (!BASE64URL_REGEX.test(seg)) {
+    throw new Error(
+      'Invalid JWT: segment contains characters outside RFC 4648 §5 base64url alphabet',
+    );
+  }
+  if (seg.length % 4 === 1) {
+    throw new Error('Invalid JWT: segment has invalid length');
+  }
+  return Buffer.from(seg, 'base64url');
+}
+
 export function parseJwt(token: string): {
   headerB64url: string;
   payloadB64url: string;
@@ -14,10 +31,11 @@ export function parseJwt(token: string): {
     throw new Error('Invalid JWT: expected 3 parts');
   }
   const [headerB64url, payloadB64url, signatureB64url] = parts;
-  const header = JSON.parse(Buffer.from(headerB64url, 'base64url').toString());
-  const payload = JSON.parse(
-    Buffer.from(payloadB64url, 'base64url').toString(),
-  );
+  // Validate the signature segment alphabet too — verify-owner consumes it
+  // raw via base64url decoding for the Ed25519 check.
+  decodeJwtSegment(signatureB64url);
+  const header = JSON.parse(decodeJwtSegment(headerB64url).toString());
+  const payload = JSON.parse(decodeJwtSegment(payloadB64url).toString());
   return { headerB64url, payloadB64url, signatureB64url, header, payload };
 }
 

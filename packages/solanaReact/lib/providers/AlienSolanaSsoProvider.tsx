@@ -26,10 +26,33 @@ export interface SolanaConnectionAdapter {
 }
 
 const STORAGE_KEY = 'alien-sso_';
-export const AUTHED_ADDRESS_KEY = STORAGE_KEY + 'solana_authed_address';
-export const SESSION_ADDRESS_KEY = STORAGE_KEY + 'session_address';
-export const ATTESTATION_CREATED_AT_KEY = STORAGE_KEY + 'attestation_created_at';
 const GRACE_PERIOD_MS = 60000; // 60 seconds grace period for RPC indexing
+
+// Namespace cache keys by (providerAddress, ssoBaseUrl) so a freshly created
+// session for one provider/environment cannot be replayed within the
+// grace-period window by a different provider mounted in the same origin.
+// The suffix is a short URL-safe digest of the two fields.
+function namespaceSuffix(providerAddress: string, ssoBaseUrl: string): string {
+  const input = `${providerAddress}|${ssoBaseUrl}`;
+  let h1 = 0x811c9dc5;
+  let h2 = 0xdeadbeef;
+  for (let i = 0; i < input.length; i++) {
+    const c = input.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
+    h2 = Math.imul(h2 ^ c, 0x85ebca6b) >>> 0;
+  }
+  return `${h1.toString(36)}${h2.toString(36)}`;
+}
+
+export function getSolanaAuthedAddressKey(providerAddress: string, ssoBaseUrl: string): string {
+  return `${STORAGE_KEY}solana_authed_address_${namespaceSuffix(providerAddress, ssoBaseUrl)}`;
+}
+export function getSessionAddressKey(providerAddress: string, ssoBaseUrl: string): string {
+  return `${STORAGE_KEY}session_address_${namespaceSuffix(providerAddress, ssoBaseUrl)}`;
+}
+export function getAttestationCreatedAtKey(providerAddress: string, ssoBaseUrl: string): string {
+  return `${STORAGE_KEY}attestation_created_at_${namespaceSuffix(providerAddress, ssoBaseUrl)}`;
+}
 
 type SolanaAuthState = {
   sessionAddress?: string | null;
@@ -104,11 +127,24 @@ export function AlienSolanaSsoProvider({
     [client]
   );
 
+  const authedAddressKey = useMemo(
+    () => getSolanaAuthedAddressKey(client.providerAddress, client.ssoBaseUrl),
+    [client]
+  );
+  const sessionAddressKey = useMemo(
+    () => getSessionAddressKey(client.providerAddress, client.ssoBaseUrl),
+    [client]
+  );
+  const attestationCreatedAtKey = useMemo(
+    () => getAttestationCreatedAtKey(client.providerAddress, client.ssoBaseUrl),
+    [client]
+  );
+
   const verifyAttestation = useCallback(
     async (solanaAddress: string) => {
-      const cachedAddress = localStorage.getItem(AUTHED_ADDRESS_KEY);
-      const cachedSessionAddress = localStorage.getItem(SESSION_ADDRESS_KEY);
-      const createdAt = localStorage.getItem(ATTESTATION_CREATED_AT_KEY);
+      const cachedAddress = localStorage.getItem(authedAddressKey);
+      const cachedSessionAddress = localStorage.getItem(sessionAddressKey);
+      const createdAt = localStorage.getItem(attestationCreatedAtKey);
 
       // Only verify if this address was previously authenticated
       if (cachedAddress !== solanaAddress) {
@@ -133,8 +169,8 @@ export function AlienSolanaSsoProvider({
 
           return cachedSessionAddress;
         } else {
-          localStorage.removeItem(SESSION_ADDRESS_KEY);
-          localStorage.removeItem(ATTESTATION_CREATED_AT_KEY);
+          localStorage.removeItem(sessionAddressKey);
+          localStorage.removeItem(attestationCreatedAtKey);
         }
       }
 
@@ -148,7 +184,7 @@ export function AlienSolanaSsoProvider({
       setAuth({ sessionAddress });
       return sessionAddress;
     },
-    [client]
+    [client, authedAddressKey, sessionAddressKey, attestationCreatedAtKey]
   );
 
   const setSessionAddress = useCallback((sessionAddress: string) => {
@@ -156,11 +192,11 @@ export function AlienSolanaSsoProvider({
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(AUTHED_ADDRESS_KEY);
-    localStorage.removeItem(SESSION_ADDRESS_KEY);
-    localStorage.removeItem(ATTESTATION_CREATED_AT_KEY);
+    localStorage.removeItem(authedAddressKey);
+    localStorage.removeItem(sessionAddressKey);
+    localStorage.removeItem(attestationCreatedAtKey);
     setAuth({ sessionAddress: null });
-  }, []);
+  }, [authedAddressKey, sessionAddressKey, attestationCreatedAtKey]);
 
   const openModal = useCallback(
     () => {

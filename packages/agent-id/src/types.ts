@@ -34,6 +34,39 @@ export interface VerifyOptions {
 export interface VerifyOwnerOptions extends VerifyOptions {
   /** Pre-fetched JWKS from the Alien SSO server. */
   jwks: JWKS;
+  /**
+   * Expected id_token issuer (RFC 7519 §4.1.1). REQUIRED.
+   *
+   * BREAKING CHANGE: this option was optional in earlier versions; an
+   * unverified `iss` is a spec violation, so callers MUST now supply the
+   * authorization server's issuer URL exactly.
+   */
+  expectedIssuer: string;
+  /**
+   * Expected id_token audience (RFC 7519 §4.1.3 / OIDC §3.1.3.7.4).
+   * REQUIRED. The id_token's `aud` claim must contain this value.
+   *
+   * BREAKING CHANGE: this option was optional in earlier versions.
+   */
+  expectedAudience: string;
+  /**
+   * OIDC Core 1.0 §3.1.3.7 step 3: "The ID Token MUST be rejected if it
+   * contains additional audiences not trusted by the Client." When
+   * omitted, the trust set is `{expectedAudience}` — any extra audience
+   * is rejected. Pass an explicit list to widen the trust set (e.g. for
+   * federated/RFC 8707 resource-indicator scenarios). `expectedAudience`
+   * is implicitly trusted regardless of this list.
+   */
+  trustedAudiences?: readonly string[];
+  /**
+   * OIDC Core 1.0 §3.1.3.7 step 11: when the authorization request sent
+   * a `nonce`, the id_token MUST carry the same value and the Client
+   * MUST verify exact equality. When supplied, the id_token's `nonce`
+   * claim must be present and equal this value; otherwise verification
+   * fails. Omit only if the Client did not request a nonce (the AS will
+   * then not include one).
+   */
+  expectedNonce?: string;
 }
 
 export interface VerifySuccess {

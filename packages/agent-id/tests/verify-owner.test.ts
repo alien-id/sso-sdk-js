@@ -11,6 +11,19 @@ import type { JWKS, VerifyOwnerSuccess } from '../src';
 
 // ─── Test helpers ─────────────────────────────────────────────────────────
 
+// `expectedIssuer` and `expectedAudience` are now REQUIRED on
+// VerifyOwnerOptions (see types.ts); `EXPECTED` threads the suite-wide
+// defaults so each call site stays compact.
+const DEFAULT_EXPECTED_ISSUER = 'https://sso.alien-api.com';
+const DEFAULT_EXPECTED_AUDIENCE = 'test-provider';
+function EXPECTED<T extends { jwks: JWKS }>(opts: T) {
+  return {
+    expectedIssuer: DEFAULT_EXPECTED_ISSUER,
+    expectedAudience: DEFAULT_EXPECTED_AUDIENCE,
+    ...opts,
+  };
+}
+
 function generateEd25519() {
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
   const publicKeyPem = publicKey.export({
@@ -214,7 +227,7 @@ describe('verifyAgentTokenWithOwner', () => {
   describe('happy path', () => {
     it('verifies a full chain token without owner session proof', () => {
       const { tokenB64, jwks, fp, owner } = buildFullChainToken();
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
 
       expect(result.ok).toBe(true);
       if (!result.ok) return;
@@ -250,7 +263,7 @@ describe('verifyAgentTokenWithOwner', () => {
         ownerSessionProof,
       });
 
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
 
       expect(result.ok).toBe(true);
       if (!result.ok) return;
@@ -264,7 +277,7 @@ describe('verifyAgentTokenWithOwner', () => {
       const { tokenB64, jwks } = buildFullChainToken({
         omitOwnerBinding: true,
       });
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result).toEqual({
         ok: false,
         error: 'Missing field: ownerBinding',
@@ -273,13 +286,13 @@ describe('verifyAgentTokenWithOwner', () => {
 
     it('rejects token without idToken', () => {
       const { tokenB64, jwks } = buildFullChainToken({ omitIdToken: true });
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result).toEqual({ ok: false, error: 'Missing field: idToken' });
     });
 
     it('rejects token without owner', () => {
       const { tokenB64, jwks } = buildFullChainToken({ omitOwner: true });
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result).toEqual({
         ok: false,
         error: 'Token has no owner to verify',
@@ -298,7 +311,7 @@ describe('verifyAgentTokenWithOwner', () => {
       parsed.ownerBinding.payloadHash = 'deadbeef'.repeat(8);
       const tamperedToken = toB64url(Buffer.from(JSON.stringify(parsed)));
 
-      const result = verifyAgentTokenWithOwner(tamperedToken, { jwks });
+      const result = verifyAgentTokenWithOwner(tamperedToken, EXPECTED({ jwks }));
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error).toBe('Owner binding payload hash mismatch');
@@ -314,7 +327,7 @@ describe('verifyAgentTokenWithOwner', () => {
           otherKeys.privateKeyPem,
         ),
       });
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error).toBe('Owner binding signature verification failed');
@@ -331,7 +344,7 @@ describe('verifyAgentTokenWithOwner', () => {
           },
         },
       });
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error).toBe('Owner binding agent fingerprint mismatch');
@@ -341,7 +354,7 @@ describe('verifyAgentTokenWithOwner', () => {
       const { tokenB64, jwks } = buildFullChainToken({
         bindingPayloadOverrides: { ownerSessionSub: 'wrong-owner' },
       });
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error).toBe('Owner binding ownerSessionSub mismatch');
@@ -353,7 +366,7 @@ describe('verifyAgentTokenWithOwner', () => {
       const { tokenB64, jwks } = buildFullChainToken({
         idTokenHashOverride: 'deadbeef'.repeat(8),
       });
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error).toBe('id_token hash does not match owner binding');
@@ -369,7 +382,7 @@ describe('verifyAgentTokenWithOwner', () => {
           { ...rsa2.jwk, kid: 'kid1', use: 'sig', alg: 'RS256', kty: 'RSA' },
         ],
       };
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error).toBe('id_token signature verification failed');
@@ -378,7 +391,7 @@ describe('verifyAgentTokenWithOwner', () => {
     it('rejects when no JWKS key matches kid', () => {
       const { tokenB64 } = buildFullChainToken({ rsaKid: 'kid-a' });
       const jwks: JWKS = { keys: [{ kty: 'RSA', kid: 'kid-b', use: 'sig' }] };
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error).toContain('No matching JWKS key');
@@ -388,10 +401,79 @@ describe('verifyAgentTokenWithOwner', () => {
       const { tokenB64, jwks } = buildFullChainToken({
         idTokenPayloadOverrides: { sub: 'different-human' },
       });
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error).toBe('id_token sub does not match token owner');
+    });
+
+    // RFC 7515 §4.1.11: an extension with `crit` header that the verifier
+    // does not understand MUST be rejected before signature verification.
+    it('rejects id_token with an unrecognized crit header', () => {
+      const agentKeys = generateEd25519();
+      const rsa = generateRSA();
+      const rsaKid = 'kid-crit';
+      const owner = '00000003010000000000539c741e0df8';
+
+      const idTokenPayload = {
+        iss: 'https://sso.alien-api.com',
+        sub: owner,
+        aud: 'test-provider',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        iat: Math.floor(Date.now() / 1000),
+      };
+      const headerB64 = toB64url(
+        Buffer.from(
+          JSON.stringify({
+            alg: 'RS256',
+            typ: 'JWT',
+            kid: rsaKid,
+            crit: ['unknown-extension'],
+            'unknown-extension': 'value',
+          }),
+        ),
+      );
+      const payloadB64 = toB64url(Buffer.from(JSON.stringify(idTokenPayload)));
+      const sig = sign(
+        'sha256',
+        Buffer.from(`${headerB64}.${payloadB64}`),
+        rsa.privateKey,
+      );
+      const idToken = `${headerB64}.${payloadB64}.${toB64url(sig)}`;
+
+      const { tokenB64, jwks } = buildFullChainToken({
+        agentKeys,
+        rsa,
+        rsaKid,
+        owner,
+        idTokenOverride: idToken,
+        idTokenHashOverride: sha256Hex(idToken),
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('Unrecognized JWT crit header');
+    });
+
+    // RFC 7515 §10.7: a JWK that pins an `alg` MUST be matched against the
+    // declared header alg before signature verification.
+    it('rejects JWK whose alg does not match RS256', () => {
+      const { tokenB64, rsa } = buildFullChainToken({ rsaKid: 'kid-mismatch' });
+      const jwks: JWKS = {
+        keys: [
+          {
+            ...rsa.jwk,
+            kty: 'RSA',
+            kid: 'kid-mismatch',
+            use: 'sig',
+            alg: 'PS256',
+          } as JWKS['keys'][number],
+        ],
+      };
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toContain('No matching JWKS key');
     });
 
     it('rejects JWKS key matching kid/kty but missing RSA fields (n, e)', () => {
@@ -401,20 +483,281 @@ describe('verifyAgentTokenWithOwner', () => {
           { kty: 'RSA', kid: 'kid-incomplete', use: 'sig', alg: 'RS256' } as JWKS['keys'][number],
         ],
       };
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result).toEqual({
         ok: false,
         error: 'Invalid JWKS key: missing required RSA fields (n, e)',
       });
     });
 
-    it('accepts expired id_token (signature-only verification)', () => {
+    // RFC 7519 §4.1.4: "the current date/time MUST be before the expiration
+    // date/time listed in the 'exp' claim."
+    it('rejects expired id_token (RFC 7519 §4.1.4)', () => {
       const { tokenB64, jwks } = buildFullChainToken({
         idTokenPayloadOverrides: {
           exp: Math.floor(Date.now() / 1000) - 3600, // expired 1 hour ago
         },
       });
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token expired');
+    });
+
+    // RFC 7519 §4.1.5: "the current date/time MUST be after or equal to the
+    // not-before date/time listed in the 'nbf' claim."
+    it('rejects id_token with future nbf (RFC 7519 §4.1.5)', () => {
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenPayloadOverrides: {
+          nbf: Math.floor(Date.now() / 1000) + 3600, // not valid for an hour
+        },
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token not yet valid');
+    });
+
+    // RFC 8725 §3.7 / RFC 7515 §4.1.9: id_token typ MUST distinguish from
+    // the AT profile to defend against cross-JWT confusion. A token typed
+    // `at+jwt` masquerading as an id_token must be rejected before any
+    // claim-based decision.
+    it('rejects id_token whose header typ is at+jwt (RFC 8725 §3.7)', () => {
+      const rsa = generateRSA();
+      const rsaKid = 'kid-typ';
+      const owner = '00000003010000000000539c741e0df8';
+      const idTokenPayload = {
+        iss: 'https://sso.alien-api.com',
+        sub: owner,
+        aud: 'test-provider',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        iat: Math.floor(Date.now() / 1000),
+      };
+      // Hand-rolled with typ=at+jwt instead of JWT.
+      const headerB64 = toB64url(
+        Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'at+jwt', kid: rsaKid })),
+      );
+      const payloadB64 = toB64url(Buffer.from(JSON.stringify(idTokenPayload)));
+      const sig = sign('sha256', Buffer.from(`${headerB64}.${payloadB64}`), rsa.privateKey);
+      const idToken = `${headerB64}.${payloadB64}.${toB64url(sig)}`;
+
+      const { tokenB64, jwks } = buildFullChainToken({
+        rsa,
+        rsaKid,
+        owner,
+        idTokenOverride: idToken,
+        idTokenHashOverride: sha256Hex(idToken),
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toMatch(/Unexpected id_token typ/);
+    });
+
+    // RFC 7515 §2 / RFC 4648 §5: each compact-JWS segment MUST consist of
+    // [A-Za-z0-9_-] only, with no padding or whitespace. A token whose
+    // id_token has whitespace inside a segment must be rejected before any
+    // crypto runs.
+    it('rejects id_token whose segment has non-canonical base64url characters (RFC 7515 §2)', () => {
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenOverride: 'aGVhZGVy.cGF5\nbG9hZA.c2ln',
+        idTokenHashOverride: sha256Hex('aGVhZGVy.cGF5\nbG9hZA.c2ln'),
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('Invalid id_token encoding');
+    });
+
+    // RFC 7519 §4.1.6: "iat" (issued at) MUST be a NumericDate when present.
+    // A non-numeric iat indicates a malformed token and must be rejected
+    // before claim values are trusted.
+    it('rejects id_token with non-numeric iat (RFC 7519 §4.1.6)', () => {
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenPayloadOverrides: {
+          iat: '1700000000', // string, not NumericDate
+        },
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token iat must be NumericDate');
+    });
+
+    // RFC 7519 §4.1.1: When the consumer of a JWT has an expected issuer,
+    // the iss MUST exactly match. expectedIssuer is REQUIRED on options.
+    it('rejects id_token with wrong iss', () => {
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenPayloadOverrides: { iss: 'https://attacker.example' },
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token issuer mismatch');
+    });
+
+    // RFC 7519 §4.1.3: "If the principal processing the claim does not
+    // identify itself with a value in the 'aud' claim ... the JWT MUST be
+    // rejected." expectedAudience is REQUIRED on options.
+    it('rejects id_token with wrong aud', () => {
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenPayloadOverrides: { aud: 'someone-else' },
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token audience mismatch');
+    });
+
+    // expectedAudience accepts string or string-array aud (RFC 7519 §4.1.3).
+    // Multi-aud requires the caller to widen `trustedAudiences` per OIDC
+    // §3.1.3.7 step 3.
+    it('accepts id_token aud array containing expectedAudience when trust set is widened', () => {
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenPayloadOverrides: {
+          aud: ['someone-else', 'test-provider'],
+          azp: 'test-provider',
+        },
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, {
+        ...EXPECTED({ jwks }),
+        trustedAudiences: ['test-provider', 'someone-else'],
+      });
+      expect(result.ok).toBe(true);
+    });
+
+    // OIDC §3.1.3.7 step 3: "The ID Token MUST be rejected if it ...
+    // contains additional audiences not trusted by the Client." Default
+    // trust set is {expectedAudience}; an unwidened multi-aud token must
+    // be rejected even when azp is present and matches.
+    it('rejects multi-audience id_token whose extra aud is not in default trust set (OIDC §3.1.3.7 step 3)', () => {
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenPayloadOverrides: {
+          aud: ['test-provider', 'rogue'],
+          azp: 'test-provider',
+        },
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token aud not in trustedAudiences');
+    });
+
+    // OIDC §3.1.3.7.6: with multi-audience id_tokens, `azp` MUST be present
+    // and equal to expectedAudience (the Client's id). Trust set is widened
+    // here so the test isolates the azp-presence rule from the §3.1.3.7
+    // step 3 trust check.
+    it('rejects multi-audience id_token without azp (OIDC §3.1.3.7.6)', () => {
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenPayloadOverrides: {
+          aud: ['someone-else', 'test-provider'],
+        },
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, {
+        ...EXPECTED({ jwks }),
+        trustedAudiences: ['test-provider', 'someone-else'],
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token azp missing for multi-audience');
+    });
+
+    it('rejects multi-audience id_token with mismatched azp (OIDC §3.1.3.7.6)', () => {
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenPayloadOverrides: {
+          aud: ['someone-else', 'test-provider'],
+          azp: 'someone-else',
+        },
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, {
+        ...EXPECTED({ jwks }),
+        trustedAudiences: ['test-provider', 'someone-else'],
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token azp mismatch');
+    });
+
+    // OIDC §3.1.3.7.7: when azp is present at all, it MUST equal the
+    // Client's id. Single-audience tokens are not exempt.
+    it('rejects single-audience id_token with mismatched azp (OIDC §3.1.3.7.7)', () => {
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenPayloadOverrides: { azp: 'someone-else' },
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token azp mismatch');
+    });
+  });
+
+  describe('RFC 7519 §4.1.5 nbf NumericDate', () => {
+    it('rejects id_token whose nbf is a string (not a NumericDate)', () => {
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenPayloadOverrides: { nbf: 'not-a-number' },
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token nbf must be NumericDate');
+    });
+
+    it('still rejects future numeric nbf', () => {
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenPayloadOverrides: { nbf: Math.floor(Date.now() / 1000) + 3600 },
+      });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token not yet valid');
+    });
+
+    it('accepts id_token with no nbf', () => {
+      const { tokenB64, jwks } = buildFullChainToken();
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  describe('expectedNonce (OIDC §3.1.3.7 step 11)', () => {
+    it('rejects id_token whose nonce does not match expectedNonce', () => {
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenPayloadOverrides: { nonce: 'minted-by-AS-for-some-other-request' },
+      });
+      const result = verifyAgentTokenWithOwner(
+        tokenB64,
+        EXPECTED({ jwks, expectedNonce: 'the-nonce-the-RP-actually-sent' }),
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token nonce mismatch');
+    });
+
+    it('rejects id_token missing nonce when expectedNonce is supplied', () => {
+      const { tokenB64, jwks } = buildFullChainToken();
+      const result = verifyAgentTokenWithOwner(
+        tokenB64,
+        EXPECTED({ jwks, expectedNonce: 'rp-nonce' }),
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toBe('id_token nonce mismatch');
+    });
+
+    it('accepts id_token whose nonce equals expectedNonce', () => {
+      const { tokenB64, jwks } = buildFullChainToken({
+        idTokenPayloadOverrides: { nonce: 'rp-supplied-nonce-abcdef' },
+      });
+      const result = verifyAgentTokenWithOwner(
+        tokenB64,
+        EXPECTED({ jwks, expectedNonce: 'rp-supplied-nonce-abcdef' }),
+      );
+      expect(result.ok).toBe(true);
+    });
+
+    it('does not require nonce when expectedNonce is not supplied (RP did not request one)', () => {
+      const { tokenB64, jwks } = buildFullChainToken();
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result.ok).toBe(true);
     });
   });
@@ -438,7 +781,7 @@ describe('verifyAgentTokenWithOwner', () => {
         },
       });
 
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error).toBe('Owner session proof address mismatch');
@@ -465,7 +808,7 @@ describe('verifyAgentTokenWithOwner', () => {
         },
       });
 
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error).toBe('Owner session proof signature failed');
@@ -479,7 +822,7 @@ describe('verifyAgentTokenWithOwner', () => {
         },
       });
 
-      const result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error).toBe('Incomplete owner session proof fields');
@@ -491,7 +834,7 @@ describe('verifyAgentRequestWithOwner', () => {
   it('extracts and verifies from Authorization header', () => {
     const { tokenB64, jwks, owner } = buildFullChainToken();
     const req = { headers: { authorization: `AgentID ${tokenB64}` } };
-    const result = verifyAgentRequestWithOwner(req, { jwks });
+    const result = verifyAgentRequestWithOwner(req, EXPECTED({ jwks }));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.owner).toBe(owner);
@@ -501,7 +844,7 @@ describe('verifyAgentRequestWithOwner', () => {
   it('rejects missing Authorization header', () => {
     const { jwks } = buildFullChainToken();
     const req = { headers: {} };
-    const result = verifyAgentRequestWithOwner(req, { jwks });
+    const result = verifyAgentRequestWithOwner(req, EXPECTED({ jwks }));
     expect(result).toEqual({
       ok: false,
       error: 'Missing header: Authorization: AgentID <token>',

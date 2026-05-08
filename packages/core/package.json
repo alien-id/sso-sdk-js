@@ -49,7 +49,6 @@
     "vite-plugin-dts": "^4.5.4"
   },
   "dependencies": {
-    "js-sha256": "^0.11.1",
     "zod": "^4.1.5"
   }
 }

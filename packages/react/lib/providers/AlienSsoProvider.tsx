@@ -24,14 +24,20 @@ export type AlienSsoProviderConfig = AlienSsoClientConfig & {
   agentId?: AgentIdConfig;
 };
 
+// SECURITY (RFC 6749 §10 / RFC 9700 §4): the access token MUST NOT be
+// stored in React render state, where every component in the tree below
+// the provider can read it on every render. The provider now keeps an
+// `isAuthenticated` boolean and the OIDC claim envelope (which is
+// already public information once verified) in render state, but the
+// raw access_token is reachable only via an explicit `getAccessToken()`
+// pull off the context — callers that need the bytes for a fetch ask
+// for them at call time, not via subscription.
 type AuthState = {
   isAuthenticated: boolean;
-  token?: string | null;
   tokenInfo?: ReturnType<AlienSsoClient['getAuthData']> | null;
 };
 
 type SsoContextValue = {
-  client: AlienSsoClient;
   auth: AuthState;
   queryClient: QueryClient;
   generateDeeplink: () => Promise<import('@alien-id/sso').AuthorizeResponse>;
@@ -42,9 +48,21 @@ type SsoContextValue = {
   verifyAuth: () => Promise<boolean>;
   refreshToken: () => Promise<string | null>;
   logout: () => void;
+  /**
+   * Pull the current access_token on demand. Returns null when no
+   * session exists. Callers that need the bearer for an outbound
+   * request fetch it here rather than reading it from render state.
+   */
+  getAccessToken: () => string | null;
   openModal: () => void;
   closeModal: () => void;
   isModalOpen: boolean;
+  /**
+   * Polling interval (ms) for the modal's authorization-code wait
+   * loop. Exposed so downstream UI can match the AS's expected cadence
+   * without needing the full client.
+   */
+  pollingInterval: number;
   agentIdEnabled: boolean;
   agentIdSkillUrl?: string;
 };
@@ -66,13 +84,11 @@ function getInitialAuth(client: AlienSsoClient): AuthState {
     const tokenInfo = client.getAuthData();
     return {
       isAuthenticated: Boolean(token && tokenInfo),
-      token,
       tokenInfo,
     };
   } catch {
     return {
       isAuthenticated: false,
-      token: null,
       tokenInfo: null,
     };
   }
@@ -109,7 +125,6 @@ export function AlienSsoProvider({
       const isAuthenticated = Boolean(tokenResponse.access_token && tokenInfo);
       setAuth({
         isAuthenticated,
-        token: tokenResponse.access_token,
         tokenInfo,
       });
       return tokenResponse;
@@ -120,11 +135,9 @@ export function AlienSsoProvider({
   const verifyAuth = useCallback(async () => {
     const userInfo = await client.verifyAuth();
     const valid = userInfo !== null;
-    const token = client.getAccessToken();
     const tokenInfo = client.getAuthData();
     setAuth({
       isAuthenticated: valid,
-      token,
       tokenInfo,
     });
     return valid;
@@ -137,7 +150,6 @@ export function AlienSsoProvider({
       const isAuthenticated = Boolean(tokenResponse.access_token && tokenInfo);
       setAuth({
         isAuthenticated,
-        token: tokenResponse.access_token,
         tokenInfo,
       });
       return tokenResponse.access_token;
@@ -145,7 +157,6 @@ export function AlienSsoProvider({
       // Refresh failed, client.refreshAccessToken already calls logout
       setAuth({
         isAuthenticated: false,
-        token: null,
         tokenInfo: null,
       });
       return null;
@@ -156,17 +167,22 @@ export function AlienSsoProvider({
     client.logout();
     setAuth({
       isAuthenticated: false,
-      token: null,
       tokenInfo: null,
     });
   }, [client]);
+
+  // Stable identity for the on-demand token getter so changes in
+  // useMemo deps don't unnecessarily invalidate downstream consumers.
+  const getAccessToken = useCallback(
+    () => client.getAccessToken(),
+    [client],
+  );
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
 
   const value = useMemo<SsoContextValue>(
     () => ({
-      client,
       auth,
       queryClient,
       generateDeeplink,
@@ -175,9 +191,11 @@ export function AlienSsoProvider({
       verifyAuth,
       refreshToken,
       logout,
+      getAccessToken,
       openModal,
       closeModal,
       isModalOpen,
+      pollingInterval: client.pollingInterval,
       agentIdEnabled,
       agentIdSkillUrl,
     }),
@@ -190,6 +208,7 @@ export function AlienSsoProvider({
       verifyAuth,
       refreshToken,
       logout,
+      getAccessToken,
       openModal,
       closeModal,
       isModalOpen,
