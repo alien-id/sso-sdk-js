@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AlienIcon } from '../assets/AlienIcon';
 import styles from './SignInButton.module.css';
 import { useAuth } from '../../providers';
@@ -13,7 +13,14 @@ export const SignInButton: React.FC<SignInButtonProps> = ({
   variant = 'default',
   color = 'light',
 }) => {
-  const { openModal, agentIdEnabled } = useAuth();
+  const { openModal, agentIdEnabled, agentIdSkillUrl } = useAuth();
+  const agentMessage = useMemo(
+    () =>
+      agentIdSkillUrl
+        ? `If you're an AI Agent, read ${agentIdSkillUrl} and follow the instructions to authenticate`
+        : "Agent ID isn't set up",
+    [agentIdSkillUrl],
+  );
 
   if (variant === 'short') {
     return (
@@ -24,6 +31,7 @@ export const SignInButton: React.FC<SignInButtonProps> = ({
           styles.buttonShort,
           color === 'light' ? styles.buttonLight : styles.buttonDark,
         )}
+        data-agent-id={agentMessage}
       >
         <div className={styles.buttonIcon}>
           <AlienIcon />
@@ -40,6 +48,7 @@ export const SignInButton: React.FC<SignInButtonProps> = ({
         color === 'light' ? styles.buttonLight : styles.buttonDark,
         agentIdEnabled && styles.buttonWithAgent,
       )}
+      data-agent-id={agentMessage}
     >
       <div className={styles.buttonIcon}>
         <AlienIcon />
