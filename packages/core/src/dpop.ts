@@ -8,9 +8,18 @@ function base64urlEncode(bytes: Uint8Array): string {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+// `Uint8Array<ArrayBuffer>` (vs the default `Uint8Array<ArrayBufferLike>`
+// returned by `TextEncoder.encode`) is what Web Crypto's `BufferSource`
+// requires — the buffer must not be a `SharedArrayBuffer`.
+function utf8(input: string): Uint8Array<ArrayBuffer> {
+  const encoded = new TextEncoder().encode(input);
+  const bytes = new Uint8Array(encoded.length);
+  bytes.set(encoded);
+  return bytes;
+}
+
 async function sha256(input: string): Promise<Uint8Array> {
-  const data = new TextEncoder().encode(input);
-  const buf = await crypto.subtle.digest('SHA-256', data);
+  const buf = await crypto.subtle.digest('SHA-256', utf8(input));
   return new Uint8Array(buf);
 }
 
@@ -123,7 +132,7 @@ export async function createDPoPProof(
   const sigBuf = await crypto.subtle.sign(
     { name: 'Ed25519' },
     keypair.privateKey,
-    new TextEncoder().encode(signingInput),
+    utf8(signingInput),
   );
   const sigB64 = base64urlEncode(new Uint8Array(sigBuf));
   return `${signingInput}.${sigB64}`;
