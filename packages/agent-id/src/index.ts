@@ -1,4 +1,5 @@
 import {
+  ed25519JwkThumbprint,
   fingerprintPublicKeyPem,
   sha256Hex,
   verifyEd25519Base64Url,
@@ -6,8 +7,8 @@ import {
   verifyRS256,
 } from './crypto';
 import { canonicalJSONString } from './json';
-export { fetchAlienJWKS } from './jwt';
-import { parseJwt } from './jwt';
+export { fetchAlienJWKS, DEFAULT_SSO_BASE_URL } from './jwt';
+import { DEFAULT_SSO_BASE_URL, parseJwt } from './jwt';
 import type {
   OwnerBinding,
   VerifyOptions,
@@ -39,12 +40,27 @@ export type {
  * @param opts - Optional configuration.
  * @returns Verification result with agent identity on success, or error on failure.
  */
+// RFC 4648 §5: base64url is the URL-safe alphabet
+//   ALPHA / DIGIT / "-" / "_"
+// with no padding and "without the inclusion of any line breaks,
+// whitespace, or other additional characters". Node's Buffer.from(s,
+// 'base64url') is permissive — it silently ignores characters outside
+// the alphabet, which would let an attacker smuggle non-canonical bytes
+// through the outer envelope decode and have them surface as JSON
+// content. Gate the input with a strict regex before decode so
+// structural validation cannot depend on cryptographic failure paths.
+const OUTER_BASE64URL = /^[A-Za-z0-9_-]+$/;
+
 export function verifyAgentToken(
   tokenB64: string,
   opts: VerifyOptions = {},
 ): VerifyResult {
   const maxAgeMs = opts.maxAgeMs ?? 5 * 60 * 1000;
   const clockSkewMs = opts.clockSkewMs ?? 30 * 1000;
+
+  if (typeof tokenB64 !== 'string' || !OUTER_BASE64URL.test(tokenB64)) {
+    return { ok: false, error: 'Invalid token encoding' };
+  }
 
   let parsed: Record<string, unknown>;
   try {
@@ -237,9 +253,33 @@ export function verifyAgentTokenWithOwner(
     return { ok: false, error: `Unsupported id_token alg: ${jwt.header.alg}` };
   }
 
+  // RFC 8725 §3.7 / RFC 7515 §4.1.9: cross-JWT-confusion defense. id_tokens
+  // SHOULD declare `typ=JWT`. RFC 6838 §4.2 makes the comparison
+  // case-insensitive and treats the bare value as `application/`-prefixed.
+  // Reject distinguishable AT-shaped types (e.g. `at+jwt`) outright.
+  const typRaw = jwt.header.typ;
+  if (typRaw !== undefined) {
+    const typLower = typeof typRaw === 'string' ? typRaw.toLowerCase() : '';
+    if (typLower !== 'jwt' && typLower !== 'application/jwt') {
+      return { ok: false, error: `Unexpected id_token typ: ${typRaw}` };
+    }
+  }
+
+  // RFC 7515 §4.1.11: a JWS with a `crit` parameter listing extensions the
+  // verifier does not understand MUST be rejected before signature checks.
+  if (jwt.header.crit !== undefined) {
+    return { ok: false, error: 'Unrecognized JWT crit header' };
+  }
+
   const kid = jwt.header.kid as string | undefined;
   const jwk = opts.jwks.keys.find(
-    (k) => k.kid === kid && k.kty === 'RSA' && (k.use === 'sig' || !k.use),
+    (k) =>
+      k.kid === kid &&
+      k.kty === 'RSA' &&
+      (k.use === 'sig' || !k.use) &&
+      // RFC 7515 §10.7: when the JWK pins an `alg`, it MUST match the
+      // header alg before signature verification.
+      (!k.alg || k.alg === 'RS256'),
   );
   if (!jwk) {
     return { ok: false, error: `No matching JWKS key for kid: ${kid}` };
@@ -266,6 +306,105 @@ export function verifyAgentTokenWithOwner(
   // Step 7: Verify id_token sub matches owner
   if (jwt.payload.sub !== basic.owner) {
     return { ok: false, error: 'id_token sub does not match token owner' };
+  }
+
+  // Step 7b: Validate temporal + identity claims (RFC 7519 §4.1.1, §4.1.3,
+  // §4.1.4, §4.1.5). `expectedAudience` is caller-supplied (the app's own
+  // OAuth client_id); `expectedIssuer` defaults to Alien SSO's production
+  // endpoint when omitted.
+  const expectedIssuer = opts.expectedIssuer ?? DEFAULT_SSO_BASE_URL;
+  const nowSec = Math.floor(Date.now() / 1000);
+  const skewSec = Math.ceil((opts.clockSkewMs ?? 30_000) / 1000);
+
+  const exp = jwt.payload.exp;
+  if (typeof exp !== 'number' || nowSec - skewSec >= exp) {
+    return { ok: false, error: 'id_token expired' };
+  }
+
+  // RFC 7519 §4.1.5: nbf, when present, MUST be a NumericDate. A
+  // non-numeric value is malformed and MUST cause rejection — silently
+  // ignoring it would let an attacker bypass the not-before check by
+  // sending a string.
+  const nbf = jwt.payload.nbf;
+  if (nbf !== undefined) {
+    if (typeof nbf !== 'number') {
+      return { ok: false, error: 'id_token nbf must be NumericDate' };
+    }
+    if (nowSec + skewSec < nbf) {
+      return { ok: false, error: 'id_token not yet valid' };
+    }
+  }
+
+  // RFC 7519 §4.1.6: iat, when present, MUST be a NumericDate.
+  const iat = jwt.payload.iat;
+  if (iat !== undefined && typeof iat !== 'number') {
+    return { ok: false, error: 'id_token iat must be NumericDate' };
+  }
+
+  if (jwt.payload.iss !== expectedIssuer) {
+    return { ok: false, error: 'id_token issuer mismatch' };
+  }
+
+  const aud = jwt.payload.aud;
+  const audList = Array.isArray(aud) ? aud : [aud];
+  if (!audList.includes(opts.expectedAudience)) {
+    return { ok: false, error: 'id_token audience mismatch' };
+  }
+
+  // OIDC §3.1.3.7 step 3: reject when any aud entry is outside the
+  // trusted set. Default trust set is {expectedAudience}.
+  const trusted = new Set<unknown>(
+    opts.trustedAudiences ?? [opts.expectedAudience],
+  );
+  trusted.add(opts.expectedAudience);
+  for (const a of audList) {
+    if (!trusted.has(a)) {
+      return { ok: false, error: 'id_token aud not in trustedAudiences' };
+    }
+  }
+
+  // OIDC §3.1.3.7.6: with multi-audience id_tokens, `azp` MUST be
+  // present and equal the Client's id. §3.1.3.7.7: when present, azp
+  // MUST equal client_id regardless of aud arity.
+  const azp = jwt.payload.azp;
+  if (audList.length > 1 && azp === undefined) {
+    return { ok: false, error: 'id_token azp missing for multi-audience' };
+  }
+  if (azp !== undefined && azp !== opts.expectedAudience) {
+    return { ok: false, error: 'id_token azp mismatch' };
+  }
+
+  // OIDC §3.1.3.7 step 11: when the Client sent a `nonce` in the
+  // authorization request, the id_token MUST replay it byte-for-byte.
+  // Mirrors core's verify_id_token contract.
+  if (opts.expectedNonce !== undefined) {
+    if (jwt.payload.nonce !== opts.expectedNonce) {
+      return { ok: false, error: 'id_token nonce mismatch' };
+    }
+  }
+
+  // Step 7c: cnf.jkt MUST equal RFC 7638 thumbprint of the agent's public
+  // key (RFC 7800 §3.1 / RFC 9449 §6.1). Without this check the id_token
+  // is not bound to the presenting agent — an attacker can substitute
+  // their own keypair across the binding payload + proof bundle while
+  // reusing a stolen id_token verbatim. Anchors at the agent key, not
+  // the binding's self-embedded key.
+  let expectedJkt: string;
+  try {
+    expectedJkt = ed25519JwkThumbprint(basic.publicKeyPem);
+  } catch (err) {
+    return {
+      ok: false,
+      error: `cnf.jkt anchor: ${err instanceof Error ? err.message : 'invalid agent key'}`,
+    };
+  }
+  const cnf = jwt.payload.cnf as { jkt?: unknown } | undefined;
+  const actualJkt = cnf?.jkt;
+  if (typeof actualJkt !== 'string' || actualJkt.length === 0) {
+    return { ok: false, error: 'id_token missing cnf.jkt' };
+  }
+  if (actualJkt !== expectedJkt) {
+    return { ok: false, error: 'id_token cnf.jkt does not bind to agent key' };
   }
 
   // Step 8: Verify owner session proof (optional)
