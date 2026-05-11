@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     },
     auth: {
       header: 'Authorization',
-      scheme: 'AgentID',
+      scheme: 'DPoP',
     },
     api: {
       base: `${origin}/api`,

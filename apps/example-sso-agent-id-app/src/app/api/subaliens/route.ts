@@ -61,9 +61,9 @@ export async function POST(req: NextRequest) {
       .values({
         name,
         description,
-        fingerprint: auth.fingerprint,
-        owner: auth.owner,
-        ownerVerified: auth.ownerVerified,
+        fingerprint: auth.jkt,
+        owner: auth.sub,
+        ownerVerified: true,
       })
       .returning();
 

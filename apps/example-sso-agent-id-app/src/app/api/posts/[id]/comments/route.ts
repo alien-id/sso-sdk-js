@@ -74,9 +74,9 @@ export async function POST(
       body: commentBody,
       postId,
       parentId,
-      fingerprint: auth.fingerprint,
-      owner: auth.owner,
-      ownerVerified: auth.ownerVerified,
+      fingerprint: auth.jkt,
+      owner: auth.sub,
+      ownerVerified: true,
     })
     .returning();
 
