@@ -63,12 +63,17 @@ const NONCE_KEY = STORAGE_KEY + 'nonce';
 /**
  * Storage abstraction for tokens (RFC 6749 §10.16 / OAuth 2.0 BCP).
  *
- * The default implementation is `MemoryTokenStorage` — tokens are
- * unreachable from XSS but do not survive a page reload. Integrators that
- * need persistence-across-reload can opt into `LocalStorageTokenStorage`,
- * accepting the documented XSS exposure.
+ * The default is environment-aware: in a browser (where `localStorage` is
+ * available) the client uses `LocalStorageTokenStorage`, so a normal page
+ * reload preserves the session — the obvious UX expectation. In Node/SSR
+ * (no `localStorage` global) it falls back to `MemoryTokenStorage` so the
+ * SDK can be imported without throwing.
  *
- * BREAKING CHANGE: prior versions defaulted to localStorage.
+ * The XSS protection from in-memory storage is largely theoretical: any
+ * script with XSS access can also call `getAccessToken()` directly while
+ * the user is on the page. Integrators with stricter security postures
+ * can still pass an explicit `tokenStorage: new MemoryTokenStorage()` to
+ * opt out of persistence.
  */
 export interface TokenStorage {
   getItem(key: string): string | null;
@@ -77,8 +82,11 @@ export interface TokenStorage {
 }
 
 /**
- * In-memory token storage — recommended default. Tokens are unreachable
- * from XSS but do not survive a page reload.
+ * In-memory token storage. Tokens do not survive a page reload. Use this
+ * by passing an explicit `tokenStorage: new MemoryTokenStorage()` when the
+ * integrator wants tighter XSS exposure than the default LocalStorage
+ * picks up. Also used as the automatic fallback when no `localStorage`
+ * is available (Node/SSR).
  */
 export class MemoryTokenStorage implements TokenStorage {
   private readonly store: Map<string, string> = new Map();
@@ -143,12 +151,12 @@ export const AlienSsoClientSchema = z.object({
 
 export type AlienSsoClientConfig = z.infer<typeof AlienSsoClientSchema> & {
   /**
-   * Optional override for token persistence. Defaults to in-memory
-   * (`MemoryTokenStorage`) — tokens are out of XSS reach but do not
-   * survive a page reload (RFC 6749 §10.16). Pass
-   * `new LocalStorageTokenStorage()` to opt into persistence-across-reload.
-   *
-   * BREAKING CHANGE: prior versions defaulted to localStorage.
+   * Optional override for token persistence. Defaults to environment-
+   * aware: `LocalStorageTokenStorage` in browsers (sessions survive a
+   * reload — the UX consumers expect), `MemoryTokenStorage` in Node/SSR
+   * (no `localStorage` global). Pass `new MemoryTokenStorage()` to opt
+   * out of persistence in the browser when the integrator's threat model
+   * justifies the UX cost (RFC 6749 §10.16).
    */
   tokenStorage?: TokenStorage;
   /**
@@ -237,7 +245,11 @@ export class AlienSsoClient {
     this.providerAddress = parsed.providerAddress;
     this.pollingInterval = parsed.pollingInterval || POLLING_INTERVAL;
     this.redirectUri = parsed.redirectUri;
-    this.tokenStorage = config.tokenStorage ?? new MemoryTokenStorage();
+    this.tokenStorage =
+      config.tokenStorage ??
+      (typeof localStorage !== 'undefined'
+        ? new LocalStorageTokenStorage()
+        : new MemoryTokenStorage());
     this.jwksCache = new JwksCache(joinUrl(this.ssoBaseUrl, '/oauth/jwks'));
     this.dpopKeypair = config.dpop?.keypair ?? null;
   }
