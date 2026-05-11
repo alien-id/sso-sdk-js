@@ -102,3 +102,50 @@ export function verifyRS256(
   const signature = Buffer.from(signatureB64url, 'base64url');
   return verify('sha256', Buffer.from(data), keyObj, signature);
 }
+
+/**
+ * RFC 7638 JWK Thumbprint of an OKP/Ed25519 JWK. Canonical members for
+ * an OKP key are `{"crv","kty","x"}` in lexical order with no whitespace.
+ * SHA-256, then base64url (no padding). Throws if the JWK is not a
+ * well-formed OKP/Ed25519 public key.
+ */
+export function jwkThumbprintOKP(jwk: { kty?: unknown; crv?: unknown; x?: unknown }): string {
+  if (jwk.kty !== 'OKP') {
+    throw new Error(`jwkThumbprintOKP: kty must be OKP, got ${String(jwk.kty)}`);
+  }
+  if (jwk.crv !== 'Ed25519') {
+    throw new Error(`jwkThumbprintOKP: crv must be Ed25519, got ${String(jwk.crv)}`);
+  }
+  if (typeof jwk.x !== 'string' || jwk.x.length === 0) {
+    throw new Error('jwkThumbprintOKP: x is required');
+  }
+  const canonical = `{"crv":"Ed25519","kty":"OKP","x":"${jwk.x}"}`;
+  return createHash('sha256').update(canonical).digest('base64url');
+}
+
+/**
+ * Verify an EdDSA (Ed25519) JWS detached signature against an OKP JWK.
+ * Used to check DPoP proofs (RFC 9449 §4.3 step 7) — the public key is
+ * carried in the proof's own `jwk` header.
+ */
+export function verifyEdDsaJwt(
+  headerB64url: string,
+  payloadB64url: string,
+  signatureB64url: string,
+  jwk: { kty?: unknown; crv?: unknown; x?: unknown },
+): boolean {
+  if (jwk.kty !== 'OKP' || jwk.crv !== 'Ed25519' || typeof jwk.x !== 'string') {
+    return false;
+  }
+  // Build an SPKI public key from the raw x.
+  const raw = Buffer.from(jwk.x, 'base64url');
+  if (raw.length !== 32) return false;
+  const der = Buffer.concat([
+    Buffer.from('302a300506032b6570032100', 'hex'),
+    raw,
+  ]);
+  const keyObj = createPublicKey({ key: der, format: 'der', type: 'spki' });
+  const data = `${headerB64url}.${payloadB64url}`;
+  const signature = Buffer.from(signatureB64url, 'base64url');
+  return verify(null, Buffer.from(data), keyObj, signature);
+}
