@@ -383,20 +383,28 @@ export class AlienSsoClient {
     const json = await response.json();
     const parsed = PollResponseSchema.parse(json);
 
-    // RFC 6749 §10.12: when the client sent `state`, it MUST verify that
-    // the auth response carries the same value back. We track state in
-    // sessionStorage from `generateDeeplink`; if it's set, the response
-    // MUST include matching state — missing state is a rejection too,
-    // since CSRF protection cannot be silently dropped.
-    const persistedState = sessionStorage.getItem(STATE_KEY);
-    if (persistedState) {
-      if (!parsed.state) {
-        throw new Error(
-          'Auth response missing state parameter (RFC 6749 §10.12)',
-        );
-      }
-      if (parsed.state !== persistedState) {
-        throw new Error('Auth response state mismatch (RFC 6749 §10.12)');
+    // Only verify state/iss when the AS has actually returned an auth
+    // result (status === 'authorized'). The 'pending'/'rejected'/'expired'
+    // heartbeats don't carry these fields by design — RFC 6749 §10.12 +
+    // RFC 9207 §2.4 talk about the *authorization response*, which is the
+    // payload that delivers `authorization_code`. Enforcing on every poll
+    // would reject every legitimate pending tick.
+    if (parsed.status === 'authorized') {
+      // RFC 6749 §10.12: when the client sent `state`, it MUST verify that
+      // the auth response carries the same value back. We track state in
+      // sessionStorage from `generateDeeplink`; if it's set, the response
+      // MUST include matching state — missing state is a rejection too,
+      // since CSRF protection cannot be silently dropped.
+      const persistedState = sessionStorage.getItem(STATE_KEY);
+      if (persistedState) {
+        if (!parsed.state) {
+          throw new Error(
+            'Auth response missing state parameter (RFC 6749 §10.12)',
+          );
+        }
+        if (parsed.state !== persistedState) {
+          throw new Error('Auth response state mismatch (RFC 6749 §10.12)');
+        }
       }
     }
 
@@ -405,7 +413,9 @@ export class AlienSsoClient {
     // expected issuer. This defends against AS mix-up attacks where an
     // attacker tricks the client into sending a code from one AS to a
     // different AS. We compare against `ssoBaseUrl` because the SSO AS
-    // uses that as its issuer (per its OIDC metadata).
+    // uses that as its issuer (per its OIDC metadata). Kept outside the
+    // status guard so a bogus `iss` on a non-authorized response (e.g.,
+    // a malicious AS forging a 'pending' with attacker iss) still trips.
     if (parsed.iss !== undefined && parsed.iss !== this.ssoBaseUrl) {
       throw new Error('Auth response issuer mismatch (RFC 9207 §2.4)');
     }
