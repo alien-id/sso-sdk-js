@@ -73,24 +73,60 @@ describe('AlienSsoSdkClient', () => {
       expect(storage.getItem('alien-sso_access_token')).toBeNull();
     });
 
-    // BREAKING CHANGE: default storage is in-memory. Tokens previously
-    // persisted to localStorage MUST now be reissued on tab reload.
-    it('client without explicit tokenStorage uses memory by default', () => {
+    // Default is environment-aware: LocalStorage when `localStorage` is
+    // available (browser), Memory otherwise (Node/SSR — no global).
+    it('client without explicit tokenStorage uses localStorage when available', () => {
       const localStorageMock = {
         getItem: jest.fn().mockReturnValue(null),
         setItem: jest.fn(),
         removeItem: jest.fn(),
       };
-      (globalThis as any).localStorage = localStorageMock;
+      (globalThis as unknown as { localStorage: typeof localStorageMock }).localStorage = localStorageMock;
 
       const c = new AlienSsoClient({
         ssoBaseUrl: 'https://sso.alien-api.com',
         providerAddress: '0xProvider',
       });
 
-      // Read access — must not touch localStorage.
+      // Read access must go to localStorage when the default kicked in.
+      expect(c.getAccessToken()).toBeNull();
+      expect(localStorageMock.getItem).toHaveBeenCalledWith(
+        'alien-sso_access_token',
+      );
+
+      delete (globalThis as unknown as { localStorage?: unknown }).localStorage;
+    });
+
+    it('client without explicit tokenStorage falls back to memory when localStorage is undefined', () => {
+      delete (globalThis as unknown as { localStorage?: unknown }).localStorage;
+
+      const c = new AlienSsoClient({
+        ssoBaseUrl: 'https://sso.alien-api.com',
+        providerAddress: '0xProvider',
+      });
+
+      // Should not throw despite the absent localStorage global.
+      expect(c.getAccessToken()).toBeNull();
+    });
+
+    it('explicit MemoryTokenStorage opts out of localStorage even when it is available', () => {
+      const localStorageMock = {
+        getItem: jest.fn().mockReturnValue(null),
+        setItem: jest.fn(),
+        removeItem: jest.fn(),
+      };
+      (globalThis as unknown as { localStorage: typeof localStorageMock }).localStorage = localStorageMock;
+
+      const c = new AlienSsoClient({
+        ssoBaseUrl: 'https://sso.alien-api.com',
+        providerAddress: '0xProvider',
+        tokenStorage: new MemoryTokenStorage(),
+      });
+
       expect(c.getAccessToken()).toBeNull();
       expect(localStorageMock.getItem).not.toHaveBeenCalled();
+
+      delete (globalThis as unknown as { localStorage?: unknown }).localStorage;
     });
   });
 

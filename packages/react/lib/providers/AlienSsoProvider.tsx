@@ -24,20 +24,29 @@ export type AlienSsoProviderConfig = AlienSsoClientConfig & {
   agentId?: AgentIdConfig;
 };
 
-// SECURITY (RFC 6749 §10 / RFC 9700 §4): the access token MUST NOT be
-// stored in React render state, where every component in the tree below
-// the provider can read it on every render. The provider now keeps an
-// `isAuthenticated` boolean and the OIDC claim envelope (which is
-// already public information once verified) in render state, but the
-// raw access_token is reachable only via an explicit `getAccessToken()`
-// pull off the context — callers that need the bytes for a fetch ask
-// for them at call time, not via subscription.
 type AuthState = {
   isAuthenticated: boolean;
+  /**
+   * The current access token in render state. Convenient for callers
+   * that read `auth.token` to set an `Authorization` header. For
+   * callers that want a fresh pull on each request (no render-state
+   * cache), use `getAccessToken()` off the context — it reads from
+   * storage on every call. The two are always in sync.
+   */
+  token?: string | null;
   tokenInfo?: ReturnType<AlienSsoClient['getAuthData']> | null;
 };
 
 type SsoContextValue = {
+  /**
+   * The underlying `AlienSsoClient` instance. Exposed for callers that
+   * need methods beyond the convenience helpers on this context
+   * (e.g. `client.pollingInterval`, `client.getRefreshToken()`).
+   * v1-compatible — pre-RFC-9449 consumers reached for the client
+   * directly, and there's no benefit in hiding it now that DPoP and
+   * cnf.jkt are wired in.
+   */
+  client: AlienSsoClient;
   auth: AuthState;
   queryClient: QueryClient;
   generateDeeplink: () => Promise<import('@alien-id/sso').AuthorizeResponse>;
@@ -49,9 +58,10 @@ type SsoContextValue = {
   refreshToken: () => Promise<string | null>;
   logout: () => void;
   /**
-   * Pull the current access_token on demand. Returns null when no
-   * session exists. Callers that need the bearer for an outbound
-   * request fetch it here rather than reading it from render state.
+   * Pull the current access_token on demand from storage. Returns null
+   * when no session exists. Equivalent to reading `auth.token` from
+   * render state — `getAccessToken()` is the no-cache, no-render-state
+   * variant for callers that prefer pulling at call time.
    */
   getAccessToken: () => string | null;
   openModal: () => void;
@@ -59,8 +69,9 @@ type SsoContextValue = {
   isModalOpen: boolean;
   /**
    * Polling interval (ms) for the modal's authorization-code wait
-   * loop. Exposed so downstream UI can match the AS's expected cadence
-   * without needing the full client.
+   * loop. Same value as `client.pollingInterval`; exposed at the top
+   * level for downstream UI that doesn't want to reach through the
+   * client ref.
    */
   pollingInterval: number;
   agentIdEnabled: boolean;
@@ -84,11 +95,13 @@ function getInitialAuth(client: AlienSsoClient): AuthState {
     const tokenInfo = client.getAuthData();
     return {
       isAuthenticated: Boolean(token && tokenInfo),
+      token,
       tokenInfo,
     };
   } catch {
     return {
       isAuthenticated: false,
+      token: null,
       tokenInfo: null,
     };
   }
@@ -125,6 +138,7 @@ export function AlienSsoProvider({
       const isAuthenticated = Boolean(tokenResponse.access_token && tokenInfo);
       setAuth({
         isAuthenticated,
+        token: tokenResponse.access_token,
         tokenInfo,
       });
       return tokenResponse;
@@ -135,9 +149,11 @@ export function AlienSsoProvider({
   const verifyAuth = useCallback(async () => {
     const userInfo = await client.verifyAuth();
     const valid = userInfo !== null;
+    const token = client.getAccessToken();
     const tokenInfo = client.getAuthData();
     setAuth({
       isAuthenticated: valid,
+      token,
       tokenInfo,
     });
     return valid;
@@ -150,6 +166,7 @@ export function AlienSsoProvider({
       const isAuthenticated = Boolean(tokenResponse.access_token && tokenInfo);
       setAuth({
         isAuthenticated,
+        token: tokenResponse.access_token,
         tokenInfo,
       });
       return tokenResponse.access_token;
@@ -157,6 +174,7 @@ export function AlienSsoProvider({
       // Refresh failed, client.refreshAccessToken already calls logout
       setAuth({
         isAuthenticated: false,
+        token: null,
         tokenInfo: null,
       });
       return null;
@@ -167,6 +185,7 @@ export function AlienSsoProvider({
     client.logout();
     setAuth({
       isAuthenticated: false,
+      token: null,
       tokenInfo: null,
     });
   }, [client]);
@@ -183,6 +202,7 @@ export function AlienSsoProvider({
 
   const value = useMemo<SsoContextValue>(
     () => ({
+      client,
       auth,
       queryClient,
       generateDeeplink,

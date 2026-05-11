@@ -1,6 +1,6 @@
 {
   "name": "@alien-id/sso-solana",
-  "version": "2.0.0-alpha.3",
+  "version": "2.0.0-alpha.4",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/alien-id/sso-sdk-js.git"
