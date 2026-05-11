@@ -16,7 +16,7 @@
 
 - [Install](#install)
 - [Quick start](#quick-start)
-- [Basic verification](#basic-verification-no-owner-proof)
+- [Basic verification](#basic-verification)
 - [API](#api)
 - [How it works](#how-it-works)
 - [Framework examples](#framework-examples)
@@ -63,7 +63,7 @@ This verifies the full trust chain: agent key → owner binding → id_token
 → Alien SSO JWKS → verified human. The `owner` field is not just
 self-asserted — it's backed by the SSO server's RS256 signature.
 
-## Basic verification (no owner proof)
+## Basic verification
 
 If you only need to confirm the agent holds a valid Ed25519 key and
 don't care about the owner claim, you can use `verifyAgentToken`.
@@ -150,7 +150,6 @@ Verify a token with full owner chain verification.
   publicKeyPem: string,
   owner: string,
   ownerVerified: true,          // Owner cryptographically verified
-  ownerProofVerified: boolean,  // Human consent signature present
   issuer: string,               // SSO issuer URL
   timestamp: number,
   nonce: string,
@@ -199,7 +198,7 @@ sequenceDiagram
 ```
 
 The token is **self-contained**: it carries the agent's public key and
-the full owner proof chain, so verification requires no database lookup,
+the full owner verification chain, so verification requires no database lookup,
 no key exchange, and no pre-registration.
 
 ## Framework examples

@@ -3,7 +3,6 @@ import {
   fingerprintPublicKeyPem,
   sha256Hex,
   verifyEd25519Base64Url,
-  verifyEd25519Hex,
   verifyRS256,
 } from './crypto';
 import { canonicalJSONString } from './json';
@@ -407,54 +406,12 @@ export function verifyAgentTokenWithOwner(
     return { ok: false, error: 'id_token cnf.jkt does not bind to agent key' };
   }
 
-  // Step 8: Verify owner session proof (optional)
-  let ownerProofVerified = false;
-  const proof = payload.ownerSessionProof as
-    | Record<string, unknown>
-    | null
-    | undefined;
-  if (proof && typeof proof === 'object') {
-    const {
-      sessionAddress,
-      sessionSignature,
-      sessionSignatureSeed,
-      sessionPublicKey,
-    } = proof;
-
-    if (
-      typeof sessionAddress !== 'string' ||
-      typeof sessionSignature !== 'string' ||
-      typeof sessionSignatureSeed !== 'string' ||
-      typeof sessionPublicKey !== 'string'
-    ) {
-      return { ok: false, error: 'Incomplete owner session proof fields' };
-    }
-
-    if (sessionAddress !== basic.owner) {
-      return { ok: false, error: 'Owner session proof address mismatch' };
-    }
-
-    const message = `${sessionAddress}${sessionSignatureSeed}`;
-    let proofOk: boolean;
-    try {
-      proofOk = verifyEd25519Hex(message, sessionSignature, sessionPublicKey);
-    } catch {
-      return { ok: false, error: 'Owner session proof signature error' };
-    }
-    if (!proofOk) {
-      return { ok: false, error: 'Owner session proof signature failed' };
-    }
-
-    ownerProofVerified = true;
-  }
-
   const result: VerifyOwnerSuccess = {
     ok: true,
     fingerprint: basic.fingerprint,
     publicKeyPem: basic.publicKeyPem,
     owner: basic.owner,
     ownerVerified: true,
-    ownerProofVerified,
     issuer: typeof jwt.payload.iss === 'string' ? jwt.payload.iss : '',
     timestamp: basic.timestamp,
     nonce: basic.nonce,

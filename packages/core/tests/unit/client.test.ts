@@ -6,7 +6,7 @@ describe('AlienSsoSdkClient', () => {
 
   beforeEach(() => {
     client = new AlienSsoClient({
-      ssoBaseUrl: 'https://sso.alien.com',
+      ssoBaseUrl: 'https://sso.alien-api.com',
       providerAddress: '0xProviderAddress',
     });
   });
@@ -84,7 +84,7 @@ describe('AlienSsoSdkClient', () => {
       (globalThis as any).localStorage = localStorageMock;
 
       const c = new AlienSsoClient({
-        ssoBaseUrl: 'https://sso.alien.com',
+        ssoBaseUrl: 'https://sso.alien-api.com',
         providerAddress: '0xProvider',
       });
 
@@ -103,7 +103,7 @@ describe('AlienSsoSdkClient', () => {
       expect(
         () =>
           new AlienSsoClient({
-            ssoBaseUrl: 'https://sso.alien.com',
+            ssoBaseUrl: 'https://sso.alien-api.com',
             providerAddress: '0xProvider',
           }),
       ).not.toThrow();
@@ -168,7 +168,7 @@ describe('AlienSsoSdkClient', () => {
   // trick the Client into delivering an authorization code from one AS
   // to a different AS.
   describe('pollAuth — RFC 9207 §2.4 iss verification', () => {
-    const ISSUER = 'https://sso.alien.com';
+    const ISSUER = 'https://sso.alien-api.com';
 
     beforeEach(() => {
       nock.cleanAll();
@@ -261,7 +261,7 @@ describe('AlienSsoSdkClient', () => {
   // send `dpop_jkt` (the JWK thumbprint of its DPoP key) on the authorize
   // request so the AS can mint the token bound to that key.
   describe('generateDeeplink — RFC 9449 §5 dpop_jkt', () => {
-    const ISSUER = 'https://sso.alien.com';
+    const ISSUER = 'https://sso.alien-api.com';
 
     beforeEach(() => {
       nock.cleanAll();
@@ -334,7 +334,7 @@ describe('AlienSsoSdkClient', () => {
   });
 
   describe('exchangeToken — RFC 9449 §5 DPoP proof on /oauth/token', () => {
-    const ISSUER = 'https://sso.alien.com';
+    const ISSUER = 'https://sso.alien-api.com';
 
     beforeEach(() => {
       nock.cleanAll();
@@ -443,7 +443,7 @@ describe('AlienSsoSdkClient', () => {
   });
 
   describe('refreshAccessToken — RFC 9449 §5 sticky-binding', () => {
-    const ISSUER = 'https://sso.alien.com';
+    const ISSUER = 'https://sso.alien-api.com';
 
     beforeEach(() => {
       nock.cleanAll();

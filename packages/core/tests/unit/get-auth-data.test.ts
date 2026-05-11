@@ -4,7 +4,7 @@ import { AlienSsoClient, MemoryTokenStorage } from '../../src/client';
 import { UserInfoResponseSchema } from '../../src/schema';
 
 const PROVIDER = '0xProvider';
-const ISSUER = 'https://sso.alien.com';
+const ISSUER = 'https://sso.alien-api.com';
 
 function b64url(input: string | Buffer): string {
   return Buffer.from(input)

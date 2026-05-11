@@ -32,7 +32,7 @@ import {
   deriveAttestationPda,
 } from './pda';
 
-const SSO_BASE_URL = 'https://sso.alien.com';
+const SSO_BASE_URL = 'https://sso.alien-api.com';
 const POLLING_INTERVAL = 5000;
 
 // Default Solana program IDs
