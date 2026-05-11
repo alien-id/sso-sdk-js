@@ -229,6 +229,41 @@ describe('AlienSsoSdkClient', () => {
       const r = await c.pollAuth('polling-code-1');
       expect(r.authorization_code).toBe('code-1');
     });
+
+    it('accepts a pending poll heartbeat that omits state even when client persisted one', async () => {
+      // Regression: state-check used to fire on every poll, breaking the
+      // pending-tick path against any AS that only emits state on the
+      // final authorized response.
+      (
+        globalThis as unknown as { sessionStorage: { setItem(k: string, v: string): void } }
+      ).sessionStorage.setItem('alien-sso_state', 'persisted-state-xyz');
+      nock(ISSUER).post('/oauth/poll').reply(200, { status: 'pending' });
+      const c = new AlienSsoClient({
+        ssoBaseUrl: ISSUER,
+        providerAddress: '0xProvider',
+      });
+      const r = await c.pollAuth('polling-code-1');
+      expect(r.status).toBe('pending');
+    });
+
+    it('still rejects an authorized poll whose state mismatches the persisted one', async () => {
+      (
+        globalThis as unknown as { sessionStorage: { setItem(k: string, v: string): void } }
+      ).sessionStorage.setItem('alien-sso_state', 'persisted-state-xyz');
+      nock(ISSUER).post('/oauth/poll').reply(200, {
+        status: 'authorized',
+        authorization_code: 'code-1',
+        state: 'attacker-state',
+        iss: ISSUER,
+      });
+      const c = new AlienSsoClient({
+        ssoBaseUrl: ISSUER,
+        providerAddress: '0xProvider',
+      });
+      await expect(c.pollAuth('polling-code-1')).rejects.toThrow(
+        /state mismatch/,
+      );
+    });
   });
 
   describe('generateCodeChallenge', () => {
