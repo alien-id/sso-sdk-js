@@ -19,7 +19,7 @@
 - [Basic verification](#basic-verification)
 - [API](#api)
 - [How it works](#how-it-works)
-- [Security model](#security-model)
+- [Caveats](#caveats)
 - [Framework examples](#framework-examples)
 - [Access control patterns](#access-control-patterns)
 - [Configuration](#configuration)
@@ -212,57 +212,17 @@ The token is **self-contained**: it carries the agent's public key and
 the full owner verification chain, so verification requires no database lookup,
 no key exchange, and no pre-registration.
 
-## Security model
+## Caveats
 
-`verifyAgentTokenWithOwner` is the boundary between "anyone can post bytes"
-and "this request is from a real agent acting for a real human". The chain
-anchors on the SSO's JWKS (fetched from `/oauth/jwks`, listed in
-`/.well-known/openid-configuration` per OIDC Discovery / RFC 8414) and is
-walked in this order:
-
-| # | What is checked | Spec |
-|---|---|---|
-| 1 | Outer envelope is canonical base64url; required fields present; `fingerprint` matches SHA-256 of `publicKeyPem` | RFC 4648 §5 |
-| 2 | Agent's Ed25519 signature over the canonical envelope is valid | — |
-| 3 | Envelope timestamp within `maxAgeMs` (default 5 min), allowing `clockSkewMs` (default 30 s) | — |
-| 4 | `ownerBinding.payloadHash` equals SHA-256 of the canonical binding payload | — |
-| 5 | Binding signature is valid Ed25519 under the **same** agent key | — |
-| 6 | Binding's `agentInstance.publicKeyFingerprint` and `ownerSessionSub` match the envelope (cross-checks) | — |
-| 7 | `ownerBinding.idTokenHash` equals SHA-256 of the embedded id_token | — |
-| 8 | id_token header: `alg=RS256`, `typ` is absent or `JWT` (case-insensitive); any `crit` parameter is rejected | RFC 7515 §4.1.11, RFC 8725 §3.7 |
-| 9 | id_token RS256 signature verifies under a JWKS key whose `kid`, `kty=RSA`, `use=sig` (or absent), and pinned `alg` (or absent) match | RFC 7515 §10.7 |
-| 10 | `iss == expectedIssuer`; `aud` contains `expectedAudience`; every `aud` entry is in the trust set; `azp` rules enforced for multi-audience tokens | OIDC §3.1.3.7.3 / .7.6 / .7.7 |
-| 11 | `sub` equals the envelope's claimed owner | — |
-| 12 | `exp` is in the future; `nbf` (if present) has passed; `iat` (if present) is numeric | RFC 7519 §4.1.4-6 |
-| 13 | `nonce` equals `expectedNonce` when supplied | OIDC §3.1.3.7 step 11 |
-| 14 | id_token's `cnf.jkt` equals the RFC 7638 thumbprint of the agent's Ed25519 public key — **the chain is bound to *this* keypair** | RFC 7800 §3.1 / RFC 9449 §6.1 |
-
-### Forgery attempts that fail closed
-
-- **Stolen id_token + attacker's own keypair** → step 14 (`cnf.jkt does not bind to agent key`)
-- **Stolen id_token replayed by a different agent** → step 14
-- **Envelope signed by a key the SSO never approved** → no binding presence (step 4) or `agentInstance` mismatch (step 6)
-- **Tampered envelope, binding, or id_token** → signature step (2, 5, or 9)
-- **`alg: none` or unsupported alg in id_token** → step 8
-- **Cross-JWT confusion (`typ=at+jwt`)** → step 8
-- **Token reuse beyond freshness window** → step 3 or step 12
-- **Audience confusion (token issued for a different RP)** → step 10
-- **Replay of a `nonce`-bound token to a different session** → step 13
-
-74 unit tests in `tests/` pin every step. Run `npm test` to verify.
-
-### What this is *not*
-
-- **Not RFC 9449 DPoP-per-request verification.** A fresh DPoP proof JWT
-  (with `htm`/`htu`/`iat`/`jti`) is verified by the **SSO** once at
-  `/oauth/token`, when the id_token is minted. Each subsequent request to
-  your service carries proof-of-possession via the agent envelope's
-  Ed25519 signature, anchored to the issuer's `cnf.jkt` claim. Same
-  sender-constraint security property; different transport. You do not
-  need a `jti` replay cache.
-- **Not JWKS caching.** `fetchAlienJWKS()` is a one-shot fetcher. Call it
-  at startup, cache the result, and refresh periodically (every few
-  hours is typical; the SSO publishes new keys infrequently).
+- **No per-request DPoP proof JWT.** RFC 9449 DPoP is used only at the
+  SSO ↔ agent boundary (the `/oauth/token` exchange). After that, the
+  agent envelope's Ed25519 signature carries proof-of-possession on
+  every request, anchored to the issuer's `cnf.jkt` claim. Same
+  sender-constraint security property; simpler transport (no `jti`
+  replay cache needed at your service).
+- **`fetchAlienJWKS()` does not cache.** Call it at startup, hold the
+  result, refresh every few hours. The SSO rotates signing keys
+  infrequently.
 
 ## Framework examples
 
