@@ -52,7 +52,7 @@ export async function POST(
     .from(votes)
     .where(
       and(
-        eq(votes.fingerprint, auth.fingerprint),
+        eq(votes.fingerprint, auth.jkt),
         eq(votes.targetType, 'post'),
         eq(votes.targetId, postId),
       ),
@@ -76,7 +76,7 @@ export async function POST(
     await db.insert(votes).values({
       targetType: 'post',
       targetId: postId,
-      fingerprint: auth.fingerprint,
+      fingerprint: auth.jkt,
       value: newValue,
     });
     scoreDelta = newValue;

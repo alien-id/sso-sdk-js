@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   fetchAlienJWKS,
-  verifyAgentToken,
-  verifyAgentTokenWithOwner,
+  verifyDPoPRequest,
   type JWKS,
-  type VerifySuccess,
+  type VerifyDPoPSuccess,
 } from '@alien-id/sso-agent-id';
 
 let jwksCache: JWKS | null = null;
@@ -16,33 +15,40 @@ async function getJWKS(): Promise<JWKS> {
   return jwksCache;
 }
 
+function headersToRecord(h: Headers): Record<string, string> {
+  const out: Record<string, string> = {};
+  h.forEach((value, key) => {
+    out[key.toLowerCase()] = value;
+  });
+  return out;
+}
+
 /**
- * Authenticate an agent from the Authorization header.
- * Returns VerifySuccess on success, or a 401 NextResponse on failure.
+ * Authenticate an agent from an RFC 9449 DPoP-bound request.
+ * Returns VerifyDPoPSuccess on success, or a 401 NextResponse on failure.
  */
 export async function authenticateAgent(
   req: NextRequest,
-): Promise<VerifySuccess | NextResponse> {
-  const auth = req.headers.get('authorization');
-  if (!auth?.startsWith('AgentID ')) {
-    return NextResponse.json(
-      { ok: false, error: 'Missing header: Authorization: AgentID <token>' },
-      { status: 401 },
-    );
-  }
-
-  const tokenB64 = auth.slice(8).trim();
+): Promise<VerifyDPoPSuccess | NextResponse> {
   const jwks = await getJWKS();
-  let result = verifyAgentTokenWithOwner(tokenB64, {
-    jwks,
-    expectedAudience: process.env.NEXT_PUBLIC_ALIEN_PROVIDER_ADDRESS!,
-  });
+  const result = verifyDPoPRequest(
+    {
+      method: req.method,
+      url: req.url,
+      headers: headersToRecord(req.headers),
+    },
+    {
+      jwks,
+      expectedAudience: process.env.NEXT_PUBLIC_ALIEN_PROVIDER_ADDRESS!,
+    },
+  );
   if (!result.ok) {
-    result = verifyAgentToken(tokenB64);
+    return NextResponse.json(result, {
+      status: 401,
+      headers: {
+        'WWW-Authenticate': `DPoP error="invalid_token", error_description="${result.code}"`,
+      },
+    });
   }
-  if (!result.ok) {
-    return NextResponse.json(result, { status: 401 });
-  }
-
   return result;
 }

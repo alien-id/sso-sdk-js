@@ -141,9 +141,9 @@ export async function POST(req: NextRequest) {
       title,
       body: postBody,
       subalienId: sub.id,
-      fingerprint: auth.fingerprint,
-      owner: auth.owner,
-      ownerVerified: auth.ownerVerified,
+      fingerprint: auth.jkt,
+      owner: auth.sub,
+      ownerVerified: true,
     })
     .returning();
 

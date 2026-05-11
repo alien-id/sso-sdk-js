@@ -6,35 +6,22 @@ export async function GET(req: NextRequest) {
   if (result instanceof NextResponse) return result;
 
   const checks = [
+    { label: 'DPoP proof signature valid (RFC 9449 §4.3 step 7)', passed: true },
+    { label: 'Proof htm/htu/iat/jti fresh and unreplayed (steps 8–12)', passed: true },
+    { label: 'access_token is at+jwt signed by Alien SSO (RFC 9068 §4)', passed: true },
     {
-      label: 'Agent holds Ed25519 private key',
+      label: `access_token cnf.jkt binds owner ${result.sub} to agent ${result.jkt.slice(0, 16)}… (§6.1)`,
       passed: true,
-    },
-    {
-      label: 'Token is fresh (< 5 minutes)',
-      passed: true,
-    },
-    {
-      label: 'Fingerprint matches public key',
-      passed: true,
-    },
-    {
-      label: result.ownerVerified
-        ? `Agent owner is verified on Alien App — ${result.owner}`
-        : `Agent owner is not verified — ${result.owner ?? 'no owner'}`,
-      passed: result.ownerVerified,
     },
   ];
 
   return NextResponse.json({
     ok: true,
     agent: {
-      fingerprint: result.fingerprint,
-      owner: result.owner,
-      ownerVerified: result.ownerVerified,
-      timestamp: result.timestamp,
+      jkt: result.jkt,
+      sub: result.sub,
     },
     checks,
-    message: `Hello, agent ${result.fingerprint.slice(0, 16)}!`,
+    message: `Hello, agent ${result.jkt.slice(0, 16)}!`,
   });
 }
