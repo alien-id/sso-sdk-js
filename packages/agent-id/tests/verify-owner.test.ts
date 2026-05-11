@@ -107,14 +107,6 @@ function signEd25519B64url(data: string, privateKeyPem: string): string {
   return toB64url(sig);
 }
 
-function signEd25519Hex(message: string, privateKeyPem: string): string {
-  return sign(
-    null,
-    Buffer.from(message),
-    createPrivateKey(privateKeyPem),
-  ).toString('hex');
-}
-
 function buildJwt(
   payload: Record<string, unknown>,
   rsaPrivateKey: ReturnType<typeof generateRSA>['privateKey'],
@@ -133,7 +125,6 @@ interface FullChainTokenOpts {
   rsa?: ReturnType<typeof generateRSA>;
   rsaKid?: string;
   owner?: string;
-  ownerSessionProof?: Record<string, unknown> | null;
   idTokenPayloadOverrides?: Record<string, unknown>;
   bindingPayloadOverrides?: Record<string, unknown>;
   bindingSignatureOverride?: string;
@@ -178,12 +169,6 @@ function buildFullChainToken(opts: FullChainTokenOpts = {}) {
   const idToken =
     opts.idTokenOverride ?? buildJwt(idTokenPayload, rsa.privateKey, rsaKid);
 
-  // Build owner session proof
-  let ownerSessionProof: Record<string, unknown> | null = null;
-  if (opts.ownerSessionProof !== undefined) {
-    ownerSessionProof = opts.ownerSessionProof;
-  }
-
   // Build owner binding payload
   const bindingPayload: Record<string, unknown> = {
     version: 1,
@@ -193,10 +178,6 @@ function buildFullChainToken(opts: FullChainTokenOpts = {}) {
     ownerSessionSub: owner,
     ownerAudience: 'test-provider',
     idTokenHash: opts.idTokenHashOverride ?? sha256Hex(idToken),
-    ownerSessionProof,
-    ownerSessionProofHash: ownerSessionProof
-      ? sha256Hex(canonicalJSON(ownerSessionProof))
-      : null,
     agentInstance: {
       hostname: 'test-host',
       publicKeyFingerprint: fp,
@@ -255,7 +236,7 @@ function buildFullChainToken(opts: FullChainTokenOpts = {}) {
 
 describe('verifyAgentTokenWithOwner', () => {
   describe('happy path', () => {
-    it('verifies a full chain token without owner session proof', () => {
+    it('verifies a full chain token', () => {
       const { tokenB64, jwks, fp, owner } = buildFullChainToken();
       const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
 
@@ -264,41 +245,9 @@ describe('verifyAgentTokenWithOwner', () => {
       expect(result.fingerprint).toBe(fp);
       expect(result.owner).toBe(owner);
       expect(result.ownerVerified).toBe(true);
-      expect((result as VerifyOwnerSuccess).ownerProofVerified).toBe(false);
       expect((result as VerifyOwnerSuccess).issuer).toBe(
         'https://sso.alien-api.com',
       );
-    });
-
-    it('verifies a full chain token with owner session proof', () => {
-      const agentKeys = generateEd25519();
-      const proofKeys = generateEd25519();
-      const owner = '00000003010000000000539c741e0df8';
-      const seed = randomBytes(16).toString('hex');
-      const message = `${owner}${seed}`;
-      const sessionSignature = signEd25519Hex(message, proofKeys.privateKeyPem);
-
-      const ownerSessionProof = {
-        sessionAddress: owner,
-        sessionSignature,
-        sessionSignatureSeed: seed,
-        sessionPublicKey: proofKeys.publicKeyHex,
-        providerAddress: 'test-provider',
-        signatureVerifiedAt: Math.floor(Date.now() / 1000),
-      };
-
-      const { tokenB64, jwks } = buildFullChainToken({
-        agentKeys,
-        owner,
-        ownerSessionProof,
-      });
-
-      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
-
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
-      expect(result.ownerVerified).toBe(true);
-      expect((result as VerifyOwnerSuccess).ownerProofVerified).toBe(true);
     });
   });
 
@@ -820,72 +769,6 @@ describe('verifyAgentTokenWithOwner', () => {
     });
   });
 
-  describe('owner session proof', () => {
-    it('rejects proof with wrong sessionAddress', () => {
-      const proofKeys = generateEd25519();
-      const wrongOwner = 'wrong-address';
-      const seed = randomBytes(16).toString('hex');
-      const sessionSignature = signEd25519Hex(
-        `${wrongOwner}${seed}`,
-        proofKeys.privateKeyPem,
-      );
-
-      const { tokenB64, jwks } = buildFullChainToken({
-        ownerSessionProof: {
-          sessionAddress: wrongOwner,
-          sessionSignature,
-          sessionSignatureSeed: seed,
-          sessionPublicKey: proofKeys.publicKeyHex,
-        },
-      });
-
-      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
-      expect(result.ok).toBe(false);
-      if (result.ok) return;
-      expect(result.error).toBe('Owner session proof address mismatch');
-    });
-
-    it('rejects proof with invalid signature', () => {
-      const proofKeys = generateEd25519();
-      const otherKeys = generateEd25519();
-      const owner = '00000003010000000000539c741e0df8';
-      const seed = randomBytes(16).toString('hex');
-      // Sign with wrong key
-      const sessionSignature = signEd25519Hex(
-        `${owner}${seed}`,
-        otherKeys.privateKeyPem,
-      );
-
-      const { tokenB64, jwks } = buildFullChainToken({
-        owner,
-        ownerSessionProof: {
-          sessionAddress: owner,
-          sessionSignature,
-          sessionSignatureSeed: seed,
-          sessionPublicKey: proofKeys.publicKeyHex, // doesn't match signer
-        },
-      });
-
-      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
-      expect(result.ok).toBe(false);
-      if (result.ok) return;
-      expect(result.error).toBe('Owner session proof signature failed');
-    });
-
-    it('rejects proof with incomplete fields', () => {
-      const { tokenB64, jwks } = buildFullChainToken({
-        ownerSessionProof: {
-          sessionAddress: '00000003010000000000539c741e0df8',
-          // missing other fields
-        },
-      });
-
-      const result = verifyAgentTokenWithOwner(tokenB64, EXPECTED({ jwks }));
-      expect(result.ok).toBe(false);
-      if (result.ok) return;
-      expect(result.error).toBe('Incomplete owner session proof fields');
-    });
-  });
 });
 
 describe('verifyAgentRequestWithOwner', () => {

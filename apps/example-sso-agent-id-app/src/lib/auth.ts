@@ -33,7 +33,10 @@ export async function authenticateAgent(
 
   const tokenB64 = auth.slice(8).trim();
   const jwks = await getJWKS();
-  let result = verifyAgentTokenWithOwner(tokenB64, { jwks });
+  let result = verifyAgentTokenWithOwner(tokenB64, {
+    jwks,
+    expectedAudience: process.env.NEXT_PUBLIC_ALIEN_PROVIDER_ADDRESS!,
+  });
   if (!result.ok) {
     result = verifyAgentToken(tokenB64);
   }

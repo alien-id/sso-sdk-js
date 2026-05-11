@@ -6,7 +6,7 @@ import {
   verifyIdToken,
 } from '../../src/verify';
 
-const ISSUER = 'https://sso.alien.com';
+const ISSUER = 'https://sso.alien-api.com';
 const AUDIENCE = '0xProvider';
 
 function b64url(input: string | Buffer): string {

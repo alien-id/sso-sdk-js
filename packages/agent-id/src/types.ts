@@ -88,8 +88,6 @@ export interface VerifySuccess {
 
 export interface VerifyOwnerSuccess extends VerifySuccess {
   ownerVerified: true;
-  /** Whether the owner session proof (human consent signature) was present and valid. */
-  ownerProofVerified: boolean;
   /** The id_token issuer URL. */
   issuer: string;
 }
