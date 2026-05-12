@@ -233,15 +233,22 @@ export function verifyDPoPRequest(
       `access_token iss ${String(at.payload.iss)} != ${expectedIssuer}`,
     );
   }
-  if (opts.expectedAudience !== undefined) {
+  // RFC 9068 §4 audience check. Default: the AT `aud` must include
+  // `expectedIssuer` — the "federated audience" pattern. The Alien SSO
+  // always emits `aud = [client_id, issuer]` (sso/internal/service/jwt.go),
+  // so any agent-id token presented to any Alien-aware RS satisfies
+  // the default. Pass an explicit string to scope to a specific
+  // client_id/resource, or `false` to skip (test fixtures only).
+  if (opts.expectedAudience !== false) {
+    const expectedAud = opts.expectedAudience ?? expectedIssuer;
     const aud = at.payload.aud;
     const audOk = Array.isArray(aud)
-      ? aud.includes(opts.expectedAudience)
-      : aud === opts.expectedAudience;
+      ? aud.includes(expectedAud)
+      : aud === expectedAud;
     if (!audOk) {
       return fail(
         'bad_access_token_aud',
-        `access_token aud does not include ${opts.expectedAudience}`,
+        `access_token aud does not include ${expectedAud}`,
       );
     }
   }

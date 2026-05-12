@@ -38,12 +38,22 @@ export interface VerifyDPoPOptions {
    */
   expectedIssuer?: string;
   /**
-   * Expected access_token audience (RFC 7519 §4.1.3). Optional — when
-   * provided, the AT `aud` claim MUST include it. When omitted, the
-   * audience check is skipped (the SSO's signature still binds the
-   * AT to its issuer).
+   * Expected access_token audience (RFC 7519 §4.1.3, RFC 9068 §4).
+   *
+   * Three behaviors:
+   *   - **omitted** (default, recommended): the AT `aud` claim MUST
+   *     include `expectedIssuer`. This is the "federated audience"
+   *     pattern — any agent bound to any OAuth client of the same
+   *     Alien SSO is accepted, because the SSO always emits
+   *     `aud = [client_id, issuer]`.
+   *   - **string**: the AT `aud` MUST include this exact value. Use
+   *     when you want to scope tokens to a specific OAuth client_id
+   *     or RFC 8707 resource indicator.
+   *   - **false**: skip the audience check entirely. Only the AT
+   *     signature + issuer + DPoP cnf.jkt binding are enforced.
+   *     Discouraged outside of test fixtures.
    */
-  expectedAudience?: string;
+  expectedAudience?: string | false;
   /**
    * DPoP proof freshness window in seconds (RFC 9449 §4.3 step 11).
    * Default: 30.

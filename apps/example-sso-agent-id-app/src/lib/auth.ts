@@ -37,10 +37,7 @@ export async function authenticateAgent(
       url: req.url,
       headers: headersToRecord(req.headers),
     },
-    {
-      jwks,
-      expectedAudience: process.env.NEXT_PUBLIC_ALIEN_PROVIDER_ADDRESS!,
-    },
+    { jwks },
   );
   if (!result.ok) {
     return NextResponse.json(result, {

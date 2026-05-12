@@ -75,7 +75,11 @@ function mintAccessToken(args: {
   const payload = {
     iss: args.iss ?? EXPECTED_ISSUER,
     sub: args.sub,
-    aud: args.aud ?? EXPECTED_AUDIENCE,
+    // Mirror the SSO's `aud = [client_id, issuer]` shape so the
+    // federated-audience default succeeds when callers don't pin
+    // expectedAudience. Tests that exercise scope-specific behavior
+    // override this explicitly.
+    aud: args.aud ?? [EXPECTED_AUDIENCE, EXPECTED_ISSUER],
     iat: args.iat ?? now,
     exp: args.exp ?? now + 600,
     cnf: { jkt: args.agentJkt },
@@ -650,11 +654,50 @@ describe('verifyDPoPRequest — RFC 9449 §4.3', () => {
     );
   });
 
-  it('skips aud check when expectedAudience is omitted', () => {
+  // ─── Federated audience: default expectedAudience falls back to expectedIssuer
+  // The Alien SSO mints `aud = [client_id, issuer]` so any agent-id
+  // token presented to any Alien-aware RS satisfies the default check.
+
+  it('accepts AT with issuer in aud array when expectedAudience is omitted (federated default)', () => {
+    const { req, jwks } = buildRequest({
+      accessTokenOverrides: {
+        aud: [EXPECTED_AUDIENCE, EXPECTED_ISSUER] as unknown as string,
+      },
+    });
+    const result = verifyDPoPRequest(req, { jwks, expectedIssuer: EXPECTED_ISSUER });
+    expect(result.ok).toBe(true);
+  });
+
+  it('accepts AT with aud === issuer string when expectedAudience is omitted', () => {
+    const { req, jwks } = buildRequest({
+      accessTokenOverrides: { aud: EXPECTED_ISSUER },
+    });
+    const result = verifyDPoPRequest(req, { jwks, expectedIssuer: EXPECTED_ISSUER });
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects AT whose aud lacks the issuer when expectedAudience is omitted', () => {
+    // Defends against id_token confusion: an id+jwt from the same SSO
+    // carries `aud = client_id` only (no issuer), and would have been
+    // accepted under the pre-2.1.0 "skip aud" default.
+    const { req, jwks } = buildRequest({
+      accessTokenOverrides: { aud: 'some-client-id' },
+    });
+    expectFailure(
+      verifyDPoPRequest(req, { jwks, expectedIssuer: EXPECTED_ISSUER }),
+      'bad_access_token_aud',
+    );
+  });
+
+  it('accepts AT with mismatching aud when expectedAudience is false (opt-out)', () => {
     const { req, jwks } = buildRequest({
       accessTokenOverrides: { aud: 'anything' },
     });
-    const result = verifyDPoPRequest(req, { jwks, expectedIssuer: EXPECTED_ISSUER });
+    const result = verifyDPoPRequest(req, {
+      jwks,
+      expectedIssuer: EXPECTED_ISSUER,
+      expectedAudience: false,
+    });
     expect(result.ok).toBe(true);
   });
 
