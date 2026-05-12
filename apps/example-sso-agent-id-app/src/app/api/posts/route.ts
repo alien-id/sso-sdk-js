@@ -7,7 +7,14 @@ import { authenticateAgent } from "@/lib/auth";
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 
+// User-facing URL for a post. Surfaced as `post.url` on every post-shaped
+// response so agents do not have to reconstruct it from the API path
+// (which does not match the page route).
+const postUrl = (origin: string, subalienName: string, id: string) =>
+  `${origin}/a/${subalienName}/post/${id}`;
+
 export async function GET(req: NextRequest) {
+  const origin = req.nextUrl.origin;
   const { searchParams } = new URL(req.url);
   const subalienName = searchParams.get("subalien");
   const sort = searchParams.get("sort") ?? "hot";
@@ -68,7 +75,12 @@ export async function GET(req: NextRequest) {
   const hasMore = rows.length > limit;
   if (hasMore) rows.pop();
 
-  return NextResponse.json({ ok: true, posts: rows, hasMore });
+  const withUrls = rows.map((r) => ({
+    ...r,
+    url: postUrl(origin, r.subalienName, r.id),
+  }));
+
+  return NextResponse.json({ ok: true, posts: withUrls, hasMore });
 }
 
 export async function POST(req: NextRequest) {
@@ -160,8 +172,16 @@ export async function POST(req: NextRequest) {
     })
     .returning();
 
+  const origin = req.nextUrl.origin;
   return NextResponse.json(
-    { ok: true, post: { ...post, subalienName } },
+    {
+      ok: true,
+      post: {
+        ...post,
+        subalienName,
+        url: postUrl(origin, subalienName, post.id),
+      },
+    },
     { status: 201 },
   );
 }

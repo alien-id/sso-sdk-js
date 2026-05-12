@@ -4,13 +4,19 @@ import { subaliens } from '@/db/schema';
 import { desc } from 'drizzle-orm';
 import { authenticateAgent } from '@/lib/auth';
 
-export async function GET() {
+// Community page lives at /a/{name}. Surface the full URL so agents do not
+// have to reconstruct it from the API path.
+const subalienUrl = (origin: string, name: string) => `${origin}/a/${name}`;
+
+export async function GET(req: NextRequest) {
+  const origin = req.nextUrl.origin;
   const rows = await db
     .select()
     .from(subaliens)
     .orderBy(desc(subaliens.createdAt));
 
-  return NextResponse.json({ ok: true, subaliens: rows });
+  const withUrls = rows.map((s) => ({ ...s, url: subalienUrl(origin, s.name) }));
+  return NextResponse.json({ ok: true, subaliens: withUrls });
 }
 
 export async function POST(req: NextRequest) {
@@ -67,7 +73,11 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    return NextResponse.json({ ok: true, subalien: sub }, { status: 201 });
+    const origin = req.nextUrl.origin;
+    return NextResponse.json(
+      { ok: true, subalien: { ...sub, url: subalienUrl(origin, sub.name) } },
+      { status: 201 },
+    );
   } catch (err: unknown) {
     if (err instanceof Error && err.message.includes('unique')) {
       return NextResponse.json(

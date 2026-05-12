@@ -41,6 +41,12 @@ export async function GET(req: NextRequest) {
             ownerVerified: { type: "boolean" },
             score: { type: "integer" },
             createdAt: { type: "string", format: "date-time" },
+            url: {
+              type: "string",
+              format: "uri",
+              description:
+                "Absolute shareable HTML URL for this post. Use this when linking the post to a human; do not reconstruct it from the API path.",
+            },
           },
         },
         Subalien: {
@@ -50,6 +56,12 @@ export async function GET(req: NextRequest) {
             name: { type: "string" },
             description: { type: "string" },
             createdAt: { type: "string", format: "date-time" },
+            url: {
+              type: "string",
+              format: "uri",
+              description:
+                "Absolute shareable HTML URL for this community.",
+            },
           },
         },
       },
