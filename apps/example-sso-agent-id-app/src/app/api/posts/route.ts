@@ -1,27 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { posts, subaliens, comments } from '@/db/schema';
-import { desc, eq, sql, count } from 'drizzle-orm';
-import { authenticateAgent } from '@/lib/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { posts, subaliens, comments } from "@/db/schema";
+import { desc, eq, sql, count } from "drizzle-orm";
+import { authenticateAgent } from "@/lib/auth";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const subalienName = searchParams.get('subalien');
-  const sort = searchParams.get('sort') ?? 'hot';
+  const subalienName = searchParams.get("subalien");
+  const sort = searchParams.get("sort") ?? "hot";
   const limit = Math.min(
-    Math.max(parseInt(searchParams.get('limit') ?? '') || DEFAULT_LIMIT, 1),
+    Math.max(parseInt(searchParams.get("limit") ?? "") || DEFAULT_LIMIT, 1),
     MAX_LIMIT,
   );
-  const offset = Math.max(parseInt(searchParams.get('offset') ?? '') || 0, 0);
+  const offset = Math.max(parseInt(searchParams.get("offset") ?? "") || 0, 0);
 
   const commentCountSq = db
-    .select({ postId: comments.postId, count: count().as('comment_count') })
+    .select({ postId: comments.postId, count: count().as("comment_count") })
     .from(comments)
     .groupBy(comments.postId)
-    .as('cc');
+    .as("cc");
 
   let query = db
     .select({
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       score: posts.score,
       createdAt: posts.createdAt,
       commentCount: sql<number>`coalesce(${commentCountSq.count}, 0)`.as(
-        'comment_count',
+        "comment_count",
       ),
     })
     .from(posts)
@@ -48,9 +48,9 @@ export async function GET(req: NextRequest) {
     query = query.where(eq(subaliens.name, subalienName));
   }
 
-  if (sort === 'top') {
+  if (sort === "top") {
     query = query.orderBy(desc(posts.score), desc(posts.createdAt));
-  } else if (sort === 'new') {
+  } else if (sort === "new") {
     query = query.orderBy(desc(posts.createdAt));
   } else {
     // "hot" — score weighted by recency
@@ -75,49 +75,62 @@ export async function POST(req: NextRequest) {
   const auth = await authenticateAgent(req);
   if (auth instanceof NextResponse) return auth;
 
-  let body: { title?: string; body?: string; subalien?: string };
+  let body: {
+    title?: string;
+    body?: string;
+    subalien?: string;
+    subalienName?: string;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json(
-      { ok: false, error: 'Invalid JSON body' },
+      { ok: false, error: "Invalid JSON body" },
       { status: 400 },
     );
   }
 
-  const title = typeof body.title === 'string' ? body.title.trim() : '';
+  const title = typeof body.title === "string" ? body.title.trim() : "";
   if (!title) {
     return NextResponse.json(
-      { ok: false, error: 'Title is required' },
+      { ok: false, error: "Title is required" },
       { status: 400 },
     );
   }
   if (title.length > 300) {
     return NextResponse.json(
-      { ok: false, error: 'Title too long (max 300 chars)' },
+      { ok: false, error: "Title too long (max 300 chars)" },
       { status: 400 },
     );
   }
 
-  const postBody = typeof body.body === 'string' ? body.body.trim() : '';
+  const postBody = typeof body.body === "string" ? body.body.trim() : "";
   if (!postBody) {
     return NextResponse.json(
-      { ok: false, error: 'Body is required' },
+      { ok: false, error: "Body is required" },
       { status: 400 },
     );
   }
   if (postBody.length > 10000) {
     return NextResponse.json(
-      { ok: false, error: 'Body too long (max 10000 chars)' },
+      { ok: false, error: "Body too long (max 10000 chars)" },
       { status: 400 },
     );
   }
 
-  const subalienName =
-    typeof body.subalien === 'string' ? body.subalien.trim().toLowerCase() : '';
+  // Accept `subalienName` (matches the field on GET responses) OR the legacy
+  // `subalien` key. The response surface uses `subalienName`, so agents that
+  // mirror the response shape on POST now Just Work.
+  const subalienRaw =
+    typeof body.subalienName === "string"
+      ? body.subalienName
+      : typeof body.subalien === "string"
+        ? body.subalien
+        : "";
+  const subalienName = subalienRaw.trim().toLowerCase();
   if (!subalienName) {
     return NextResponse.json(
-      { ok: false, error: 'Subalien name is required' },
+      { ok: false, error: "subalienName is required" },
       { status: 400 },
     );
   }

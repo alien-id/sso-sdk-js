@@ -1,22 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   const origin = req.nextUrl.origin;
   const manifest = {
     version: 1,
     service: {
-      name: 'Alienbook',
+      name: "Alienbook",
       url: origin,
     },
     auth: {
-      header: 'Authorization',
-      scheme: 'DPoP',
+      header: "Authorization",
+      scheme: "DPoP",
     },
     api: {
       base: `${origin}/api`,
+      specUrl: `${origin}/api/openapi.json`,
     },
   };
   return NextResponse.json(manifest, {
-    headers: { 'Cache-Control': 'public, max-age=300' },
+    headers: { "Cache-Control": "public, max-age=300" },
   });
 }
