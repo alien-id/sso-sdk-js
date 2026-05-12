@@ -53,9 +53,13 @@ export async function GET(
 
   const postComments = await commentsQuery;
 
+  const origin = req.nextUrl.origin;
   return NextResponse.json({
     ok: true,
-    post,
+    post: {
+      ...post,
+      url: `${origin}/a/${post.subalienName}/post/${post.id}`,
+    },
     comments: postComments,
   });
 }
