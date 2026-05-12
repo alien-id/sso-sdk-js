@@ -35,11 +35,7 @@ import { fetchAlienJWKS, verifyDPoPRequest } from '@alien-id/sso-agent-id';
 const jwks = await fetchAlienJWKS();
 
 // In your request handler:
-const result = verifyDPoPRequest(req, {
-  jwks,
-  expectedIssuer: 'https://sso.alien-api.com',
-  expectedAudience: process.env.ALIEN_PROVIDER_ADDRESS!, // your OAuth client_id
-});
+const result = verifyDPoPRequest(req, { jwks });
 
 if (!result.ok) {
   return res.status(401)
@@ -52,9 +48,45 @@ if (!result.ok) {
 // result.accessTokenClaims, result.proofClaims — raw decoded JWT payloads
 ```
 
+That's the full integration for a service that wants to accept any agent on
+the Alien network. `expectedIssuer` defaults to `https://sso.alien-api.com`
+and `expectedAudience` defaults to that same value — see
+[Federated audience](#federated-audience) for the rationale and when to
+override.
+
 The verifier needs the *full* request: method, URL, and headers. It uses these
 to compare the proof's `htm` and `htu` claims against the actual request
 (RFC 9449 §4.3 step 8–9).
+
+## Federated audience
+
+The Alien SSO mints every access token with `aud = [client_id, issuer]`. By
+default the verifier checks that `aud` contains `expectedIssuer` — i.e. the
+token was minted by the Alien SSO at all. This is the "federated audience"
+pattern: every Alien-aware service treats the SSO issuer URL as its own
+audience identifier, so one agent identity works against the whole network
+with no per-service configuration.
+
+The default also defends against id_token confusion: an `id+jwt` from the
+same SSO has `aud = client_id` only (no issuer), so it can't impersonate an
+access token.
+
+Override `expectedAudience` only when you specifically want to *narrow*
+acceptance:
+
+```typescript
+// Scope to agents bound to your own OAuth client only:
+verifyDPoPRequest(req, { jwks, expectedAudience: 'YOUR_CLIENT_ID' });
+
+// Scope to an RFC 8707 resource indicator (when SSO/agent support lands):
+verifyDPoPRequest(req, { jwks, expectedAudience: 'https://your.service/api' });
+
+// Skip the audience check entirely (test fixtures only):
+verifyDPoPRequest(req, { jwks, expectedAudience: false });
+```
+
+See [`docs/RS-INTEGRATION.md`](./docs/RS-INTEGRATION.md) for the full
+resource-server integration checklist.
 
 ## API
 
@@ -67,7 +99,7 @@ to compare the proof's `htm` and `htu` claims against the actual request
 | `req.headers` | `Record<string, string \| string[] \| undefined>` | Must include exactly one `authorization: DPoP <at>` and exactly one `dpop: <proof>`. |
 | `opts.jwks` | `JWKS` | Pre-fetched JWKS from the SSO (see `fetchAlienJWKS`). |
 | `opts.expectedIssuer` | `string` | Defaults to `https://sso.alien-api.com`. Override for staging/self-hosted SSO. |
-| `opts.expectedAudience` | `string` | Optional. When set, the access-token `aud` claim MUST include it. |
+| `opts.expectedAudience` | `string \| false` | Defaults to `expectedIssuer` (federated audience). Pass a string to scope to a specific OAuth client_id or RFC 8707 resource. Pass `false` to skip (test fixtures only). |
 | `opts.proofMaxAgeSec` | `number` | DPoP proof freshness window. Default `30`. |
 | `opts.clockSkewSec` | `number` | Clock skew applied to access-token `exp`. Default `30`. |
 | `opts.jtiStore` | `DPoPJtiStore` | Replay-protection store for the proof's `jti` claim. Default: in-memory `Map`. Inject a shared store (e.g. Redis-backed) for multi-instance deployments. |
@@ -135,7 +167,7 @@ function requireAgent(req, res, next) {
   const fullUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
   const result = verifyDPoPRequest(
     { method: req.method, url: fullUrl, headers: req.headers },
-    { jwks, expectedAudience: process.env.ALIEN_PROVIDER_ADDRESS! },
+    { jwks },
   );
   if (!result.ok) {
     res.set('WWW-Authenticate', `DPoP error="${result.code}"`);
@@ -167,7 +199,7 @@ app.addHook('preHandler', async (request, reply) => {
   const fullUrl = `${request.protocol}://${request.hostname}${request.url}`;
   const result = verifyDPoPRequest(
     { method: request.method, url: fullUrl, headers: request.headers },
-    { jwks, expectedAudience: process.env.ALIEN_PROVIDER_ADDRESS! },
+    { jwks },
   );
   if (!result.ok) {
     reply.header('WWW-Authenticate', `DPoP error="${result.code}"`);
@@ -192,7 +224,7 @@ export async function GET(req: NextRequest) {
 
   const result = verifyDPoPRequest(
     { method: req.method, url: req.url, headers },
-    { jwks, expectedAudience: process.env.ALIEN_PROVIDER_ADDRESS! },
+    { jwks },
   );
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, {
@@ -285,7 +317,7 @@ across releases; new values may be added.
 | `unknown_access_token_kid` | RFC 7515 | Access-token's `kid` not in the JWKS |
 | `bad_access_token_signature` / `access_token_sig_error` | RFC 7515 | Access-token signature fails verification |
 | `bad_access_token_iss` | RFC 7519 §4.1.1 | `iss` ≠ `expectedIssuer` |
-| `bad_access_token_aud` | RFC 7519 §4.1.3 | `aud` does not include `expectedAudience` |
+| `bad_access_token_aud` | RFC 7519 §4.1.3 | `aud` does not include `expectedAudience` (defaults to `expectedIssuer`) |
 | `expired_access_token` | RFC 7519 §4.1.4 | Access-token `exp` is in the past |
 | `missing_access_token_sub` | RFC 7519 §4.1.2 | Access-token has no `sub` claim |
 | `missing_cnf_jkt` | RFC 7800 §3.1 | Access-token has no `cnf.jkt` (not DPoP-bound) |
