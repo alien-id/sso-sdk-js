@@ -67,9 +67,10 @@ pattern: every Alien-aware service treats the SSO issuer URL as its own
 audience identifier, so one agent identity works against the whole network
 with no per-service configuration.
 
-The default also defends against id_token confusion: an `id+jwt` from the
-same SSO has `aud = client_id` only (no issuer), so it can't impersonate an
-access token.
+The default is also defense-in-depth on top of the existing `typ == at+jwt`
+check: an `id+jwt` from the same SSO has `aud = client_id` only (no issuer),
+so even if the `typ` check were ever weakened the federated-audience default
+would reject it.
 
 Override `expectedAudience` only when you specifically want to *narrow*
 acceptance:

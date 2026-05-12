@@ -32,7 +32,7 @@ You don't have to think about this — the SDK does it. Listed here so you know 
 | `iss == https://sso.alien-api.com` | AT claim | Federation anchor — pins to the canonical Alien SSO |
 | AT signature verifies against issuer JWKS | RFC 9068 §4 | Authenticity |
 | `exp`, `nbf`, `iat` fresh | AT claims | Replay window |
-| `aud` includes `expectedIssuer` | AT claim | RFC 9068 §4 + id_token confusion defense |
+| `aud` includes `expectedIssuer` | AT claim | RFC 9068 §4 (federated audience) |
 | AT `typ == at+jwt` | JWT header | Strictly an access token, not an id_token |
 | `cnf.jkt` present and matches DPoP proof's `jwk` thumbprint | AT + proof | RFC 9449 §6.1 sender-constraint |
 | DPoP `htm` / `htu` match this request | Proof claims | Per-request binding |

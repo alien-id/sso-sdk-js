@@ -45,8 +45,7 @@ export interface VerifyDPoPOptions {
    *     include `expectedIssuer`. This is the "federated audience"
    *     pattern — any agent bound to any OAuth client of the same
    *     Alien SSO is accepted, because the SSO always emits
-   *     `aud = [client_id, issuer]`. Defends against id_token
-   *     confusion (id+jwt has no issuer in `aud`).
+   *     `aud = [client_id, issuer]`.
    *   - **string**: the AT `aud` MUST include this exact value. Use
    *     when you want to scope tokens to a specific OAuth client_id
    *     or RFC 8707 resource indicator.

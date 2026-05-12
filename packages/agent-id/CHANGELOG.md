@@ -8,7 +8,7 @@ The verifier now defaults `expectedAudience` to `expectedIssuer` instead of skip
 
 The Alien SSO mints `aud = [client_id, issuer]` on every access token. Any agent-id token presented to any Alien-aware resource server satisfies an `aud.includes(issuer)` check — so the default lets one agent identity work against the whole Alien network out of the box, no per-RS configuration. This matches the documented "supports any agent on the Alien SSO" property.
 
-The new default also defends against id_token confusion: an `id+jwt` from the same SSO carries `aud = client_id` only (no issuer), and would have been accepted under the pre-2.1.0 "skip aud" default.
+The new default tightens defense-in-depth on top of the existing `typ == at+jwt` check (`index.ts:195`): an `id+jwt` from the same SSO carries `aud = client_id` only (no issuer), so even if the `typ` check were ever weakened, the federated-audience default rejects it. The primary block on id_token confusion remains the `typ` check.
 
 #### Behavior change
 
