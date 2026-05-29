@@ -1,0 +1,12 @@
+# Single source of truth for the toolchain — local dev and CI both read this.
+#
+# We pin Node only. npm ships bundled with Node and is deterministic per
+# release (24.16.0 -> npm 11.13.0), so pinning Node IS a reproducible npm
+# pin. We deliberately do NOT use mise's `npm:npm` backend: Node's bundled
+# npm shadows it in both `mise exec` and shim resolution, which would make
+# the pin claim a version it doesn't actually run.
+#
+# npm 11.13.0 clears the >= 11.10.0 floor required for `min-release-age`
+# (see .npmrc). CI asserts the running npm version as a guard.
+[tools]
+node = "24.16.0"
