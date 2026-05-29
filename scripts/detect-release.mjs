@@ -11,68 +11,76 @@
 //
 // Writes both as outputs to $GITHUB_OUTPUT. Requires only Node + npm on
 // PATH (no project install), so the detect job stays cheap and isolated.
+//
+// The decision logic lives in ./lib/detect.mjs (pure, unit-tested); this
+// file only wires it to the filesystem and npm.
 
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { appendFile, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  hasPendingChangesets,
+  interpretNpmView,
+  needsPublish,
+  selectPublishable,
+} from './lib/detect.mjs';
 
 const root = process.cwd();
 
-async function hasPendingChangesets() {
+async function listChangesetEntries() {
   const dir = path.join(root, '.changeset');
-  if (!existsSync(dir)) return false;
-  const entries = await readdir(dir);
-  return entries.some(
-    (f) => f.endsWith('.md') && f.toLowerCase() !== 'readme.md',
-  );
+  if (!existsSync(dir)) return [];
+  return readdir(dir);
 }
 
-async function readPublishablePackages() {
+async function readManifests() {
   const pkgsDir = path.join(root, 'packages');
   const dirents = await readdir(pkgsDir, { withFileTypes: true });
-  const packages = [];
+  const manifests = [];
   for (const dirent of dirents) {
     if (!dirent.isDirectory()) continue;
     const manifest = path.join(pkgsDir, dirent.name, 'package.json');
     if (!existsSync(manifest)) continue;
-    const pkg = JSON.parse(await readFile(manifest, 'utf8'));
-    if (pkg.private || !pkg.name || !pkg.version) continue;
-    packages.push({ name: pkg.name, version: pkg.version });
+    manifests.push(JSON.parse(await readFile(manifest, 'utf8')));
   }
-  return packages;
+  return manifests;
 }
 
-// True if name@version is already on the registry. A genuine "version does
-// not exist" (E404) returns false; anything else (network, auth, 5xx) throws
-// so the job fails loudly instead of silently mis-deciding.
+// Run `npm view name@version version` and classify the result.
 function isPublished(name, version) {
   const spec = `${name}@${version}`;
   try {
-    const out = execFileSync('npm', ['view', spec, 'version'], {
+    const stdout = execFileSync('npm', ['view', spec, 'version'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
-    }).trim();
-    return out.length > 0;
+    });
+    return interpretNpmView({ failed: false, stdout }, spec);
   } catch (error) {
-    const detail = `${error.stdout ?? ''}${error.stderr ?? ''}`;
-    if (/E404|No match found for version/i.test(detail)) return false;
-    throw new Error(`npm view failed for ${spec}: ${detail || error.message}`);
+    const output = `${error.stdout ?? ''}${error.stderr ?? ''}` || error.message;
+    return interpretNpmView({ failed: true, output }, spec);
   }
 }
 
 async function main() {
-  const hasChangesets = await hasPendingChangesets();
-  const packages = await readPublishablePackages();
+  const changesets = hasPendingChangesets(await listChangesetEntries());
+  const packages = selectPublishable(await readManifests());
 
-  let shouldPublish = false;
+  // Memoize so each package is queried once, then reused by needsPublish.
+  const cache = new Map();
+  const isPublishedOnce = (name, version) => {
+    const key = `${name}@${version}`;
+    if (!cache.has(key)) cache.set(key, isPublished(name, version));
+    return cache.get(key);
+  };
+
   for (const pkg of packages) {
-    const published = isPublished(pkg.name, pkg.version);
-    if (!published) shouldPublish = true;
+    const published = isPublishedOnce(pkg.name, pkg.version);
     console.log(`${pkg.name}@${pkg.version}: ${published ? 'published' : 'NOT published'}`);
   }
+  const shouldPublish = needsPublish(packages, isPublishedOnce);
 
-  const result = `hasChangesets=${hasChangesets}\nshouldPublish=${shouldPublish}\n`;
+  const result = `hasChangesets=${changesets}\nshouldPublish=${shouldPublish}\n`;
   console.log(`\n${result}`);
   if (process.env.GITHUB_OUTPUT) {
     await appendFile(process.env.GITHUB_OUTPUT, result);
