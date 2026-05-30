@@ -21,7 +21,7 @@
     "changeset:status": "changeset status --verbose",
     "ci:detect": "node scripts/detect-release.mjs",
     "ci:version": "changeset version && npm install",
-    "ci:publish": "turbo run build && changeset publish"
+    "ci:publish": "turbo run build && node scripts/publish-topological.mjs && changeset tag"
   },
   "devDependencies": {
     "@changesets/changelog-github": "0.7.0",

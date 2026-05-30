@@ -67,14 +67,22 @@ Pre-release versions publish under the matching dist-tag automatically.
 
 ## Publishing internals
 
-The publish job runs `npm run ci:publish` = `turbo run build && changeset
-publish`. `changeset publish`:
+The publish job runs `npm run ci:publish` =
+`turbo run build && node scripts/publish-topological.mjs && changeset tag`.
 
+`scripts/publish-topological.mjs` (not `changeset publish`, which publishes
+with concurrency rather than dependency order):
+
+- sorts packages dependency-first (`@alien-id/sso` before `@alien-id/sso-react`,
+  `@alien-id/sso-solana` before `@alien-id/sso-solana-react`) so a dependent
+  never reaches the registry before the core version it requires,
 - publishes only versions not already on the registry (idempotent — safe to
   re-run after a partial failure),
-- publishes in dependency (topological) order,
-- attaches provenance (`publishConfig.provenance: true`),
-- creates and pushes the git tags.
+- attaches provenance (`publishConfig.provenance: true`) and the correct
+  dist-tag derived from the version (stable → `latest`, prereleases → their
+  identifier),
+- emits the `New tag:` lines that `changesets/action` parses to push git tags
+  and create GitHub releases; `changeset tag` then creates the local tags.
 
 Authentication is OIDC trusted publishing — no token. The job is pinned to npm
 ≥ 11.10.0 and runs inside the `npm-publish` environment.
