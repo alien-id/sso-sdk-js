@@ -59,18 +59,23 @@ CI and release jobs.
 - **Release split into three jobs.** `detect` (read-only, no id-token) decides
   from ground truth whether there is a Version PR to open (changeset files) or a
   publish to run (registry state). `version-pr` holds only `contents`/
-  `pull-requests: write`. `publish` is the **only** job with `id-token: write`,
-  and it is gated behind the `npm-publish` GitHub Environment (manual reviewer
-  approval).
-- **OIDC isolation.** The publish job owns Node + registry context via
-  `setup-node` (not mise) so the OIDC-critical step has predictable egress, and
-  it does **no dependency caching** — caching while holding an OIDC token was the
-  TanStack/Astro 2025 exfiltration vector.
-- **harden-runner.** Present on every job. The publish job runs with
-  `egress-policy: block` and an explicit allowlist (npm registry, sigstore,
-  GitHub). `detect`/`version-pr` run in `audit` mode because mise provisions Node
-  from `nodejs.org`, whose endpoints are not fixed — neither job holds an OIDC
-  token.
+  `pull-requests: write`. `publish` is the only release job with
+  `id-token: write` and is gated behind the `npm-publish` GitHub Environment
+  (manual reviewer approval).
+- **npm-publishing OIDC isolation.** `publish` is the only job that can mint an
+  OIDC token scoped to the npm registry (it sets `registry-url` via
+  `setup-node`). The Pages `deploy` job in `deploy.yml` also requests
+  `id-token: write`, but for the GitHub Pages OIDC audience only — it never
+  configures an npm registry and so cannot publish. The publish job owns Node +
+  registry via `setup-node` for predictable egress and does **no dependency
+  caching** — caching while holding an OIDC token was the TanStack/Astro 2025
+  exfiltration vector.
+- **harden-runner.** Present on every job. All three release jobs run with
+  `egress-policy: block` and an explicit allowlist — they use `setup-node`
+  (Node fetched from GitHub) precisely so egress can be fully blocked; the
+  publish job's allowlist additionally includes sigstore for provenance
+  signing. `ci.yml` and the Pages `deploy` job run in `audit` mode (they hold no
+  publish/registry token and the build's egress is broad).
 - **Pinned actions.** Every third-party action is pinned to a full commit SHA
   with a version comment. Renovate keeps the digests current.
 - **`persist-credentials: false`** on every checkout.
