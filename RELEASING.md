@@ -67,25 +67,27 @@ Pre-release versions publish under the matching dist-tag automatically.
 
 ## Publishing internals
 
-The publish job runs `npm run ci:publish` =
-`turbo run build && node scripts/publish-topological.mjs && changeset tag`.
+The publish job runs `npm run ci:publish` = `turbo run build && changeset
+publish` (the canonical changesets flow). `changeset publish`:
 
-`scripts/publish-topological.mjs` (not `changeset publish`, which publishes
-with concurrency rather than dependency order):
-
-- sorts packages dependency-first (`@alien-id/sso` before `@alien-id/sso-react`,
-  `@alien-id/sso-solana` before `@alien-id/sso-solana-react`) so a dependent
-  never reaches the registry before the core version it requires,
 - publishes only versions not already on the registry (idempotent — safe to
   re-run after a partial failure),
 - attaches provenance (`publishConfig.provenance: true`) and the correct
-  dist-tag derived from the version (stable → `latest`, prereleases → their
-  identifier),
-- emits the `New tag:` lines that `changesets/action` parses to push git tags
-  and create GitHub releases; `changeset tag` then creates the local tags.
+  dist-tag (stable → `latest`, prereleases → their identifier),
+- prints the `New tag:` lines `changesets/action` parses to push git tags and
+  create GitHub releases.
 
 Authentication is OIDC trusted publishing — no token. The job is pinned to npm
 ≥ 11.10.0 and runs inside the `npm-publish` environment.
+
+**On publish ordering.** `changeset publish` publishes packages concurrently
+rather than in dependency order. This is safe here because internal
+dependencies use caret ranges (`@alien-id/sso-react` → `@alien-id/sso@^2.0.0`),
+so a dependent that reaches the registry a moment before its dependency still
+resolves against the previously published core version. A topological publisher
+(as in the Bun-based miniapp-sdk) is only required when internal deps are pinned
+to exact versions via the `workspace:*` protocol, where the in-flight version
+would not yet exist. If this repo ever adopts exact internal pins, revisit this.
 
 ## Troubleshooting
 
