@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.1
+
+### Patch Changes
+
+- [#22](https://github.com/alien-id/sso-sdk-js/pull/22) [`e7f5176`](https://github.com/alien-id/sso-sdk-js/commit/e7f517683b6ebd41d3d6b853eec97dab2cb4407e) Thanks [@truehazker-eti](https://github.com/truehazker-eti)! - docs: state the unit (seconds) for `proofMaxAgeSec` and `clockSkewSec` in the API table
+
 ## 2.1.0
 
 ### Federated audience by default
@@ -12,11 +18,11 @@ The new default tightens defense-in-depth on top of the existing `typ == at+jwt`
 
 #### Behavior change
 
-| `expectedAudience` value | Pre-2.1.0 | 2.1.0+ |
-|---|---|---|
-| omitted | skip aud check | require `aud` contains `expectedIssuer` |
-| `string` | require `aud` contains the string | _(unchanged)_ |
-| `false` | _(rejected — not a valid type)_ | skip aud check (test fixtures only) |
+| `expectedAudience` value | Pre-2.1.0                         | 2.1.0+                                  |
+| ------------------------ | --------------------------------- | --------------------------------------- |
+| omitted                  | skip aud check                    | require `aud` contains `expectedIssuer` |
+| `string`                 | require `aud` contains the string | _(unchanged)_                           |
+| `false`                  | _(rejected — not a valid type)_   | skip aud check (test fixtures only)     |
 
 #### Migration
 
