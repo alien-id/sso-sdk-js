@@ -101,8 +101,8 @@ resource-server integration checklist.
 | `opts.jwks` | `JWKS` | Pre-fetched JWKS from the SSO (see `fetchAlienJWKS`). |
 | `opts.expectedIssuer` | `string` | Defaults to `https://sso.alien-api.com`. Override for staging/self-hosted SSO. |
 | `opts.expectedAudience` | `string \| false` | Defaults to `expectedIssuer` (federated audience). Pass a string to scope to a specific OAuth client_id or RFC 8707 resource. Pass `false` to skip (test fixtures only). |
-| `opts.proofMaxAgeSec` | `number` | DPoP proof freshness window. Default `30`. |
-| `opts.clockSkewSec` | `number` | Clock skew applied to access-token `exp`. Default `30`. |
+| `opts.proofMaxAgeSec` | `number` | DPoP proof freshness window, in seconds. Default `30`. |
+| `opts.clockSkewSec` | `number` | Clock skew applied to access-token `exp`, in seconds. Default `30`. |
 | `opts.jtiStore` | `DPoPJtiStore` | Replay-protection store for the proof's `jti` claim. Default: in-memory `Map`. Inject a shared store (e.g. Redis-backed) for multi-instance deployments. |
 
 **Returns `VerifyDPoPSuccess`:**

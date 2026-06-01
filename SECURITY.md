@@ -24,11 +24,15 @@ public issue for undisclosed vulnerabilities.
 
 ## Layer 2 — Install-time hardening (`.npmrc`)
 
-- `min-release-age=3` — a **3-day cooldown**: npm refuses to install any package
-  version published less than three days ago. Every 2025–2026 npm worm was
-  detected within minutes, so a 3-day gate neutralizes the entire class.
-  (Requires npm ≥ 11.10.0 — see Layer 3.) Security fixes are pulled in
-  out-of-band, so this does not hold up emergency CVEs.
+- `min-release-age=3` — a **3-day cooldown** on version *resolution*:
+  `npm install` refuses to resolve a package version published less than three
+  days ago. This gates resolution (new installs, manual `npm install <pkg>`, and
+  `ci:version`), **not** `npm ci`, which replays the committed lockfile verbatim
+  without re-checking age — the lockfile itself is gated by Renovate's matching
+  cooldown (Layer 5). Every 2025–2026 npm worm was detected within minutes, so
+  the gate neutralizes the entire class. (Requires npm ≥ 11.10.0 — see Layer 3.)
+  Security fixes are pulled in out-of-band, so this does not hold up emergency
+  CVEs.
 - `ignore-scripts=true` — disables `pre`/`post`-install lifecycle scripts, the
   vector used by ua-parser-js, Nx, Axios, and Shai-Hulud. Verified safe: builds
   use vite/tsdown/tsc via `npm run`, not install hooks.
