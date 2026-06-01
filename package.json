@@ -5,14 +5,28 @@
     "packages/**",
     "apps/**"
   ],
-  "packageManager": "npm@9.8.0",
+  "_packageManagerNote": "Required by turbo for workspace detection. mise.toml is the source of truth for the toolchain; keep this matched to the npm bundled with the pinned Node (24.16.0 -> 11.13.0). Corepack is not enabled, so this does not override mise.",
+  "packageManager": "npm@11.13.0",
+  "engines": {
+    "node": ">=20",
+    "npm": ">=11.10.0"
+  },
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint --filter=@alien-id/sso-react --filter=@alien-id/sso-solana-react"
+    "lint": "turbo run lint --filter=@alien-id/sso-react --filter=@alien-id/sso-solana-react",
+    "test": "turbo run test && npm run test:scripts",
+    "test:scripts": "node --test scripts/tests/*.test.mjs",
+    "changeset": "changeset",
+    "changeset:status": "changeset status --verbose",
+    "ci:detect": "node scripts/detect-release.mjs",
+    "ci:version": "changeset version && npm install",
+    "ci:publish": "turbo run build && changeset publish"
   },
   "devDependencies": {
-    "ajv": "^8.17.1",
-    "turbo": "latest"
+    "@changesets/changelog-github": "0.7.0",
+    "@changesets/cli": "2.31.0",
+    "ajv": "8.20.0",
+    "turbo": "2.9.14"
   }
 }

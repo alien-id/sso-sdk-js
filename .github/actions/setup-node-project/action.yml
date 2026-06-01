@@ -1,0 +1,15 @@
+name: Setup Node project
+description: >
+  Install the mise-pinned toolchain (Node + bundled npm) and project
+  dependencies with a frozen lockfile. Requires the repo to be checked out
+  beforehand.
+
+runs:
+  using: composite
+  steps:
+    - name: Install toolchain (mise)
+      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+
+    - name: Install dependencies
+      shell: bash
+      run: npm ci

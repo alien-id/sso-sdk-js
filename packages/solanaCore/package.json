@@ -19,6 +19,11 @@
     "dist",
     "README.md"
   ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
@@ -29,24 +34,24 @@
     "release": "npm publish --access public"
   },
   "devDependencies": {
-    "@types/express": "^5.0.3",
-    "@types/jest": "^30.0.0",
-    "@types/node": "^24.3.0",
-    "@typescript-eslint/eslint-plugin": "^8.41.0",
-    "@typescript-eslint/parser": "^8.41.0",
-    "cross-fetch": "^4.1.0",
-    "eslint": "^9.34.0",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.4",
-    "express": "^5.1.0",
-    "jest": "^30.1.2",
-    "jest-environment-jsdom": "^30.1.2",
-    "nock": "^14.0.10",
-    "prettier": "^3.6.2",
-    "ts-jest": "^29.4.1",
-    "turbo": "^2.5.6",
-    "vite": "^7.1.12",
-    "vite-plugin-dts": "^4.5.4"
+    "@types/express": "5.0.6",
+    "@types/jest": "30.0.0",
+    "@types/node": "24.12.4",
+    "@typescript-eslint/eslint-plugin": "8.60.0",
+    "@typescript-eslint/parser": "8.60.0",
+    "cross-fetch": "4.1.0",
+    "eslint": "9.39.4",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-prettier": "5.5.5",
+    "express": "5.2.1",
+    "jest": "30.4.2",
+    "jest-environment-jsdom": "30.4.1",
+    "nock": "14.0.15",
+    "prettier": "3.8.3",
+    "ts-jest": "29.4.11",
+    "turbo": "2.9.14",
+    "vite": "7.3.3",
+    "vite-plugin-dts": "4.5.4"
   },
   "dependencies": {
     "buffer": "^6.0.3",
