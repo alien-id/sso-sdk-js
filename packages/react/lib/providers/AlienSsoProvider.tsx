@@ -5,6 +5,7 @@ import {
   useMemo,
   useState,
   useCallback,
+  useRef,
 } from 'react';
 import type { ReactNode } from 'react';
 import {
@@ -76,6 +77,16 @@ type SsoContextValue = {
   pollingInterval: number;
   agentIdEnabled: boolean;
   agentIdSkillUrl?: string;
+  /**
+   * @internal Deduplicates SignInModal instances. The provider auto-renders
+   * one modal; if a consumer renders another manually, both would mount and
+   * stack on top of each other. Each instance claims the slot on mount —
+   * only the holder actually renders. Returns true when `instance` holds
+   * the slot.
+   */
+  claimModalSlot: (instance: object) => boolean;
+  /** @internal Releases the modal slot on unmount. */
+  releaseModalSlot: (instance: object) => void;
 };
 
 const SsoContext = createContext<SsoContextValue | null>(null);
@@ -200,6 +211,21 @@ export function AlienSsoProvider({
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
 
+  // See SsoContextValue.claimModalSlot — first SignInModal instance to claim
+  // wins; duplicates render nothing until the holder unmounts.
+  const modalSlotRef = useRef<object | null>(null);
+  const claimModalSlot = useCallback((instance: object) => {
+    if (modalSlotRef.current === null) {
+      modalSlotRef.current = instance;
+    }
+    return modalSlotRef.current === instance;
+  }, []);
+  const releaseModalSlot = useCallback((instance: object) => {
+    if (modalSlotRef.current === instance) {
+      modalSlotRef.current = null;
+    }
+  }, []);
+
   const value = useMemo<SsoContextValue>(
     () => ({
       client,
@@ -218,6 +244,8 @@ export function AlienSsoProvider({
       pollingInterval: client.pollingInterval,
       agentIdEnabled,
       agentIdSkillUrl,
+      claimModalSlot,
+      releaseModalSlot,
     }),
     [
       client,
@@ -234,6 +262,8 @@ export function AlienSsoProvider({
       isModalOpen,
       agentIdEnabled,
       agentIdSkillUrl,
+      claimModalSlot,
+      releaseModalSlot,
     ],
   );
 

@@ -20,16 +20,22 @@ import { getLogoUri } from "../consts/logoUri";
 const AGENT_INSTALL_COMMAND = 'npx skills add alien-id/agent-id';
 
 export const SignInModal = () => {
-  const { isModalOpen: isOpen, closeModal: onClose, generateDeeplink, pollAuth, exchangeToken, pollingInterval, queryClient, agentIdEnabled } = useAuth();
+  const {
+    isModalOpen: isOpen,
+    closeModal: onClose,
+    generateDeeplink,
+    pollAuth,
+    exchangeToken,
+    pollingInterval,
+    queryClient,
+    agentIdEnabled,
+    client,
+    claimModalSlot,
+    releaseModalSlot,
+  } = useAuth();
   const [authMode, setAuthMode] = useState<'human' | 'agent'>('human');
   const [copied, setCopied] = useState(false);
   const isMobile = useIsMobile();
-
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string>('');
-  const [errorDescription, setErrorDescription] = useState<string>('');
-  const [pollingCode, setPollingCode] = useState<string>('');
-  const [deeplink, setDeeplink] = useState<string>('');
 
   // Create QR code instance inside component to avoid `window is not defined` during SSR
   const qrCode = useMemo(() => {
@@ -43,52 +49,101 @@ export const SignInModal = () => {
   const qrInstanceRef = useRef<QRCodeStyling | null>(qrCode);
   const [qrElement, setQrElement] = useState<HTMLDivElement | null>(null);
 
-  const [isLoadingQr, setIsLoadingQr] = useState<boolean>(true);
+  // The provider auto-renders one SignInModal. If a consumer renders another
+  // one manually, both instances mount and stack on top of each other — the
+  // top overlay then shadows the working modal. Claim a per-provider slot so
+  // only one instance renders; the others stay mounted but invisible.
+  const slotInstanceRef = useRef<object>({});
+  const [hasSlot, setHasSlot] = useState(false);
+  useEffect(() => {
+    // Re-attempt the claim on every open so a surviving instance takes over
+    // if the previous slot holder unmounted.
+    setHasSlot(claimModalSlot(slotInstanceRef.current));
+  }, [claimModalSlot, isOpen]);
+  useEffect(() => {
+    const instance = slotInstanceRef.current;
+    return () => releaseModalSlot(instance);
+  }, [releaseModalSlot]);
 
-  // Initialize auth and get deeplink
-  useQuery({
-    queryKey: ['auth-deeplink'],
-    queryFn: async () => {
-      try {
-        setIsLoadingQr(true);
-        const response = await generateDeeplink();
-        setDeeplink(response.deep_link);
-        setPollingCode(response.polling_code);
+  // All sign-in state below is DERIVED from query results, never set from
+  // inside queryFn. With more than one mounted SignInModal (or any other
+  // observer of these keys), react-query deduplicates the fetch and runs
+  // only one instance's queryFn — side effects in that closure would update
+  // only that instance, leaving every other one stuck on the loading state.
+  // Derived state keeps every observer correct because the shared cache is
+  // the single source of truth.
 
-        qrInstanceRef.current?.update({
-          data: response.deep_link,
-        });
-        return response;
-      } catch (error) {
-        setErrorMessage('Failed to login');
-        setErrorDescription('Login could not be completed');
-        throw error;
-      } finally {
-        setIsLoadingQr(false);
-      }
-    },
-    enabled: isOpen && !deeplink,
+  // Scope the deeplink key by SSO origin + provider so two providers with
+  // different configs sharing the module-level QueryClient don't serve each
+  // other's deeplink.
+  const { data: deeplinkData, isError: isDeeplinkError } = useQuery({
+    queryKey: ['auth-deeplink', client.ssoBaseUrl, client.providerAddress],
+    queryFn: () => generateDeeplink(),
+    enabled: isOpen,
+    // The deeplink must stay stable while the modal is open; a fresh one is
+    // requested explicitly on close / try again (see handleClose/handleRetry).
+    staleTime: Infinity,
     retry: false,
     refetchOnWindowFocus: false,
   });
 
-  // Polling query
-  const { data: pollData } = useQuery({
+  const deeplink = deeplinkData?.deep_link ?? '';
+  const pollingCode = deeplinkData?.polling_code ?? '';
+  const isLoadingQr = !deeplink;
+
+  // Polling stops on error or a terminal status. 'authorized' is only
+  // terminal once it carries the authorization_code — a code-less authorized
+  // heartbeat keeps polling. Focus/reconnect refetches (eager poll when the
+  // user returns from the Alien App) obey the same lifecycle.
+  const pollDone = (data?: { status?: string; authorization_code?: string }) =>
+    data?.status === 'rejected' ||
+    data?.status === 'expired' ||
+    (data?.status === 'authorized' && !!data.authorization_code);
+  const pollAlive = (query: {
+    state: { status: string; data?: Parameters<typeof pollDone>[0] };
+  }) => query.state.status !== 'error' && !pollDone(query.state.data);
+
+  const { data: pollData, isError: isPollError } = useQuery({
     queryKey: ['auth-poll', pollingCode],
-    queryFn: async () => {
-      try {
-        return await pollAuth(pollingCode);
-      } catch (error: any) {
-        setErrorMessage('Failed to login');
-        setErrorDescription('Login could not be completed');
-        throw error;
-      }
-    },
-    enabled: isOpen && !!pollingCode && !isSuccess && !errorMessage,
-    refetchInterval: pollingInterval,
+    queryFn: () => pollAuth(pollingCode),
+    enabled: isOpen && !!pollingCode,
+    refetchInterval: (query) => (pollAlive(query) ? pollingInterval : false),
     retry: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: pollAlive,
+    refetchOnReconnect: pollAlive,
   });
+
+  const authorizationCode =
+    pollData?.status === 'authorized' && pollData.authorization_code
+      ? pollData.authorization_code
+      : '';
+
+  // Exchange the authorization code exactly once. Running this as a query on
+  // the shared QueryClient means concurrent observers deduplicate into a
+  // single /oauth/token call (an authorization code is single-use).
+  const { data: tokenData, isError: isExchangeError } = useQuery({
+    queryKey: ['auth-exchange', authorizationCode],
+    queryFn: () => exchangeToken(authorizationCode),
+    enabled: isOpen && !!authorizationCode,
+    staleTime: Infinity,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
+  const isSuccess = !!tokenData;
+
+  let errorMessage = '';
+  let errorDescription = '';
+  if (isDeeplinkError || isPollError || isExchangeError) {
+    errorMessage = 'Failed to login';
+    errorDescription = 'Login could not be completed';
+  } else if (pollData?.status === 'rejected') {
+    errorMessage = 'Access rejected';
+    errorDescription = 'You did not allow access to sign in';
+  } else if (pollData?.status === 'expired') {
+    errorMessage = 'Link expired';
+    errorDescription = 'Login could not be completed';
+  }
 
   useEffect(() => {
     if (qrElement) {
@@ -96,53 +151,46 @@ export const SignInModal = () => {
     }
   }, [qrElement]);
 
+  // Draw the QR as soon as the deeplink lands in the shared cache. Every
+  // instance updates its own canvas, so this stays correct regardless of
+  // which observer's queryFn performed the fetch.
+  useEffect(() => {
+    if (deeplink) {
+      qrInstanceRef.current?.update({
+        data: deeplink,
+      });
+    }
+  }, [deeplink]);
+
   useEffect(() => {
     if (qrElement) {
       qrElement.style.display = authMode === 'agent' ? 'none' : 'block';
     }
   }, [authMode, qrElement]);
 
-  // Handle poll responses
-  useEffect(() => {
-    if (!pollData) return;
+  // While the modal stays open (Try again) the deeplink observers must be
+  // notified and refetched — resetQueries does both, removeQueries would
+  // leave mounted observers holding their last result. Poll/exchange entries
+  // are dropped outright: their keys rotate with the fresh deeplink, so no
+  // observer should ever resurrect (or re-poll) the old polling code.
+  const handleRetry = () => {
+    queryClient.removeQueries({ queryKey: ['auth-poll'] });
+    queryClient.removeQueries({ queryKey: ['auth-exchange'] });
+    queryClient.resetQueries({ queryKey: ['auth-deeplink'] });
+  };
 
-    (async () => {
-      if (pollData.status === 'authorized' && pollData.authorization_code) {
-        try {
-          await exchangeToken(pollData.authorization_code);
-          setIsSuccess(true);
-        } catch (error) {
-          setErrorMessage('Failed to login');
-          setErrorDescription('Login could not be completed');
-        }
-      } else if (pollData.status === 'rejected') {
-        setErrorMessage('Access rejected');
-        setErrorDescription('You did not allow access to sign in');
-      } else if (pollData.status === 'expired') {
-        setErrorMessage('Link expired');
-        setErrorDescription('Login could not be completed');
-      }
-    })();
-  }, [pollData, exchangeToken]);
-
-  const resetState = () => {
-    setIsSuccess(false);
-    setErrorMessage('');
-    setErrorDescription('');
-    setDeeplink('');
-    setPollingCode('');
+  // On close the modal unrenders, so dropping the cache entries is enough;
+  // the next open starts from a clean fetch.
+  const handleClose = () => {
+    onClose();
     queryClient.removeQueries({ queryKey: ['auth-deeplink'] });
     queryClient.removeQueries({ queryKey: ['auth-poll'] });
+    queryClient.removeQueries({ queryKey: ['auth-exchange'] });
   };
 
-  const handleRetry = () => {
-    resetState();
-  };
-
-  const handleClose = () => {
-    resetState();
-    onClose();
-  };
+  if (!hasSlot) {
+    return null;
+  }
 
   if (isSuccess) {
     return (
