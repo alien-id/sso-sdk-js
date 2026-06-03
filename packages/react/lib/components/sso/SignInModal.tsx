@@ -30,6 +30,7 @@ export const SignInModal = () => {
     queryClient,
     agentIdEnabled,
     client,
+    modalSlotHolder,
     claimModalSlot,
     releaseModalSlot,
   } = useAuth();
@@ -52,14 +53,16 @@ export const SignInModal = () => {
   // The provider auto-renders one SignInModal. If a consumer renders another
   // one manually, both instances mount and stack on top of each other — the
   // top overlay then shadows the working modal. Claim a per-provider slot so
-  // only one instance renders; the others stay mounted but invisible.
+  // only one instance renders; the others stay mounted but invisible. The
+  // holder lives in provider state, so when it frees (e.g. the holder
+  // unmounts mid-flow) the remaining instances re-render and one takes over.
   const slotInstanceRef = useRef<object>({});
-  const [hasSlot, setHasSlot] = useState(false);
+  const hasSlot = modalSlotHolder === slotInstanceRef.current;
   useEffect(() => {
-    // Re-attempt the claim on every open so a surviving instance takes over
-    // if the previous slot holder unmounted.
-    setHasSlot(claimModalSlot(slotInstanceRef.current));
-  }, [claimModalSlot, isOpen]);
+    if (modalSlotHolder === null) {
+      claimModalSlot(slotInstanceRef.current);
+    }
+  }, [modalSlotHolder, claimModalSlot]);
   useEffect(() => {
     const instance = slotInstanceRef.current;
     return () => releaseModalSlot(instance);
@@ -73,11 +76,16 @@ export const SignInModal = () => {
   // Derived state keeps every observer correct because the shared cache is
   // the single source of truth.
 
-  // Scope the deeplink key by SSO origin + provider so two providers with
-  // different configs sharing the module-level QueryClient don't serve each
-  // other's deeplink.
+  // Scope every key (and the cleanup in handleRetry/handleClose) by the
+  // authorize-affecting client config, so providers sharing the module-level
+  // QueryClient can't serve each other's deeplink or wipe each other's
+  // in-flight flow. DPoP keypairs are config-supplied objects and can't be
+  // part of a key; two providers identical in everything but the keypair
+  // would still collide.
+  const scope = [client.ssoBaseUrl, client.providerAddress, client.redirectUri ?? ''];
+
   const { data: deeplinkData, isError: isDeeplinkError } = useQuery({
-    queryKey: ['auth-deeplink', client.ssoBaseUrl, client.providerAddress],
+    queryKey: ['auth-deeplink', ...scope],
     queryFn: () => generateDeeplink(),
     enabled: isOpen,
     // The deeplink must stay stable while the modal is open; a fresh one is
@@ -104,7 +112,7 @@ export const SignInModal = () => {
   }) => query.state.status !== 'error' && !pollDone(query.state.data);
 
   const { data: pollData, isError: isPollError } = useQuery({
-    queryKey: ['auth-poll', pollingCode],
+    queryKey: ['auth-poll', ...scope, pollingCode],
     queryFn: () => pollAuth(pollingCode),
     enabled: isOpen && !!pollingCode,
     refetchInterval: (query) => (pollAlive(query) ? pollingInterval : false),
@@ -122,7 +130,7 @@ export const SignInModal = () => {
   // the shared QueryClient means concurrent observers deduplicate into a
   // single /oauth/token call (an authorization code is single-use).
   const { data: tokenData, isError: isExchangeError } = useQuery({
-    queryKey: ['auth-exchange', authorizationCode],
+    queryKey: ['auth-exchange', ...scope, authorizationCode],
     queryFn: () => exchangeToken(authorizationCode),
     enabled: isOpen && !!authorizationCode,
     staleTime: Infinity,
@@ -174,18 +182,18 @@ export const SignInModal = () => {
   // are dropped outright: their keys rotate with the fresh deeplink, so no
   // observer should ever resurrect (or re-poll) the old polling code.
   const handleRetry = () => {
-    queryClient.removeQueries({ queryKey: ['auth-poll'] });
-    queryClient.removeQueries({ queryKey: ['auth-exchange'] });
-    queryClient.resetQueries({ queryKey: ['auth-deeplink'] });
+    queryClient.removeQueries({ queryKey: ['auth-poll', ...scope] });
+    queryClient.removeQueries({ queryKey: ['auth-exchange', ...scope] });
+    queryClient.resetQueries({ queryKey: ['auth-deeplink', ...scope] });
   };
 
   // On close the modal unrenders, so dropping the cache entries is enough;
   // the next open starts from a clean fetch.
   const handleClose = () => {
     onClose();
-    queryClient.removeQueries({ queryKey: ['auth-deeplink'] });
-    queryClient.removeQueries({ queryKey: ['auth-poll'] });
-    queryClient.removeQueries({ queryKey: ['auth-exchange'] });
+    queryClient.removeQueries({ queryKey: ['auth-deeplink', ...scope] });
+    queryClient.removeQueries({ queryKey: ['auth-poll', ...scope] });
+    queryClient.removeQueries({ queryKey: ['auth-exchange', ...scope] });
   };
 
   if (!hasSlot) {

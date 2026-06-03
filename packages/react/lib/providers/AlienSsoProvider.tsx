@@ -5,7 +5,6 @@ import {
   useMemo,
   useState,
   useCallback,
-  useRef,
 } from 'react';
 import type { ReactNode } from 'react';
 import {
@@ -80,11 +79,13 @@ type SsoContextValue = {
   /**
    * @internal Deduplicates SignInModal instances. The provider auto-renders
    * one modal; if a consumer renders another manually, both would mount and
-   * stack on top of each other. Each instance claims the slot on mount —
-   * only the holder actually renders. Returns true when `instance` holds
-   * the slot.
+   * stack on top of each other. Each instance claims the slot on mount and
+   * only the holder actually renders. The holder lives in provider state so
+   * releasing it re-renders the remaining instances, letting one take over.
    */
-  claimModalSlot: (instance: object) => boolean;
+  modalSlotHolder: object | null;
+  /** @internal First claimant wins; no-op while the slot is held. */
+  claimModalSlot: (instance: object) => void;
   /** @internal Releases the modal slot on unmount. */
   releaseModalSlot: (instance: object) => void;
 };
@@ -213,17 +214,12 @@ export function AlienSsoProvider({
 
   // See SsoContextValue.claimModalSlot — first SignInModal instance to claim
   // wins; duplicates render nothing until the holder unmounts.
-  const modalSlotRef = useRef<object | null>(null);
+  const [modalSlotHolder, setModalSlotHolder] = useState<object | null>(null);
   const claimModalSlot = useCallback((instance: object) => {
-    if (modalSlotRef.current === null) {
-      modalSlotRef.current = instance;
-    }
-    return modalSlotRef.current === instance;
+    setModalSlotHolder((holder) => holder ?? instance);
   }, []);
   const releaseModalSlot = useCallback((instance: object) => {
-    if (modalSlotRef.current === instance) {
-      modalSlotRef.current = null;
-    }
+    setModalSlotHolder((holder) => (holder === instance ? null : holder));
   }, []);
 
   const value = useMemo<SsoContextValue>(
@@ -244,6 +240,7 @@ export function AlienSsoProvider({
       pollingInterval: client.pollingInterval,
       agentIdEnabled,
       agentIdSkillUrl,
+      modalSlotHolder,
       claimModalSlot,
       releaseModalSlot,
     }),
@@ -262,6 +259,7 @@ export function AlienSsoProvider({
       isModalOpen,
       agentIdEnabled,
       agentIdSkillUrl,
+      modalSlotHolder,
       claimModalSlot,
       releaseModalSlot,
     ],

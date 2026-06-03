@@ -31,14 +31,20 @@ const makeConfig = () => ({
   pollingInterval: 25,
 });
 
-type SsoCalls = { authorize: number; poll: number; token: number };
+type SsoCalls = {
+  authorize: number;
+  poll: number;
+  token: number;
+  /** Authorize calls per client_id — distinguishes concurrent providers. */
+  authorizeByClient: Record<string, number>;
+};
 
 /**
  * In-process mock of the SSO server, driven through global fetch — the same
  * boundary the real AlienSsoClient talks to.
  */
 function mockSso({ pollStatuses = ['pending'] }: { pollStatuses?: string[] } = {}) {
-  const calls: SsoCalls = { authorize: 0, poll: 0, token: 0 };
+  const calls: SsoCalls = { authorize: 0, poll: 0, token: 0, authorizeByClient: {} };
   let state: string | null = null;
 
   const json = (body: unknown) =>
@@ -53,6 +59,9 @@ function mockSso({ pollStatuses = ['pending'] }: { pollStatuses?: string[] } = {
       const url = new URL(String(input));
       if (url.pathname === '/oauth/authorize') {
         calls.authorize++;
+        const clientId = url.searchParams.get('client_id') ?? '';
+        calls.authorizeByClient[clientId] =
+          (calls.authorizeByClient[clientId] ?? 0) + 1;
         state = url.searchParams.get('state');
         return json({
           deep_link: `alien://auth?n=${calls.authorize}`,
@@ -207,6 +216,129 @@ test('a rejected poll shows the error and Try again restarts the flow', async ()
   await waitFor(() =>
     expect(document.querySelector('[data-qr="alien://auth?n=2"]')).toBeTruthy(),
   );
+});
+
+test('the modal survives when a duplicate slot holder unmounts mid-flow', async () => {
+  mockSso();
+  const config = makeConfig();
+  const ui = (showDuplicate: boolean) => (
+    <AlienSsoProvider config={config}>
+      <SignInButton />
+      {showDuplicate && <SignInModal />}
+    </AlienSsoProvider>
+  );
+  const { rerender } = render(ui(true));
+
+  fireEvent.click(screen.getByText('Sign in with Alien ID'));
+  await waitFor(() => expect(qrLoadingIndicator()).toBeNull());
+
+  // The manual duplicate mounted first, so it holds the render slot.
+  // Unmounting it must hand the slot to the provider's auto-rendered modal
+  // without interrupting the open sign-in flow.
+  rerender(ui(false));
+  await waitFor(() =>
+    expect(document.querySelectorAll('[class*="overlay"]')).toHaveLength(1),
+  );
+  expect(document.querySelector('[data-qr="alien://auth?n=1"]')).toBeTruthy();
+});
+
+// The QueryClient is module-level and shared by every provider instance, so
+// one provider's close/retry cleanup must never disturb a sibling provider's
+// in-flight sign-in.
+test("closing one provider's modal leaves another provider's flow untouched", async () => {
+  const calls = mockSso();
+  const configA = makeConfig();
+  const configB = makeConfig();
+  render(
+    <AlienSsoProvider config={configA}>
+      <SignInButton />
+    </AlienSsoProvider>,
+  );
+  render(
+    <AlienSsoProvider config={configB}>
+      <SignInButton />
+    </AlienSsoProvider>,
+  );
+
+  // Open both providers' modals and let both QRs load.
+  for (const button of screen.getAllByText('Sign in with Alien ID')) {
+    fireEvent.click(button);
+  }
+  await waitFor(() =>
+    expect(document.querySelectorAll('[class*="qrCodeSpin"]')).toHaveLength(0),
+  );
+  expect(calls.authorizeByClient[configA.providerAddress]).toBe(1);
+  expect(calls.authorizeByClient[configB.providerAddress]).toBe(1);
+
+  // Close provider A's modal (first in DOM order).
+  fireEvent.click(document.querySelector('[class*="closeIcon"]')!);
+
+  // Provider B keeps polling its original code and never refetches a deeplink.
+  const pollsSoFar = calls.poll;
+  await waitFor(() => expect(calls.poll).toBeGreaterThan(pollsSoFar));
+  expect(calls.authorizeByClient[configB.providerAddress]).toBe(1);
+});
+
+test('an expired poll shows the link-expired error and stops polling', async () => {
+  const calls = mockSso({ pollStatuses: ['expired'] });
+  render(
+    <AlienSsoProvider config={makeConfig()}>
+      <SignInButton />
+    </AlienSsoProvider>,
+  );
+
+  fireEvent.click(screen.getByText('Sign in with Alien ID'));
+  await screen.findByText('Link expired');
+
+  const pollsAtExpiry = calls.poll;
+  await new Promise((r) => setTimeout(r, 100));
+  expect(calls.poll).toBe(pollsAtExpiry);
+});
+
+test('a failing poll endpoint shows the failure screen and stops polling', async () => {
+  const calls = mockSso();
+  const fetchOk = globalThis.fetch;
+  // Authorize succeeds, every poll fails.
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (new URL(String(input)).pathname === '/oauth/poll') {
+      calls.poll++;
+      return new Response('{"error":"server_error"}', { status: 500 });
+    }
+    return fetchOk(input, init);
+  }));
+  render(
+    <AlienSsoProvider config={makeConfig()}>
+      <SignInButton />
+    </AlienSsoProvider>,
+  );
+
+  fireEvent.click(screen.getByText('Sign in with Alien ID'));
+  await screen.findByText('Failed to login');
+
+  const pollsAtFailure = calls.poll;
+  await new Promise((r) => setTimeout(r, 100));
+  expect(calls.poll).toBe(pollsAtFailure);
+});
+
+test('a failing token exchange shows the failure screen', async () => {
+  const calls = mockSso({ pollStatuses: ['authorized'] });
+  const fetchOk = globalThis.fetch;
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (new URL(String(input)).pathname === '/oauth/token') {
+      calls.token++;
+      return new Response('{"error":"invalid_grant"}', { status: 400 });
+    }
+    return fetchOk(input, init);
+  }));
+  render(
+    <AlienSsoProvider config={makeConfig()}>
+      <SignInButton />
+    </AlienSsoProvider>,
+  );
+
+  fireEvent.click(screen.getByText('Sign in with Alien ID'));
+  await screen.findByText('Failed to login');
+  expect(calls.token).toBe(1);
 });
 
 test('a failing authorize endpoint shows the failure screen without retry loops', async () => {
