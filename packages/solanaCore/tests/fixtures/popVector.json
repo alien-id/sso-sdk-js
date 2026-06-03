@@ -1,0 +1,8 @@
+{
+  "_comment": "Canonical cross-language proof-of-possession vector. This SAME file is embedded in both the Go SSO server tests (sso/internal/handler/testdata/pop_vector.json) and the JS SDK tests (sso-sdk-js/packages/solanaCore/tests/fixtures/popVector.json). It pins the exact UTF-8 bytes a wallet signs, plus a real Ed25519 signature over them, so the Go BuildPopMessage and the JS buildPopMessage can never silently drift apart: each side rebuilds the message from address+nonce, asserts it equals `message`, and verifies `signature_b64` against `pubkey_b64`. Only change this file by deliberately changing the message format on BOTH sides at once.",
+  "address": "9C6hybhQ6Aycep9jaUnP6uL9ZYvDjUp1aSkFWPUFJtpj",
+  "nonce": "Z2xvYmFsLXRlc3Qtbm9uY2U",
+  "message": "Alien SSO: prove wallet control.\nWallet: 9C6hybhQ6Aycep9jaUnP6uL9ZYvDjUp1aSkFWPUFJtpj\nNonce: Z2xvYmFsLXRlc3Qtbm9uY2U",
+  "pubkey_b64": "ebVWLo/mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ=",
+  "signature_b64": "/IejcDGr6TgnjKTxHiWvnDZFHPvCSSEvtGzXM2Mr88jVKouq0QdOulTQHzV0M/KOOOmguHhqb+9vxR43O2onBQ=="
+}

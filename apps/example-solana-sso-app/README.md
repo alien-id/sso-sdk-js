@@ -2,47 +2,62 @@
 
 ⚠️ **Alpha Version Notice**: This is an early alpha version of the Alien SSO SDK. The SDK is under active development and may contain bugs or undergo breaking changes.
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This example shows how to use Alien's Solana SSO as the **identity-verification
+primitive** it is — and where the integrator's responsibilities begin.
 
-## Available Scripts
+- **Frontend** (`src/`): runs the **L0 bind ceremony** (enroll a wallet → Alien
+  ID via the `SolanaSignInButton` modal) and the **L1 lookup**
+  (`verifyAttestation`, a UI hint only).
+- **Backend** (`server/index.mjs`): does the part that is *not* Alien's — it
+  issues its own nonce, verifies the wallet's Ed25519 signature with
+  `verifyPopSignature` (no Alien call), looks up the binding (L1), and mints its
+  own **httpOnly session cookie**. This is the only source of "signed in" truth.
 
-In the project directory, you can run:
+See [`docs/solana-integration.md`](../../docs/solana-integration.md) and ADR-0002
+for the rationale.
 
-### `npm start`
+## Setup
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+```bash
+cp .env.example .env
+# set VITE_ALIEN_PROVIDER_ADDRESS to a provider registered on the dev devportal
+```
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+Use Phantom on **Devnet**. `localhost` origins are auto-allowed by the provider
+middleware on dev.
 
-### `npm test`
+## Run
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
+npm run dev
+```
 
-### `npm run build`
+This starts **both** processes via `concurrently`:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- `web` — the Vite frontend on http://localhost:3000
+- `api` — the example backend on http://localhost:8787 (Vite proxies `/api/*` to it)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Run them separately if you prefer: `npm run server` and `vite`.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## The flow
 
-### `npm run eject`
+1. **Connect** a Solana wallet.
+2. If the wallet **isn't linked** yet → enroll it with the **Alien App** (the
+   modal's QR/oracle ceremony). This is a one-time on-chain binding, not a login.
+3. If the wallet **is linked** → click **Sign in**. The frontend signs
+   `buildPopMessage(wallet, nonce)` and posts it to the backend, which verifies
+   the signature, confirms the binding (L1), and sets a session cookie.
+4. **Welcome** is gated on that backend session (`GET /api/me`), never on a
+   client-side flag.
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## Backend endpoints
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST | `/api/nonce` | issue a single-use, short-lived nonce |
+| POST | `/api/verify` | verify possession + L1 lookup → set httpOnly session |
+| GET | `/api/me` | read the current session |
+| POST | `/api/logout` | clear the session |
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+> The store is in-memory and single-process — fine for a demo, not for
+> production.
