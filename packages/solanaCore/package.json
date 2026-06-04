@@ -54,6 +54,7 @@
     "vite-plugin-dts": "4.5.4"
   },
   "dependencies": {
+    "@noble/curves": "^1.9.0",
     "buffer": "^6.0.3",
     "zod": "^4.1.5"
   },

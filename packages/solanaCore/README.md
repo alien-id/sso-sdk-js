@@ -1,10 +1,25 @@
 # @alien-id/sso-solana
 
-Solana-specific authentication client for [Alien SSO](https://alien.org) with on-chain attestation support. Enables blockchain-native authentication with session verification on Solana.
+Solana client for [Alien SSO](https://alien.org) — a **web3 identity-verification
+primitive, not an auth system.** It answers *"which Alien identity is this
+wallet?"* and issues no token of its own.
 
 ## ⚠️ Alpha Version Notice
 
 **This is an early alpha version.** The SDK is under active development and may contain bugs or undergo breaking changes. Use with caution in production environments.
+
+## What Alien provides
+
+| Layer | Question | SDK |
+| --- | --- | --- |
+| **L0 — Bind** | link wallet ↔ Alien ID (one-time enrollment) | `generateDeeplink`, `pollAuth`, `buildCreateAttestationTransaction` |
+| **L1 — Lookup** | which Alien ID (`session_address`) is this wallet bound to? | `getAttestation` |
+
+**Proof-of-possession, sessions, and tokens are yours, not Alien's.** Proving the
+holder controls the wallet is standard Ed25519 over a nonce *you* choose — no
+Alien call, no Alien secret. The SDK ships two pure helpers so it is turnkey in
+your backend; see the [integration guide](https://github.com/alien-id/sso-sdk-js/blob/main/docs/solana-integration.md)
+and [ADR-0002](https://github.com/alien-id/sso-sdk-js).
 
 ## Installation
 
@@ -14,7 +29,8 @@ npm install @alien-id/sso-solana @solana/web3.js
 
 ## Features
 
-- ✅ **On-chain attestations** - Verifiable sessions on Solana blockchain
+- ✅ **On-chain attestations** - L0 bind ceremony + L1 binding lookup
+- ✅ **Proof-of-possession helpers** - `buildPopMessage` + `verifyPopSignature` (pure Ed25519, no Alien call)
 - ✅ **PDA derivation utilities** - All necessary account derivations
 - ✅ **Transaction building** - Ready-to-sign attestation transactions
 - ✅ **TypeScript-first** with full type safety
@@ -38,15 +54,45 @@ For React applications with Solana wallet adapters, check out [@alien-id/sso-sol
 npm install @alien-id/sso-solana-react
 ```
 
-## Authentication Flow
+## Enrollment flow (L0) — once per wallet
 
 1. **User connects** Solana wallet
 2. **Generate deeplink** with wallet address → Display QR code
-3. **User authenticates** in Alien mobile app
+3. **User enrolls** in the Alien mobile app (app + oracle co-sign)
 4. **Poll for completion** → Get oracle signature and session data
 5. **Build transaction** → Create on-chain attestation
-6. **Sign and send** → User signs with wallet, transaction confirms
-7. **Verify attestation** → Check on-chain session validity
+6. **Sign and send** → User signs with wallet, transaction confirms — the
+   `wallet ↔ Alien ID` binding now exists on-chain, permanently
+
+This establishes a binding; it is **not** a sign-in.
+
+## Authenticating a returning wallet (your backend)
+
+`getAttestation` (L1) is **information only** — a truthy result proves a
+historical binding, never current control. To authenticate, your backend issues
+its own nonce, has the wallet sign `buildPopMessage(wallet, nonce)`, and verifies
+it locally — then mints its own session:
+
+```ts
+import { buildPopMessage, verifyPopSignature } from '@alien-id/sso-solana';
+
+// Frontend: signature = await wallet.signMessage(
+//   new TextEncoder().encode(buildPopMessage(wallet, nonce)));
+
+// Your backend (no Alien call for the proof itself):
+const ok = verifyPopSignature(wallet, buildPopMessage(wallet, nonce), signatureB64);
+if (ok) {
+  const sessionAddress = await client.getAttestation(wallet); // L1
+  if (sessionAddress) {
+    // mint YOUR session, sub = sessionAddress
+  }
+}
+```
+
+`verifyPopSignature` uses `@noble/curves` (the audited Ed25519 library
+`@solana/web3.js` itself depends on) and decodes the address with `PublicKey`;
+it never throws — malformed input returns `false`. See the
+[integration guide](https://github.com/alien-id/sso-sdk-js/blob/main/docs/solana-integration.md).
 
 ## On-Chain Programs
 

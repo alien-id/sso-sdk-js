@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@alien-id/sso-solana": "*",
     "@alien-id/sso-solana-react": "*",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.1.0",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/wallet-adapter-react": "^0.15.35",
     "@solana/wallet-adapter-react-ui": "^0.9.35",
@@ -25,7 +28,8 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n web,api -c cyan,magenta \"vite\" \"npm:server\"",
+    "server": "node --env-file=.env server/index.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -49,6 +53,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.0.4",
+    "concurrently": "^9.1.2",
     "vite": "^7.1.10",
     "vite-plugin-node-polyfills": "^0.24.0"
   }

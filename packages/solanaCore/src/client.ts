@@ -208,7 +208,6 @@ export class AlienSolanaSsoClient {
     return attestationResponse.session_address;
   }
 
-
   async buildCreateAttestationTransaction(params: {
     connection: Connection;
     payerPublicKey: PublicKey;

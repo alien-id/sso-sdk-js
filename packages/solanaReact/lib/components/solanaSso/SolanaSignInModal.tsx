@@ -1,13 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import styles from './SolanaSignInModal.module.css';
-import {
-  getAttestationCreatedAtKey,
-  getSessionAddressKey,
-  getSolanaAuthedAddressKey,
-  useSolanaAuth,
-} from "../../providers";
-import { useSolanaAuthInternal } from "../../providers";
+import { useSolanaAuth } from "../../providers";
 import { ModalBase } from '../base/ModalBase';
 import { QrIcon } from "../assets/QrIcon";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -23,6 +17,7 @@ import { getLogoUri } from "../consts/logoUri";
 import { PublicKey } from '@solana/web3.js';
 import { SolanaIcon } from "../assets/SolanaIcon.tsx";
 import { SolanaColorIcon } from "../assets/SolanaColorIcon.tsx";
+import { Buffer } from 'buffer';
 
 // Create QR code instance with blob URL for CSP compatibility
 const qrCode = new QRCodeStyling({
@@ -47,10 +42,10 @@ export const SolanaSignInModal = () => {
     connectionAdapter: { connection },
     queryClient,
   } = useSolanaAuth();
-  const { setSessionAddress } = useSolanaAuthInternal()
   const isMobile = useIsMobile();
 
   const [isSuccess, setIsSuccess] = useState(false);
+  const [alreadyLinked, setAlreadyLinked] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [errorDescription, setErrorDescription] = useState<string>('');
   const [pollingCode, setPollingCode] = useState<string>('');
@@ -66,19 +61,6 @@ export const SolanaSignInModal = () => {
 
   const solanaAddress = useMemo(() => publicKey?.toBase58(), [publicKey])
 
-  const authedAddressKey = useMemo(
-    () => getSolanaAuthedAddressKey(client.providerAddress, client.ssoBaseUrl),
-    [client]
-  );
-  const sessionAddressKey = useMemo(
-    () => getSessionAddressKey(client.providerAddress, client.ssoBaseUrl),
-    [client]
-  );
-  const attestationCreatedAtKey = useMemo(
-    () => getAttestationCreatedAtKey(client.providerAddress, client.ssoBaseUrl),
-    [client]
-  );
-
   // Initialize auth and get deeplink
   useQuery({
     queryKey: ['auth-deeplink', solanaAddress],
@@ -93,12 +75,25 @@ export const SolanaSignInModal = () => {
 
         const sessionAddress = await client.getAttestation(solanaAddress);
         if (sessionAddress) {
-          localStorage.setItem(authedAddressKey, solanaAddress);
-          setSessionAddress(sessionAddress);
-          setIsLoadingQr(false);
+          // The wallet is already bound (L1 lookup). The binding is permanent
+          // and the on-chain `init` is non-idempotent, so there is nothing left
+          // to enroll — running the QR/oracle ceremony again would revert. Just
+          // report the existing binding.
+          //
+          // This is NOT a sign-in: a binding proves a historical link, never
+          // current possession of the wallet (F-06). This modal does enrollment
+          // and lookup only; it establishes no session. To authenticate a
+          // returning wallet, verify a fresh proof-of-possession in your backend
+          // (see docs/solana-integration.md). We therefore do not need
+          // `signMessage` here at all.
+          setAlreadyLinked(true);
           setIsSuccess(true);
+          setIsLoadingQr(false);
           return sessionAddress;
         }
+        // No attestation exists: run the full QR/oracle bind ceremony. The
+        // create-attestation transaction the user signs is itself a fresh proof
+        // of possession, so no separate signed nonce is needed.
 
         const response = await generateDeeplink(solanaAddress);
         setDeeplink(response.deep_link);
@@ -228,14 +223,11 @@ export const SolanaSignInModal = () => {
             continue;
           }
 
-          // Transaction confirmed successfully
+          // Transaction confirmed successfully: the wallet ↔ Alien ID binding
+          // now exists on-chain. This is enrollment, NOT sign-in — the modal
+          // establishes no session and sets no auth state. Authentication is the
+          // integrator's, performed in their backend (see ADR-0002).
           transactionSent = true;
-
-          // Save to cache immediately after successful transaction
-          localStorage.setItem(authedAddressKey, pendingTransactionData.solanaAddress);
-          localStorage.setItem(sessionAddressKey, pendingTransactionData.sessionAddress);
-          localStorage.setItem(attestationCreatedAtKey, Date.now().toString());
-          setSessionAddress(pendingTransactionData.sessionAddress);
 
           setIsSuccess(true);
           return;
@@ -272,6 +264,7 @@ export const SolanaSignInModal = () => {
 
   const resetState = () => {
     setIsSuccess(false);
+    setAlreadyLinked(false);
     setErrorMessage('');
     setErrorDescription('');
     setDeeplink('');
@@ -303,8 +296,14 @@ export const SolanaSignInModal = () => {
       <ModalBase onClose={handleClose} isOpen={isOpen} showClose={false}>
         <div className={styles.successfulContainer}>
           <SuccessIcon />
-          <div className={styles.successfulTitle}>Sign in successful!</div>
-          <div className={styles.successfulSubtitle}>You have successfully signed in <br /> and your Solana address is now linked</div>
+          <div className={styles.successfulTitle}>
+            {alreadyLinked ? 'Wallet already linked' : 'Wallet linked!'}
+          </div>
+          <div className={styles.successfulSubtitle}>
+            {alreadyLinked
+              ? <>This Solana address is already linked <br /> to your Alien ID</>
+              : <>Your Solana address is now linked <br /> to your Alien ID</>}
+          </div>
           <div className={styles.successfulButton} onClick={handleClose}>Done</div>
         </div>
       </ModalBase>

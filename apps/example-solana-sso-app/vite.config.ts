@@ -13,6 +13,11 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
+    // The example backend (server/index.mjs) runs on :8787. Proxying keeps the
+    // frontend same-origin so the httpOnly session cookie just works.
+    proxy: {
+      '/api': 'http://localhost:8787',
+    },
   },
   define: {
     'global': 'globalThis',
