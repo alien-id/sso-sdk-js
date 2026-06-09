@@ -9,6 +9,9 @@ const config: Config.InitialOptions = {
   globals: {
     'ts-jest': {
       useESM: true,
+      // ES2020 keeps native BigInt ** (ES2015 downlevels it to Math.pow,
+      // which breaks @noble/curves when transformed here).
+      tsconfig: { target: 'ES2020' },
     },
   },
   transform: {
