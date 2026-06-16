@@ -66,7 +66,8 @@ type SolanaSsoContextValue = {
   queryClient: QueryClient;
   generateDeeplink: (
     solanaAddress: string,
-    walletName?: string
+    walletName?: string,
+    walletIcon?: string
   ) => Promise<import("@alien-id/sso-solana").SolanaLinkResponse>;
   pollAuth: (pollingCode: string) => Promise<import("@alien-id/sso-solana").SolanaPollResponse>;
   verifyAttestation: (solanaAddress: string) => Promise<string | null>;
@@ -115,8 +116,8 @@ export function AlienSolanaSsoProvider({
   });
 
   const generateDeeplink = useCallback(
-    async (solanaAddress: string, walletName?: string) => {
-      return await client.generateDeeplink(solanaAddress, walletName);
+    async (solanaAddress: string, walletName?: string, walletIcon?: string) => {
+      return await client.generateDeeplink(solanaAddress, walletName, walletIcon);
     },
     [client]
   );

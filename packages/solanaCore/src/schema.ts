@@ -6,6 +6,7 @@ import { z } from 'zod/v4-mini';
 export const SolanaLinkRequestSchema = z.object({
   solana_address: z.string(),
   wallet_name: z.optional(z.string()),
+  wallet_icon: z.optional(z.string()),
 });
 export type SolanaLinkRequest = z.infer<typeof SolanaLinkRequestSchema>;
 
