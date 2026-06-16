@@ -121,11 +121,13 @@ export class AlienSolanaSsoClient {
 
   async generateDeeplink(
     solanaAddress: string,
-    walletName?: string
+    walletName?: string,
+    walletIcon?: string
   ): Promise<SolanaLinkResponse> {
     const linkPayload: SolanaLinkRequest = {
       solana_address: solanaAddress,
       ...(walletName ? { wallet_name: walletName } : {}),
+      ...(walletIcon ? { wallet_icon: walletIcon } : {}),
     };
 
     SolanaLinkRequestSchema.parse(linkPayload);
