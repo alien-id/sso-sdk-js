@@ -50,7 +50,7 @@
     "prettier": "3.8.4",
     "ts-jest": "29.4.11",
     "turbo": "2.9.18",
-    "vite": "7.3.5",
+    "vite": "8.0.16",
     "vite-plugin-dts": "4.5.4"
   },
   "dependencies": {
