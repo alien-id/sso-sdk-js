@@ -194,6 +194,13 @@ export function AlienSsoProvider({
 
   const logout = useCallback(() => {
     client.logout();
+    // The sign-in flow derives its state from these cached queries (the
+    // exchange entry has staleTime: Infinity). Without clearing them, an inline
+    // SignInPanel would re-render the stale success screen after logout instead
+    // of a fresh QR. Reset the flow so the next sign-in starts clean.
+    queryClient.removeQueries({ queryKey: ['auth-poll'] });
+    queryClient.removeQueries({ queryKey: ['auth-exchange'] });
+    queryClient.removeQueries({ queryKey: ['auth-deeplink'] });
     setAuth({
       isAuthenticated: false,
       token: null,

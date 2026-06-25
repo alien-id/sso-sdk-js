@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { AlienSsoProvider, SignInPanel } from '../lib/main';
+import { AlienSsoProvider, SignInPanel, useAuth } from '../lib/main';
 import { makeConfig, mockSso, qrLoadingIndicator } from './ssoMock';
 
 // SignInPanel renders inline: mounting it starts the flow (active defaults true).
@@ -108,6 +108,73 @@ test('toggling active off then on after a failed exchange does not re-send the c
 
   await new Promise((r) => setTimeout(r, 100));
   expect(calls.token).toBe(1);
+});
+
+test('wrap exposes the flow status: loading then success', async () => {
+  mockSso({ pollStatuses: ['authorized'] });
+  render(
+    <AlienSsoProvider config={makeConfig()}>
+      <SignInPanel
+        wrap={(content, { status }) => <div data-status={status}>{content}</div>}
+      />
+    </AlienSsoProvider>,
+  );
+
+  expect(document.querySelector('[data-status="loading"]')).toBeTruthy();
+  await screen.findByText('Sign in successful!');
+  expect(document.querySelector('[data-status="success"]')).toBeTruthy();
+});
+
+test('wrap exposes error status on a rejected poll', async () => {
+  mockSso({ pollStatuses: ['rejected'] });
+  render(
+    <AlienSsoProvider config={makeConfig()}>
+      <SignInPanel
+        wrap={(content, { status }) => <div data-status={status}>{content}</div>}
+      />
+    </AlienSsoProvider>,
+  );
+
+  await screen.findByText('Access rejected');
+  expect(document.querySelector('[data-status="error"]')).toBeTruthy();
+});
+
+test('logout resets the inline panel from success back to a fresh QR', async () => {
+  // The bug: logout clears auth state + storage but leaves the `auth-exchange`
+  // cache (staleTime: Infinity) intact, so an inline panel re-derives success
+  // from stale token data and is stuck on the success screen. Logout must reset
+  // the sign-in flow so the panel returns to a freshly-fetched QR.
+  const calls = mockSso({ pollStatuses: ['authorized', 'pending'] });
+  const config = makeConfig();
+
+  const LogoutButton = () => {
+    const { logout } = useAuth();
+    return (
+      <button type="button" onClick={logout}>
+        do-logout
+      </button>
+    );
+  };
+
+  render(
+    <AlienSsoProvider config={config}>
+      <SignInPanel />
+      <LogoutButton />
+    </AlienSsoProvider>,
+  );
+
+  await screen.findByText('Sign in successful!');
+  const authorizesAtSuccess = calls.authorize;
+
+  fireEvent.click(screen.getByText('do-logout'));
+
+  // Success screen is gone and a fresh deeplink is requested → new QR.
+  await waitFor(() =>
+    expect(screen.queryByText('Sign in successful!')).toBeNull(),
+  );
+  await waitFor(() =>
+    expect(calls.authorize).toBe(authorizesAtSuccess + 1),
+  );
 });
 
 test('remounting after success does not re-poll the consumed code', async () => {
