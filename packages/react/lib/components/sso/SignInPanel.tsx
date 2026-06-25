@@ -26,13 +26,33 @@ const AGENT_INSTALL_COMMAND = 'npx skills add alien-id/agent-id';
 // legitimate fresh attempt.
 const attemptedExchangeCodes = new Set<string>();
 
+/**
+ * The sign-in flow as an explicit state machine:
+ * - `loading`  — fetching the deeplink, no QR yet
+ * - `awaiting` — QR shown, polling for the user to authorize
+ * - `success`  — authorization code exchanged for a token
+ * - `error`    — terminal failure (request failed / rejected / link expired)
+ *
+ * Every screen is one of these; transitions are driven purely by the cached
+ * queries, and `handleRetry` / `logout` reset the cache to move back to
+ * `loading`.
+ */
+export type SignInStatus = 'loading' | 'awaiting' | 'success' | 'error';
+
 export interface SignInPanelProps {
   /** Queries run only while active. Defaults true (inline); modal passes `isOpen`. */
   active?: boolean;
   /** When set, the success screen renders a Done button calling it. */
   onClose?: () => void;
-  /** Wrap each state — the modal supplies its shell here. */
-  wrap?: (content: ReactNode, ctx: { isSuccess: boolean }) => ReactNode;
+  /**
+   * Wrap each state — the modal supplies its shell here, and inline consumers
+   * use `status` to lay out the surrounding chrome (e.g. centre terminal
+   * screens, hide marketing once the flow leaves `awaiting`).
+   */
+  wrap?: (
+    content: ReactNode,
+    ctx: { isSuccess: boolean; status: SignInStatus },
+  ) => ReactNode;
 }
 
 /**
@@ -129,20 +149,29 @@ export const SignInPanel = ({ active = true, onClose, wrap = (c) => c }: SignInP
     refetchOnMount: false,
   });
 
-  const isSuccess = !!tokenData;
-
+  // Single source of truth for which screen renders. Order matters: a finished
+  // exchange wins, then terminal failures, then the QR's loading vs awaiting.
+  let status: SignInStatus;
   let errorMessage = '';
   let errorDescription = '';
-  if (isDeeplinkError || isPollError || isExchangeError) {
+  if (tokenData) {
+    status = 'success';
+  } else if (isDeeplinkError || isPollError || isExchangeError) {
+    status = 'error';
     errorMessage = 'Failed to login';
     errorDescription = 'Login could not be completed';
   } else if (pollData?.status === 'rejected') {
+    status = 'error';
     errorMessage = 'Access rejected';
     errorDescription = 'You did not allow access to sign in';
   } else if (pollData?.status === 'expired') {
+    status = 'error';
     errorMessage = 'Link expired';
     errorDescription = 'Login could not be completed';
+  } else {
+    status = isLoadingQr ? 'loading' : 'awaiting';
   }
+  const isSuccess = status === 'success';
 
   useEffect(() => {
     if (qrElement) {
@@ -172,7 +201,7 @@ export const SignInPanel = ({ active = true, onClose, wrap = (c) => c }: SignInP
   };
 
   let content: ReactNode;
-  if (isSuccess) {
+  if (status === 'success') {
     content = (
       <div className={styles.successfulContainer}>
         <SuccessIcon />
@@ -183,7 +212,7 @@ export const SignInPanel = ({ active = true, onClose, wrap = (c) => c }: SignInP
         )}
       </div>
     );
-  } else if (errorMessage) {
+  } else if (status === 'error') {
     content = (
       <div className={styles.errorContainer}>
         <ErrorIcon />
@@ -283,5 +312,5 @@ export const SignInPanel = ({ active = true, onClose, wrap = (c) => c }: SignInP
     );
   }
 
-  return wrap(content, { isSuccess });
+  return wrap(content, { isSuccess, status });
 };

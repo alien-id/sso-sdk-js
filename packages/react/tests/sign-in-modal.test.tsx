@@ -80,6 +80,9 @@ test('an authorized poll exchanges the code once and shows success', async () =>
   await screen.findByText('Sign in successful!');
   expect(calls.token).toBe(1);
 
+  // The close (X) icon is hidden on the success screen (showClose={!isSuccess}).
+  expect(document.querySelector('[class*="closeIcon"]')).toBeNull();
+
   // Done closes the modal.
   fireEvent.click(screen.getByText('Done'));
   await waitFor(() =>
