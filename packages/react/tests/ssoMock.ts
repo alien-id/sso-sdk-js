@@ -1,3 +1,4 @@
+import { createSign, generateKeyPairSync } from 'node:crypto';
 import { vi } from 'vitest';
 
 export const SSO_URL = 'http://localhost:4710';
@@ -18,11 +19,56 @@ export interface MockSsoOptions {
   pollStatuses?: string[];
   /** When set, /oauth/token responds with this HTTP status instead of 200. */
   tokenStatus?: number;
+  /**
+   * Omit the id_token from the token response. The exchange still resolves
+   * (access_token persists), but no session is established (getAuthData stays
+   * null) — the no-valid-session case.
+   */
+  omitIdToken?: boolean;
+}
+
+// --- id_token minting (mirrors the real RS256 OIDC id_token) ----------------
+// The SDK verifies the id_token against /oauth/jwks before establishing a
+// session, so a realistic success path must serve a signed token + JWKS.
+const NONCE_KEY = 'alien-sso_nonce';
+const KID = 'test-key-1';
+const KEY_PAIR = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const PUBLIC_JWK = KEY_PAIR.publicKey.export({ format: 'jwk' });
+
+const b64url = (input: string | Buffer): string =>
+  Buffer.from(input).toString('base64url');
+
+// `audience` must equal the client's providerAddress (read from the token
+// request's client_id); `iss` must equal ssoBaseUrl exactly; `nonce` must
+// replay the value generateDeeplink stored — all enforced by verifyIdToken.
+function mintIdToken(audience: string): string {
+  const header = { alg: 'RS256', typ: 'JWT', kid: KID };
+  const now = Math.floor(Date.now() / 1000);
+  const nonce =
+    typeof sessionStorage !== 'undefined'
+      ? sessionStorage.getItem(NONCE_KEY)
+      : null;
+  const payload: Record<string, unknown> = {
+    iss: SSO_URL,
+    sub: 'session-address-test',
+    aud: audience,
+    exp: now + 3600,
+    iat: now,
+  };
+  if (nonce) payload.nonce = nonce;
+  const signingInput = `${b64url(JSON.stringify(header))}.${b64url(JSON.stringify(payload))}`;
+  const signer = createSign('sha256');
+  signer.update(signingInput);
+  return `${signingInput}.${b64url(signer.sign(KEY_PAIR.privateKey))}`;
 }
 
 /** In-process SSO server mocked at the global-fetch boundary. Returns a live
  *  call counter. */
-export function mockSso({ pollStatuses = ['pending'], tokenStatus = 200 }: MockSsoOptions = {}) {
+export function mockSso({
+  pollStatuses = ['pending'],
+  tokenStatus = 200,
+  omitIdToken = false,
+}: MockSsoOptions = {}) {
   const calls: SsoCalls = { authorize: 0, poll: 0, token: 0 };
   let state: string | null = null;
 
@@ -34,7 +80,7 @@ export function mockSso({ pollStatuses = ['pending'], tokenStatus = 200 }: MockS
 
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (input: RequestInfo | URL) => {
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = new URL(String(input));
       if (url.pathname === '/oauth/authorize') {
         calls.authorize++;
@@ -44,6 +90,9 @@ export function mockSso({ pollStatuses = ['pending'], tokenStatus = 200 }: MockS
           polling_code: `poll-code-${testSeq}-${calls.authorize}`,
           expired_at: Math.floor(Date.now() / 1000) + 300,
         });
+      }
+      if (url.pathname === '/oauth/jwks') {
+        return json({ keys: [{ ...PUBLIC_JWK, kid: KID, alg: 'RS256', use: 'sig' }] });
       }
       if (url.pathname === '/oauth/poll') {
         calls.poll++;
@@ -64,11 +113,18 @@ export function mockSso({ pollStatuses = ['pending'], tokenStatus = 200 }: MockS
       if (url.pathname === '/oauth/token') {
         calls.token++;
         if (tokenStatus !== 200) return json({ error: 'server_error' }, tokenStatus);
-        return json({
+        // The id_token's audience must match the client_id (providerAddress)
+        // sent in the form body, or verifyIdToken rejects it.
+        const audience =
+          new URLSearchParams(String(init?.body ?? '')).get('client_id') ?? '';
+        const body: Record<string, unknown> = {
           access_token: `at-${calls.token}`,
           token_type: 'Bearer',
           expires_in: 3600,
-        });
+          refresh_token: `rt-${calls.token}`,
+        };
+        if (!omitIdToken) body.id_token = mintIdToken(audience);
+        return json(body);
       }
       throw new Error(`Unexpected request: ${url.pathname}`);
     }),

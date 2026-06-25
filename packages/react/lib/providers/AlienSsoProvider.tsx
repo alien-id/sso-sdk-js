@@ -128,7 +128,23 @@ export function AlienSsoProvider({
   const agentIdEnabled = config.agentId?.enabled ?? false;
   const agentIdSkillUrl = config.agentId?.skillUrl ?? '/ALIEN-SKILL.md';
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const client = useMemo(() => new AlienSsoClient(config), [config]);
+  // Memoize on config *values*, not the object identity. Integrators commonly
+  // pass an inline `config={{...}}` literal (it's the pattern in our own docs),
+  // which is a new object every render; keying on `[config]` would rebuild the
+  // client — and tear down the whole auth context — on each parent re-render.
+  // Object-typed fields (tokenStorage, dpop) are expected to be stable refs.
+  const client = useMemo(
+    () => new AlienSsoClient(config),
+    [
+      config.ssoBaseUrl,
+      config.providerAddress,
+      config.pollingInterval,
+      config.redirectUri,
+      config.allowInsecureSsoBaseUrl,
+      config.tokenStorage,
+      config.dpop,
+    ],
+  );
   const [auth, setAuth] = useState<AuthState>(() => getInitialAuth(client));
 
   const generateDeeplink = useCallback(async () => {
@@ -146,9 +162,15 @@ export function AlienSsoProvider({
     async (authCode: string) => {
       const tokenResponse = await client.exchangeToken(authCode);
       const tokenInfo = client.getAuthData();
-      const isAuthenticated = Boolean(tokenResponse.access_token && tokenInfo);
+      if (!tokenResponse.access_token || !tokenInfo) {
+        // The exchange resolved but produced no usable session (e.g. a missing
+        // or unverifiable id_token, so getAuthData() is null). Surface it as a
+        // failure so the UI shows an error instead of a false "success" — the
+        // success screen and auth state must never disagree.
+        throw new Error('Token exchange did not establish a session');
+      }
       setAuth({
-        isAuthenticated,
+        isAuthenticated: true,
         token: tokenResponse.access_token,
         tokenInfo,
       });
