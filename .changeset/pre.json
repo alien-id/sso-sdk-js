@@ -11,5 +11,7 @@
     "@alien-id/sso-solana": "2.2.0",
     "@alien-id/sso-solana-react": "2.2.0"
   },
-  "changesets": []
+  "changesets": [
+    "inline-sign-in-panel"
+  ]
 }
