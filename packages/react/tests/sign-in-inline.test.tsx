@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { expect, test, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AlienSsoProvider, SignInPanel, useAuth } from '../lib/main';
@@ -123,6 +124,53 @@ test('wrap exposes the flow status: loading then success', async () => {
   expect(document.querySelector('[data-status="loading"]')).toBeTruthy();
   await screen.findByText('Sign in successful!');
   expect(document.querySelector('[data-status="success"]')).toBeTruthy();
+});
+
+test('client identity stays stable across re-renders with an inline config literal', async () => {
+  // The documented integration pattern passes config={{...}} inline, so the
+  // object identity changes every render. The client (and the whole auth
+  // context) must not be rebuilt each time — it should track config *values*.
+  mockSso();
+  const cfg = makeConfig();
+  const seen = new Set<unknown>();
+
+  const Probe = () => {
+    const { client } = useAuth();
+    seen.add(client);
+    return null;
+  };
+  const Harness = () => {
+    const [, force] = useState(0);
+    return (
+      <AlienSsoProvider config={{ ...cfg }}>
+        <Probe />
+        <button type="button" onClick={() => force((n) => n + 1)}>
+          rerender
+        </button>
+      </AlienSsoProvider>
+    );
+  };
+
+  render(<Harness />);
+  fireEvent.click(screen.getByText('rerender'));
+  fireEvent.click(screen.getByText('rerender'));
+
+  expect(seen.size).toBe(1);
+});
+
+test('an exchange that establishes no session shows error, not false success', async () => {
+  // 200 from /oauth/token but no id_token → access_token persists yet
+  // getAuthData() stays null, so there is no real session. The success screen
+  // and auth state must agree: this is a failure, not a green checkmark.
+  mockSso({ pollStatuses: ['authorized'], omitIdToken: true });
+  render(
+    <AlienSsoProvider config={makeConfig()}>
+      <SignInPanel />
+    </AlienSsoProvider>,
+  );
+
+  await screen.findByText('Failed to login');
+  expect(screen.queryByText('Sign in successful!')).toBeNull();
 });
 
 test('wrap reports awaiting once the QR is shown', async () => {
