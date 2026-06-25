@@ -1,5 +1,13 @@
 # @alien-id/sso-react
 
+## 2.1.0-beta.0
+
+### Minor Changes
+
+- [#60](https://github.com/alien-id/sso-sdk-js/pull/60) [`7df8304`](https://github.com/alien-id/sso-sdk-js/commit/7df83048f0e18eee1e3991083936fbd74fd834a8) Thanks [@truehazker-eti](https://github.com/truehazker-eti)! - Add `SignInPanel`, the Alien sign-in flow (QR / agent / success / error) rendered inline without a modal shell. `SignInModal` now reuses it, so both paths share one implementation.
+
+  Harden the single-use authorization-code exchange against duplicate sends across every react-query re-run vector — focus, reconnect, mount/remount, error-state retry, and `enabled` toggling — and stop the poll query from re-firing a consumed code on remount.
+
 ## 2.0.1
 
 ### Patch Changes
