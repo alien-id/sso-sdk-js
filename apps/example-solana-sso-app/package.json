@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@alien-id/sso-solana-react": "*",
+    "@alien-id/sso-solana-react": "2.2.1-beta.0",
     "@solana/wallet-adapter-base": "0.9.27",
     "@solana/wallet-adapter-react": "0.15.39",
     "@solana/wallet-adapter-react-ui": "0.9.39",
