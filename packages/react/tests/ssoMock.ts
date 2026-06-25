@@ -51,7 +51,13 @@ export function mockSso({ pollStatuses = ['pending'], tokenStatus = 200 }: MockS
           pollStatuses[Math.min(calls.poll, pollStatuses.length) - 1];
         return json(
           status === 'authorized'
-            ? { status, authorization_code: `auth-code-${testSeq}`, state }
+            ? {
+                status,
+                // Rotates per authorize() generation, mirroring the server
+                // issuing a fresh code for each new deeplink/poll session.
+                authorization_code: `auth-code-${testSeq}-${calls.authorize}`,
+                state,
+              }
             : { status },
         );
       }
