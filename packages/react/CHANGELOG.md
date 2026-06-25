@@ -1,5 +1,14 @@
 # @alien-id/sso-react
 
+## 2.1.0-beta.1
+
+### Patch Changes
+
+- [`440abcf`](https://github.com/alien-id/sso-sdk-js/commit/440abcf19af2dcb3e52450a9d227681539a49ff9) Thanks [@truehazker-eti](https://github.com/truehazker-eti)! - Rebuild and republish under the refreshed build toolchain — `@vitejs/plugin-react` 6 and Node 24.17.0. No source or public API changes.
+
+- Updated dependencies [[`440abcf`](https://github.com/alien-id/sso-sdk-js/commit/440abcf19af2dcb3e52450a9d227681539a49ff9)]:
+  - @alien-id/sso@2.0.1-beta.0
+
 ## 2.1.0-beta.0
 
 ### Minor Changes

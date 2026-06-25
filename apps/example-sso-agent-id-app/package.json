@@ -12,8 +12,8 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@alien-id/sso-agent-id": "^2.1.1",
-    "@alien-id/sso-react": "2.1.0-beta.0",
+    "@alien-id/sso-agent-id": "^2.1.2-beta.0",
+    "@alien-id/sso-react": "2.1.0-beta.1",
     "drizzle-orm": "0.45.2",
     "next": "16.2.9",
     "postgres": "3.4.9",

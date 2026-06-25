@@ -12,6 +12,8 @@
     "@alien-id/sso-solana-react": "2.2.0"
   },
   "changesets": [
+    "beta-toolchain-node",
+    "beta-toolchain-react",
     "inline-sign-in-panel"
   ]
 }
