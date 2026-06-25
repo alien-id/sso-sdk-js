@@ -51,7 +51,7 @@
     "ts-jest": "29.4.11",
     "turbo": "2.9.18",
     "vite": "7.3.5",
-    "vite-plugin-dts": "4.5.4"
+    "vite-plugin-dts": "5.0.2"
   },
   "dependencies": {
     "zod": "^4.1.5"
