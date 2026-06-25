@@ -1,5 +1,31 @@
 # @alien-id/sso-react
 
+## 2.1.0
+
+### Minor Changes
+
+- [#60](https://github.com/alien-id/sso-sdk-js/pull/60) [`7df8304`](https://github.com/alien-id/sso-sdk-js/commit/7df83048f0e18eee1e3991083936fbd74fd834a8) Thanks [@truehazker-eti](https://github.com/truehazker-eti)! - Add `SignInPanel`, the Alien sign-in flow (QR / agent / success / error) rendered inline without a modal shell. `SignInModal` now reuses it, so both paths share one implementation.
+
+  Harden the single-use authorization-code exchange against duplicate sends across every react-query re-run vector — focus, reconnect, mount/remount, error-state retry, and `enabled` toggling — and stop the poll query from re-firing a consumed code on remount.
+
+- [#69](https://github.com/alien-id/sso-sdk-js/pull/69) [`90c4382`](https://github.com/alien-id/sso-sdk-js/commit/90c4382aaa6067134eaa856c6f8054909428a26f) Thanks [@truehazker-eti](https://github.com/truehazker-eti)! - Fix the inline `SignInPanel` getting stuck on the success screen after `logout()`. `logout()` now resets the sign-in flow cache (`auth-deeplink` / `auth-poll` / `auth-exchange`), so a signed-out user returns to a fresh QR instead of re-deriving success from the stale, infinitely-cached exchange result.
+
+  Model the flow as an explicit state machine — `loading` / `awaiting` / `success` / `error` — and surface the current `status` (plus a `SignInStatus` type) to the `wrap` callback, so inline consumers can lay out surrounding chrome (centre the terminal screens, hide content once the flow leaves `awaiting`).
+
+  Add a `gap` to the QR footer so the Download button no longer crowds the "Don't have an Alien App yet?" text.
+
+### Patch Changes
+
+- [`440abcf`](https://github.com/alien-id/sso-sdk-js/commit/440abcf19af2dcb3e52450a9d227681539a49ff9) Thanks [@truehazker-eti](https://github.com/truehazker-eti)! - Rebuild and republish under the refreshed build toolchain — `@vitejs/plugin-react` 6 and Node 24.17.0. No source or public API changes.
+
+- [#72](https://github.com/alien-id/sso-sdk-js/pull/72) [`b063f09`](https://github.com/alien-id/sso-sdk-js/commit/b063f099ad5fc366a61c34d093c99b7a02ffda44) Thanks [@truehazker-eti](https://github.com/truehazker-eti)! - Fix two sign-in robustness issues:
+
+  - **No false "success" without a session.** `exchangeToken` now rejects when the token exchange resolves but produces no usable session (e.g. a missing or unverifiable `id_token`, so `getAuthData()` is null). Previously the panel showed "Sign in successful!" off the raw token response while `auth.isAuthenticated` stayed false — the success screen and auth state could disagree. They now always agree: a session, or an error screen.
+  - **Stable client across inline `config` literals.** `AlienSsoProvider` memoizes the `AlienSsoClient` on config _values_ instead of the config object's identity. Passing an inline `config={{...}}` (the pattern in our docs) no longer rebuilds the client — and tears down the auth context — on every parent re-render.
+
+- Updated dependencies [[`440abcf`](https://github.com/alien-id/sso-sdk-js/commit/440abcf19af2dcb3e52450a9d227681539a49ff9)]:
+  - @alien-id/sso@2.0.1
+
 ## 2.1.0-beta.2
 
 ### Minor Changes
