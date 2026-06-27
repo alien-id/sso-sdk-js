@@ -9,4 +9,4 @@
 # npm 11.13.0 clears the >= 11.10.0 floor required for `min-release-age`
 # (see .npmrc). CI asserts the running npm version as a guard.
 [tools]
-node = "24.17.0"
+node = "24.18.0"
