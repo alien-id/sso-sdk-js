@@ -46,7 +46,7 @@
     "express": "5.2.1",
     "jest": "30.4.2",
     "jest-environment-jsdom": "30.4.1",
-    "nock": "14.0.15",
+    "nock": "14.0.16",
     "prettier": "3.8.4",
     "ts-jest": "29.4.11",
     "turbo": "2.9.18",
