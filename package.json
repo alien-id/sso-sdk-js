@@ -6,7 +6,7 @@
     "apps/**"
   ],
   "_packageManagerNote": "Required by turbo for workspace detection. mise.toml is the source of truth for the toolchain; keep this matched to the npm bundled with the pinned Node (24.16.0 -> 11.13.0). Corepack is not enabled, so this does not override mise.",
-  "packageManager": "npm@11.17.0",
+  "packageManager": "npm@11.18.0",
   "engines": {
     "node": ">=20",
     "npm": ">=11.10.0"
