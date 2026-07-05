@@ -15,7 +15,7 @@
     "@alien-id/sso-agent-id": "^2.1.2",
     "@alien-id/sso-react": "2.1.0",
     "drizzle-orm": "0.45.2",
-    "next": "16.2.9",
+    "next": "16.2.10",
     "postgres": "3.4.9",
     "react": "19.2.7",
     "react-dom": "19.2.7"
